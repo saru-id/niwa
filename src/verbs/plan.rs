@@ -54,6 +54,13 @@ fn render(out: &Out, plan: &Plan) -> ExitCode {
                 count(unchecked, "resource")
             ));
         }
+        // One line by default; `-v` shows the groups, `-vv` every
+        // resource, so a converged screen can still be read closely.
+        match out.verbosity() {
+            0 => {}
+            1 => render_groups(out, plan),
+            _ => render_all(out, plan),
+        }
         return ExitCode::SUCCESS;
     }
 
@@ -95,6 +102,37 @@ fn flush(out: &Out, rows: &mut Vec<(Mark, String, String)>) {
         out.list(rows);
         rows.clear();
     }
+}
+
+/// `-v` on a converged machine: one count per unit.
+fn render_groups(out: &Out, plan: &Plan) {
+    let mut units: Vec<(String, usize)> = Vec::new();
+    for item in &plan.items {
+        let name = unit_name(&item.declaration.unit);
+        match units.iter_mut().find(|(unit, _)| unit == &name) {
+            Some((_, total)) => *total += 1,
+            None => units.push((name, 1)),
+        }
+    }
+    for (unit, total) in units {
+        out.result(Mark::Ok, &format!("{unit} · {}", count(total, "resource")));
+    }
+}
+
+/// `-vv` on a converged machine: every resource, grouped.
+fn render_all(out: &Out, plan: &Plan) {
+    let mut current: Option<String> = None;
+    let mut rows: Vec<(Mark, String, String)> = Vec::new();
+    for item in &plan.items {
+        let group = unit_name(&item.declaration.unit);
+        if current.as_deref() != Some(group.as_str()) {
+            flush(out, &mut rows);
+            out.group(&group);
+            current = Some(group);
+        }
+        rows.push((Mark::Ok, display_name(&item.declaration), String::new()));
+    }
+    flush(out, &mut rows);
 }
 
 fn unit_name(unit: &Unit) -> String {

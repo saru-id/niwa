@@ -46,6 +46,10 @@ fn check(out: &Out, notify: bool) -> Result<ExitCode, Error> {
     );
     out.result(Mark::Ok, &line);
 
+    if !analyze(&paths, out) {
+        return Ok(ExitCode::FAILURE);
+    }
+
     if notify {
         let journal = Journal::load(&paths.state)?;
         let mut baseline = Baseline::load(&paths.state);
@@ -71,6 +75,40 @@ fn check(out: &Out, notify: bool) -> Result<ExitCode, Error> {
         }
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Deeper type checks through luau-analyze when it is installed;
+/// when it is not, one plain sentence says so instead of pretending
+/// the checks ran. Returns false when the analyzer found problems.
+fn analyze(paths: &Paths, out: &Out) -> bool {
+    let mut files: Vec<String> = Vec::new();
+    for dir in ["", "modules", "hosts"] {
+        let root = paths.config.join(dir);
+        let Ok(entries) = std::fs::read_dir(&root) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "luau") {
+                files.push(path.display().to_string());
+            }
+        }
+    }
+    files.sort();
+    let args: Vec<&str> = files.iter().map(String::as_str).collect();
+    let Some(finished) = bounded_output("luau-analyze", &args, Duration::from_mins(1)) else {
+        out.note("luau-analyze is not installed · deeper type checks were skipped");
+        return true;
+    };
+    if finished.code == Some(0) {
+        return true;
+    }
+    for line in finished.stderr_tail.lines().chain(finished.stdout.lines()) {
+        if !line.trim().is_empty() {
+            out.plain(line);
+        }
+    }
+    false
 }
 
 /// One notification, through the system's own mouth. A missing

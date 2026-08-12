@@ -68,11 +68,20 @@ fn declare_run(
 
     let mut fields = BTreeMap::new();
     let mut guarded = false;
+    let mut privileged = false;
     if let Some(options) = options {
         spec.no_unknown_fields(
             options,
-            &["unless", "only_if", "creates", "timeout", "optional"],
+            &[
+                "unless",
+                "only_if",
+                "creates",
+                "timeout",
+                "optional",
+                "privileged",
+            ],
         )?;
+        privileged = spec.opt_bool(options, "privileged")?.unwrap_or(false);
         if let Some(unless) = spec.opt_bool(options, "unless")? {
             fields.insert("unless".to_string(), Value::Bool(unless));
             guarded = true;
@@ -113,7 +122,7 @@ fn declare_run(
             spec: Value::Map(fields),
             provenance: prov.clone(),
             unit: unit_of(&prov),
-            privileged: false,
+            privileged,
         },
     )
 }

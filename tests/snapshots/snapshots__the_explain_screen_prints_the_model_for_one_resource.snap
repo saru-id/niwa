@@ -1,0 +1,8 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+defaults com.apple.dock autohide
+declared     true    modules/desktop.luau:2
+actual       false
+acknowledged never applied here

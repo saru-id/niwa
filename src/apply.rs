@@ -363,6 +363,54 @@ pub fn archive_bytes(archive_root: &Path, identity: &str, bytes: &[u8]) -> Resul
     archive(archive_root, identity, bytes)
 }
 
+/// Prune archives past the ninety-day horizon. Whatever the newest
+/// apply references survives regardless of age: undo reaches it.
+/// Best effort by design — a file that will not delete today deletes
+/// on a later run.
+pub fn prune_archives(paths: &Paths, journal: &Journal) {
+    let keep: std::collections::HashSet<String> = journal
+        .last_apply()
+        .map(|entry| {
+            entry
+                .steps
+                .iter()
+                .filter_map(|step| match &step.effect {
+                    Effect::FileWritten { previous }
+                    | Effect::LinkMade { previous }
+                    | Effect::ServiceSet { previous } => previous.clone(),
+                    _ => None,
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let Some(cutoff) =
+        std::time::SystemTime::now().checked_sub(std::time::Duration::from_hours(90 * 24))
+    else {
+        return;
+    };
+    let Ok(dirs) = std::fs::read_dir(archive_dir(paths)) else {
+        return;
+    };
+    for dir in dirs.flatten() {
+        let Ok(files) = std::fs::read_dir(dir.path()) else {
+            continue;
+        };
+        for file in files.flatten() {
+            let name = file.file_name().to_string_lossy().into_owned();
+            let expired = file
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .is_ok_and(|modified| modified < cutoff);
+            if expired && !keep.contains(&name) {
+                let _ = std::fs::remove_file(file.path());
+            }
+        }
+        // Only an emptied identity directory goes; remove_dir refuses
+        // anything still holding archives.
+        let _ = std::fs::remove_dir(dir.path());
+    }
+}
+
 fn sanitize(identity: &str) -> String {
     identity
         .chars()

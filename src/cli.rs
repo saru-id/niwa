@@ -11,9 +11,10 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[command(subcommand)]
     pub verb: Option<Verb>,
-    /// More detail: humanized times gain their absolutes
-    #[arg(short, long, global = true)]
-    pub verbose: bool,
+    /// More detail: `-v` adds absolutes and groups converged output,
+    /// `-vv` lists every resource
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }
 
 #[derive(Subcommand)]

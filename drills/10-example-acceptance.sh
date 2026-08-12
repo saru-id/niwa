@@ -230,9 +230,11 @@ check 15 "the once block ran its key generation" grep -q "ssh-keygen" "$CALLS"
 check 16 "the stamp says airborne" test -f "$HOME/.config/niwa/state/airborne.toml"
 
 # --- idempotence, the property everything depends on ------------------
+# The mission's own wording: the example must plan, apply, and
+# --verify clean. --verify re-checks everything after the run.
 : >"$CALLS"
-niwa apply --yes --no-privileged
-check 17 "a second apply succeeds (exit 0)" test "$STATUS" -eq 0
+niwa apply --yes --no-privileged --verify
+check 17 "a second apply passes --verify (exit 0)" test "$STATUS" -eq 0
 check 18 "the plugin sync did not run again" \
     sh -c "! grep -q 'nvim --headless' '$CALLS'"
 check 19 "the key generation did not run again" \

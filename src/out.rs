@@ -78,8 +78,9 @@ pub struct Out {
     tty: bool,
     /// Color implies `tty`; `NO_COLOR` and `TERM=dumb` strip it back.
     color: bool,
-    /// `-v`: humanized times gain their absolutes.
-    verbose: bool,
+    /// `-v` count: humanized times gain their absolutes at one,
+    /// screens list everything at two.
+    verbose: u8,
 }
 
 impl Out {
@@ -87,7 +88,7 @@ impl Out {
     /// `0`) turns everything on even when piped. `NO_COLOR` (set,
     /// non-empty) and `TERM=dumb` remove color but keep the marks a
     /// terminal user still sees.
-    pub fn detect(verbose: bool) -> Self {
+    pub fn detect(verbose: u8) -> Self {
         let tty = std::io::stdout().is_terminal();
         let force = std::env::var_os("FORCE_COLOR").is_some_and(|v| !v.is_empty() && v != "0");
         let no_color = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
@@ -163,10 +164,15 @@ impl Out {
         print!("{text}");
     }
 
+    /// How much detail the person asked for: 0, `-v`, or `-vv`.
+    pub const fn verbosity(&self) -> u8 {
+        self.verbose
+    }
+
     /// A moment: humanized always, the absolute beside it at `-v`.
     pub fn when(&self, timestamp: &str) -> String {
         let humanized = ago(timestamp);
-        if !self.verbose {
+        if self.verbose == 0 {
             return humanized;
         }
         let absolute = timestamp.parse::<jiff::Timestamp>().map_or_else(

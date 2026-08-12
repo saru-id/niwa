@@ -24,5 +24,6 @@ niwa.defaults("/Library/Preferences/com.apple.loginwindow", {
 if niwa.machine.arch == "arm64" then
   niwa.run("softwareupdate --install-rosetta --agree-to-license", {
     unless = niwa.exists("/Library/Apple/usr/share/rosetta"),
+    privileged = true,
   })
 end

@@ -96,7 +96,10 @@ tool { name = "widget" }
         ),
     );
     let output = checks_clean(home.path());
-    assert_eq!(output, "25 resources · config is valid\n");
+    assert_eq!(
+        output,
+        "25 resources · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+    );
 }
 
 #[test]
@@ -109,7 +112,10 @@ fn a_directory_source_fans_out_per_file() {
         "init.luau",
         &config("niwa.file(\"~/.local/bin/\", { source = \"@self/files/bin/\" })\n"),
     );
-    assert_eq!(checks_clean(home.path()), "2 resources · config is valid\n");
+    assert_eq!(
+        checks_clean(home.path()),
+        "2 resources · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+    );
 }
 
 #[test]
@@ -172,7 +178,10 @@ fn a_host_file_overriding_a_module_is_allowed() {
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(stdout(&output), "1 resource · config is valid\n");
+    assert_eq!(
+        stdout(&output),
+        "1 resource · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+    );
 }
 
 #[test]
@@ -297,7 +306,10 @@ niwa.file("~/.netrc", {
 "#,
         ),
     );
-    assert_eq!(checks_clean(home.path()), "1 resource · config is valid\n");
+    assert_eq!(
+        checks_clean(home.path()),
+        "1 resource · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+    );
 }
 
 #[test]

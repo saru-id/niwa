@@ -1,0 +1,6 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+  laptop    applied [ago]       (no commit)   12 resources
+  workbox   applied [ago]       (no commit)   40 resources

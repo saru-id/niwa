@@ -53,10 +53,14 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         .find(|(stem, _)| stem == &name)
         .map(|(_, stamp)| out.when(&stamp.applied));
 
-    let mut headline = format!(
-        "niwa · {name} · {}",
-        count(analysis.effective.len(), "resource")
-    );
+    let mut headline = if name.is_empty() {
+        format!("niwa · {}", count(analysis.effective.len(), "resource"))
+    } else {
+        format!(
+            "niwa · {name} · {}",
+            count(analysis.effective.len(), "resource")
+        )
+    };
     if let Some(applied) = applied {
         use std::fmt::Write as _;
         let _ = write!(headline, " · last applied {applied}");

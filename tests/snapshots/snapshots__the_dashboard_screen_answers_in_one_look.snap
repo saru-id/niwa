@@ -1,0 +1,7 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+niwa · 3 resources
+
+2 would change

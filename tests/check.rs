@@ -50,7 +50,10 @@ fn an_empty_config_is_valid_with_zero_resources() {
     write(home.path(), "init.luau", "");
     let output = niwa(home.path(), &["check"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(stdout(&output), "0 resources · config is valid\n");
+    assert_eq!(
+        stdout(&output),
+        "0 resources · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+    );
 }
 
 #[test]

@@ -17,6 +17,9 @@ fn niwa(home: &Path, envs: &[(&str, &str)], args: &[&str]) -> Output {
         .args(args)
         .env_clear()
         .env("HOME", home)
+        // Hermetic by construction: without this, surveys would read
+        // the developer machine's real Homebrew receipts.
+        .env("HOMEBREW_PREFIX", home.join("brew"))
         .envs(coverage_env());
     for (key, value) in envs {
         command.env(key, value);
@@ -126,6 +129,36 @@ fn verbose_adds_the_absolute_beside_the_humanized_time() {
         stdout(&verbose).contains("2026-08-01"),
         "-v must add the absolute: {}",
         stdout(&verbose)
+    );
+}
+
+#[test]
+fn converged_output_is_one_line_then_groups_then_everything() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    std::fs::write(home.path().join(".demo"), "alpha\nbravo\ncharlie\n").unwrap();
+
+    let plain = niwa(home.path(), &[], &["plan"]);
+    assert_eq!(plain.status.code(), Some(0));
+    assert_eq!(stdout(&plain).lines().count(), 1);
+
+    let grouped = niwa(home.path(), &[], &["plan", "-v"]);
+    assert!(stdout(&grouped).contains("init · 1 resource"));
+
+    let all = niwa(home.path(), &[], &["plan", "-vv"]);
+    assert!(stdout(&all).contains("~/.demo"), "-vv lists resources");
+}
+
+#[test]
+fn check_says_plainly_when_the_analyzer_is_missing() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    let output = niwa(home.path(), &[], &["check"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(
+        stdout(&output).contains("luau-analyze is not installed"),
+        "the skipped analyzer must be named: {}",
+        stdout(&output)
     );
 }
 

@@ -1,0 +1,6 @@
+---
+source: tests/snapshots.rs
+expression: stdout
+---
+modules/inbox.luau ← brew: jq
+1 change staged in your config · review with `git diff`

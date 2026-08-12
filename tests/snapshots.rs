@@ -22,6 +22,9 @@ fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
         .args(args)
         .env_clear()
         .env("HOME", home)
+        // Hermetic by construction: without this, surveys would read
+        // the developer machine's real Homebrew receipts.
+        .env("HOMEBREW_PREFIX", home.join("brew"))
         .envs(coverage_env());
     if force_color {
         command.env("FORCE_COLOR", "1");
@@ -176,6 +179,72 @@ fn the_missing_config_error_says_where_to_start() {
     let run = niwa(home.path(), &["check"], false);
     assert_eq!(run.code, 1);
     insta::assert_snapshot!("check_missing_config_piped", run.stderr);
+}
+
+#[test]
+fn the_dashboard_screen_answers_in_one_look() {
+    let home = pending_home();
+    let run = niwa(home.path(), &[], false);
+    assert_eq!(run.code, 0);
+    insta::assert_snapshot!(run.stdout);
+}
+
+#[test]
+fn the_machines_screen_reads_the_fleet_from_stamps() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.dock { autohide = true }\n",
+    );
+    write(
+        home.path(),
+        "state/laptop.toml",
+        "machine_id = \"AAAA-1111\"\nname = \"laptop\"\napplied = \"2026-08-01T09:00:00Z\"\nniwa = \"0.1.0\"\nresources = 12\n",
+    );
+    write(
+        home.path(),
+        "state/workbox.toml",
+        "machine_id = \"BBBB-2222\"\nname = \"workbox\"\napplied = \"2026-06-15T09:00:00Z\"\nniwa = \"0.1.0\"\nresources = 40\ntags = [\"work\"]\n",
+    );
+    let run = niwa(home.path(), &["machines"], false);
+    assert_eq!(run.code, 0);
+    insta::with_settings!({filters => vec![(r"\d+[smhdw] ago|just now", "[ago]")]}, {
+        insta::assert_snapshot!(run.stdout);
+    });
+}
+
+#[test]
+fn the_explain_screen_prints_the_model_for_one_resource() {
+    let home = pending_home();
+    let run = niwa(home.path(), &["explain", "dock.autohide"], false);
+    assert_eq!(run.code, 0);
+    insta::assert_snapshot!(run.stdout);
+}
+
+#[test]
+fn the_pull_screen_stages_an_unmanaged_package() {
+    let home = pending_home();
+    let brew = home.path().join("brew/Cellar/jq/1.7.1");
+    std::fs::create_dir_all(&brew).unwrap();
+    std::fs::write(
+        brew.join("INSTALL_RECEIPT.json"),
+        "{\"installed_on_request\":true}",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_niwa"))
+        .args(["pull", "--all"])
+        .env_clear()
+        .env("HOME", home.path())
+        .env("HOMEBREW_PREFIX", home.path().join("brew"))
+        .envs(coverage_env())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8(output.stdout)
+        .unwrap()
+        .replace(&home.path().display().to_string(), "~");
+    insta::assert_snapshot!(stdout);
 }
 
 /// Instrumented builds tell children where to write coverage profiles

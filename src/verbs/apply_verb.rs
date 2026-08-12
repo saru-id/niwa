@@ -129,6 +129,12 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     stamp_and_warn(out, &paths, intent.items.len());
 
+    // The safety net has a horizon: archives the newest apply cannot
+    // reach and ninety days old go quietly.
+    if let Ok(journal) = crate::journal::Journal::load(&paths.state) {
+        crate::apply::prune_archives(&paths, &journal);
+    }
+
     let skipped = engine.privileged_skipped();
     if !skipped.is_empty() {
         out.note(&format!(
