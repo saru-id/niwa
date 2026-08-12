@@ -3,7 +3,7 @@ source: tests/snapshots.rs
 expression: run.stdout
 ---
  shell ─────────────────────────────
-[32m+[0m ~/.zshrc
+[32m+[0m [1m~/.zshrc[22m
  desktop ───────────────────────────
-[33m~[0m com.apple.dock autohide   false → true
+[33m~[0m [1mcom.apple.dock autohide[22m   [2mfalse → true[0m
 [33m~[0m 3 checked · 2 would change

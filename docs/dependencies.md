@@ -116,6 +116,17 @@ enforces the license and source policy in `deny.toml`.
 - Weight: small (no new transitive dependencies).
 - License: Apache-2.0.
 
+### unicode-width
+
+- Does: measures strings in terminal columns, so alignment and
+  truncation stay correct for characters wider than one cell.
+- Why not our own: the East Asian width tables are large, versioned
+  with Unicode, and wrong to approximate.
+- Maintenance: the unicode-rs team, current, used across the
+  terminal ecosystem.
+- Weight: tiny, no dependencies.
+- License: MIT OR Apache-2.0.
+
 ## Development
 
 ### insta

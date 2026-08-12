@@ -19,6 +19,7 @@ sha2 = "0.11.0"
 similar = { version = "3.1.2", features = ["inline"] }
 thiserror = "2"
 toml = "1.1.4"
+unicode-width = "0.2.2"
 
 [dev-dependencies]
 insta = { version = "1.48.0", features = ["filters"] }

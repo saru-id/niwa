@@ -81,6 +81,11 @@ pub struct Out {
     /// `-v` count: humanized times gain their absolutes at one,
     /// screens list everything at two.
     verbose: u8,
+    /// The terminal's column count; `None` when piped, so nothing
+    /// truncates in output a program will read.
+    width: Option<usize>,
+    /// OSC 8 hyperlinks, on terminals known to render them.
+    links: bool,
 }
 
 impl Out {
@@ -93,10 +98,34 @@ impl Out {
         let force = std::env::var_os("FORCE_COLOR").is_some_and(|v| !v.is_empty() && v != "0");
         let no_color = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
         let dumb = std::env::var_os("TERM").is_some_and(|v| v == "dumb");
+        let width = if tty {
+            Some(
+                crate::util::proc::bounded_stdout(
+                    "tput",
+                    &["cols"],
+                    std::time::Duration::from_secs(2),
+                )
+                .and_then(|cols| cols.trim().parse().ok())
+                .unwrap_or(80),
+            )
+        } else {
+            None
+        };
+        // The terminals that render OSC 8; everywhere else the text
+        // stays plain, which is the design's own fallback.
+        let links = tty
+            && !dumb
+            && std::env::var_os("TERM_PROGRAM").is_some_and(|program| {
+                ["iTerm.app", "WezTerm", "ghostty", "kitty", "vscode"]
+                    .iter()
+                    .any(|known| program == std::ffi::OsStr::new(known))
+            });
         Self {
             tty: tty || force,
             color: force || (tty && !no_color && !dumb),
             verbose,
+            width,
+            links,
         }
     }
 
@@ -130,21 +159,63 @@ impl Out {
     }
 
     /// Aligned item rows: mark, a left column padded to the widest
-    /// entry, and a detail column.
+    /// entry, and a detail column. On a terminal the identifier is
+    /// bold and the detail dim; a row past the terminal's width
+    /// truncates its identifier from the front, because the tail of
+    /// a path is the signal.
     pub fn list(&self, rows: &[(Mark, String, String)]) {
-        let width = rows
+        // The mark and its space eat two columns.
+        let room = self.width.map(|width| width.saturating_sub(2));
+        let column = rows
             .iter()
-            .map(|(_, left, _)| left.chars().count())
+            .map(|(_, left, _)| display_width(left))
             .max()
             .unwrap_or(0);
         for (mark, left, right) in rows {
+            let left = match room {
+                Some(room) if right.is_empty() => truncate_keep_tail(left, room),
+                Some(room) => {
+                    truncate_keep_tail(left, room.saturating_sub(display_width(right) + 3))
+                }
+                None => left.clone(),
+            };
             let text = if right.is_empty() {
-                left.clone()
+                self.emphasize(&left)
             } else {
-                format!("{left:<width$}   {right}")
+                let pad = column.saturating_sub(display_width(&left));
+                format!(
+                    "{}{}   {}",
+                    self.emphasize(&left),
+                    " ".repeat(pad),
+                    self.paint(Role::Muted, right)
+                )
             };
             self.result(*mark, text.trim_end());
         }
+    }
+
+    /// Identifiers wear bold on a color terminal, per the design's
+    /// typography rules.
+    fn emphasize(&self, text: &str) -> String {
+        if self.color {
+            format!("\x1b[1m{text}\x1b[22m")
+        } else {
+            text.to_string()
+        }
+    }
+
+    /// `file:line` as an OSC 8 hyperlink where the terminal renders
+    /// them, plain text everywhere else.
+    pub fn locate(&self, config: &std::path::Path, provenance: &str) -> String {
+        if !self.links {
+            return provenance.to_string();
+        }
+        let file = provenance.split(':').next().unwrap_or(provenance);
+        let target = config.join(file);
+        format!(
+            "\x1b]8;;file://{}\x1b\\{provenance}\x1b]8;;\x1b\\",
+            target.display()
+        )
     }
 
     /// A bare line: screens whose shape is its own vocabulary (the
@@ -248,6 +319,30 @@ impl Out {
             eprintln!("  {line}");
         }
     }
+}
+
+/// A string's width in terminal columns, not bytes or chars.
+fn display_width(text: &str) -> usize {
+    unicode_width::UnicodeWidthStr::width(text)
+}
+
+/// Truncate from the front, keeping the tail: `…/bin/notes-sync`.
+/// The design's rule — the tail of a path is the signal.
+fn truncate_keep_tail(text: &str, max: usize) -> String {
+    if display_width(text) <= max || max < 2 {
+        return text.to_string();
+    }
+    let mut tail = String::new();
+    let mut width = 1;
+    for character in text.chars().rev() {
+        let next = unicode_width::UnicodeWidthChar::width(character).unwrap_or(0);
+        if width + next > max {
+            break;
+        }
+        width += next;
+        tail.insert(0, character);
+    }
+    format!("…{tail}")
 }
 
 /// Humanize a time in the voice rules' shape: "2h ago", "3w ago".

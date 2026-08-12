@@ -61,7 +61,7 @@ fn explain(out: &Out, target: &str) -> Result<ExitCode, Error> {
         out.plain(&format!(
             "{label:<13}{:<8}{}{marker}",
             summary(&declaration.spec),
-            declaration.provenance
+            out.locate(&paths.config, &declaration.provenance.to_string())
         ));
     }
 
