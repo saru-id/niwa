@@ -1,0 +1,23 @@
+# Dependency policy, enforced by `cargo deny check` in the gate.
+# Licenses are allowed one at a time, as dependencies earn their entry
+# in docs/dependencies.md. Keep every list here short and deliberate.
+
+[graph]
+all-features = true
+
+[advisories]
+yanked = "deny"
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

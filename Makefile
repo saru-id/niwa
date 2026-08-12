@@ -2,9 +2,9 @@
 # `check` runs before every commit.
 # `verify` runs before any work is called finished.
 
-.PHONY: check fmt clippy test verify coverage
+.PHONY: check fmt clippy test deny verify coverage
 
-check: fmt clippy test
+check: fmt clippy test deny
 
 fmt:
 	cargo fmt --all --check
@@ -14,6 +14,9 @@ clippy:
 
 test:
 	cargo test
+
+deny:
+	cargo deny check
 
 verify: check coverage
 
