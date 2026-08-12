@@ -64,4 +64,11 @@ pub enum Verb {
     },
     /// Normalize the config files' formatting
     Fmt,
+    /// Back up or restore the sealing key through the repo's
+    /// passphrase-protected escrow
+    #[command(name = "seal-key")]
+    SealKey {
+        /// One of: backup, restore
+        action: String,
+    },
 }

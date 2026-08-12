@@ -41,6 +41,9 @@ pub enum Error {
     #[error("apply needs a confirmation and no terminal is attached")]
     NeedsConfirmation,
 
+    #[error("the secret `{name}` was not found")]
+    SecretMissing { name: String, looked: Vec<String> },
+
     #[error("pull walks differences one at a time and needs a terminal")]
     NeedsWalk,
 
@@ -92,6 +95,10 @@ fn recover(error: &mlua::Error) -> Option<Error> {
                     command: command.clone(),
                     code: *code,
                     stderr: stderr.clone(),
+                }),
+                Error::SecretMissing { name, looked } => Some(Error::SecretMissing {
+                    name: name.clone(),
+                    looked: looked.clone(),
                 }),
                 _ => None,
             }
@@ -151,6 +158,17 @@ impl Error {
             ],
             Self::NeedsConfirmation => {
                 vec!["pass --yes to apply without a prompt".to_string()]
+            }
+            Self::SecretMissing { looked, .. } => {
+                let mut lines: Vec<String> = looked
+                    .iter()
+                    .map(|place| format!("looked in {place}"))
+                    .collect();
+                lines.push(
+                    "store it with `security add-generic-password -s niwa -a <name> -w`, or seal it into secrets/<name>.age"
+                        .to_string(),
+                );
+                lines
             }
             Self::NeedsWalk => {
                 vec!["pass --all to stage everything and review with `git diff`".to_string()]

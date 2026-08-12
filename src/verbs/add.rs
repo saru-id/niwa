@@ -25,6 +25,9 @@ pub fn run(out: &Out, provider: &str, name: &str) -> ExitCode {
 }
 
 fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
+    if provider == "secret" {
+        return add_secret(out, name);
+    }
     let kind = match provider {
         "brew" => Kind::BrewFormula,
         "cask" => Kind::BrewCask,
@@ -32,7 +35,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
         other => {
             return Err(Error::Apply {
                 doing: format!("adding through `{other}`"),
-                detail: "add knows brew, cask, and npm".to_string(),
+                detail: "add knows brew, cask, npm, and secret".to_string(),
             });
         }
     };
@@ -101,4 +104,48 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
         );
         Ok(ExitCode::FAILURE)
     }
+}
+
+/// `niwa add secret <name>`: seal a value into the repo. The value
+/// comes from stdin, never from an argument — arguments leak into the
+/// process list.
+fn add_secret(out: &Out, name: &str) -> Result<ExitCode, Error> {
+    use std::io::Read as _;
+    let paths = Paths::resolve()?;
+    if name.is_empty() || name.contains('/') {
+        return Err(Error::Apply {
+            doing: "sealing a secret".to_string(),
+            detail: format!("`{name}` is not a secret name"),
+        });
+    }
+    let mut value = String::new();
+    std::io::stdin()
+        .read_to_string(&mut value)
+        .map_err(|error| Error::Apply {
+            doing: "reading the value from stdin".to_string(),
+            detail: error.to_string(),
+        })?;
+    let value = value.trim_end_matches(['\n', '\r']);
+    if value.is_empty() {
+        return Err(Error::Apply {
+            doing: "sealing a secret".to_string(),
+            detail: "stdin held no value to seal".to_string(),
+        });
+    }
+    let sealed = crate::secrets::seal(&paths, value.as_bytes())?;
+    let dir = paths.config.join("secrets");
+    std::fs::create_dir_all(&dir).map_err(|error| Error::Apply {
+        doing: "creating secrets/".to_string(),
+        detail: error.to_string(),
+    })?;
+    let file = dir.join(format!("{name}.age"));
+    std::fs::write(&file, sealed).map_err(|error| Error::Apply {
+        doing: "writing the sealed file".to_string(),
+        detail: error.to_string(),
+    })?;
+    out.result(
+        Mark::Added,
+        &format!("secrets/{name}.age sealed · niwa.secret({name:?}) resolves it"),
+    );
+    Ok(ExitCode::SUCCESS)
 }

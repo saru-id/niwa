@@ -17,6 +17,7 @@ mod out;
 mod paths;
 mod plan;
 mod proposals;
+mod secrets;
 mod services;
 mod util;
 mod verbs;
@@ -49,5 +50,6 @@ fn main() -> ExitCode {
         cli::Verb::Pull { all } => verbs::pull::run(&out, all),
         cli::Verb::Add { provider, name } => verbs::add::run(&out, &provider, &name),
         cli::Verb::Fmt => verbs::fmt::run(&out),
+        cli::Verb::SealKey { action } => verbs::seal_key::run(&out, &action),
     }
 }

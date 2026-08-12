@@ -74,6 +74,37 @@ enforces the license and source policy in `deny.toml`.
 - Weight: small (digest, cpufeatures).
 - License: MIT OR Apache-2.0.
 
+### age
+
+- Does: seals secrets and undo archives — X25519 identities for file
+  encryption, scrypt passphrases for the escrowed key backup.
+- Why not our own: file encryption is the one place where writing it
+  yourself is the mistake. age is a small, audited format built for
+  exactly this shape of problem.
+- Maintenance: the reference Rust implementation, actively maintained.
+- Weight: the largest tree here (curve and AEAD crates, BSD-3-Clause
+  dalek crates among them), all pure Rust.
+- License: MIT OR Apache-2.0; curve25519-dalek and friends BSD-3-Clause.
+
+### jiff
+
+- Does: timestamps for stamps and acknowledgements, and the humanized
+  "2h ago" durations the interface chapter asks for.
+- Why not our own: civil time arithmetic and ISO 8601 formatting are
+  precisely the wheels not to reinvent.
+- Maintenance: BurntSushi, current, releases often.
+- Weight: self-contained.
+- License: MIT OR Apache-2.0 (Unlicense OR MIT).
+
+### toml
+
+- Does: reads and writes the lockfile and the per-machine stamps.
+- Why not our own: TOML has enough grammar corners that a hand parser
+  is a liability in files people edit.
+- Maintenance: the toml-rs team, current, used by cargo itself.
+- Weight: small (toml_edit, winnow).
+- License: MIT OR Apache-2.0.
+
 ## Development
 
 ### insta

@@ -7,6 +7,7 @@ pub mod check;
 pub mod fmt;
 pub mod plan;
 pub mod pull;
+pub mod seal_key;
 pub mod undo;
 
 use std::rc::Rc;

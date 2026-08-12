@@ -42,9 +42,10 @@ pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx, facts: &Facts) -> mlua::Resu
         lua.create_function(move |_, name: String| Ok(query_command(&command_ctx, &name)))?,
     )?;
 
+    let secret_ctx = ctx.clone();
     niwa.set(
         "secret",
-        lua.create_function(move |lua, arg: mlua::Value| make_secret(lua, &arg))?,
+        lua.create_function(move |lua, arg: mlua::Value| make_secret(lua, &secret_ctx, &arg))?,
     )?;
 
     niwa.set(
@@ -118,7 +119,7 @@ fn query_command(ctx: &Ctx, name: &str) -> bool {
 
 /// `niwa.secret` returns an opaque handle. Secrets resolve at apply
 /// time, never at plan time, and never into the config.
-fn make_secret(lua: &Lua, arg: &mlua::Value) -> mlua::Result<Table> {
+fn make_secret(lua: &Lua, ctx: &Ctx, arg: &mlua::Value) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {
         resource: "niwa.secret",
@@ -142,6 +143,22 @@ fn make_secret(lua: &Lua, arg: &mlua::Value) -> mlua::Result<Table> {
     };
     if name.is_empty() {
         return Err(spec.fail("the secret needs a name"));
+    }
+
+    ctx.state
+        .borrow_mut()
+        .secrets_used
+        .push((name.clone(), from.clone()));
+
+    // The plan is where a missing secret fails, with the list of
+    // places it looked — never halfway through an apply.
+    if let Some(engine) = &ctx.engine
+        && let Err(looked) = crate::secrets::exists(&engine.paths, &name, from.as_deref())
+    {
+        return Err(mlua::Error::external(crate::error::Error::SecretMissing {
+            name,
+            looked,
+        }));
     }
 
     let secret = lua.create_table()?;
@@ -206,6 +223,9 @@ pub fn render_to_value(rendered: &Table) -> Option<Value> {
                 let secret: String = t.get("name").ok()?;
                 let mut marker = BTreeMap::new();
                 marker.insert("secret".to_string(), Value::Str(secret));
+                if let Ok(from) = t.get::<String>("from") {
+                    marker.insert("from".to_string(), Value::Str(from));
+                }
                 Value::Map(marker)
             }
             other => Value::from_lua(other).ok()?,

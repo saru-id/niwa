@@ -240,6 +240,64 @@ fn archive(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Erro
         .map_err(|error| apply_error("archiving the previous bytes", &error))
 }
 
+/// Substitute a rendered template's placeholders: plain values
+/// inline, secret markers through the resolver. Returns the bytes and
+/// whether any secret went in.
+fn render_content(
+    paths: &Paths,
+    render: &std::collections::BTreeMap<String, Value>,
+) -> Result<(Vec<u8>, bool), Error> {
+    let Some(Value::Str(template)) = render.get("template") else {
+        return Err(apply_error("rendering", &"the template is missing"));
+    };
+    let empty = std::collections::BTreeMap::new();
+    let values = match render.get("values") {
+        Some(Value::Map(values)) => values,
+        _ => &empty,
+    };
+    let mut text = template.clone();
+    let mut used_secrets = false;
+    for (name, value) in values {
+        let replacement = match value {
+            Value::Map(marker) => {
+                let Some(Value::Str(secret_name)) = marker.get("secret") else {
+                    continue;
+                };
+                let from = match marker.get("from") {
+                    Some(Value::Str(from)) => Some(from.as_str()),
+                    _ => None,
+                };
+                used_secrets = true;
+                crate::secrets::resolve(paths, secret_name, from).map_err(|looked| {
+                    Error::SecretMissing {
+                        name: secret_name.clone(),
+                        looked,
+                    }
+                })?
+            }
+            other => crate::plan::render_value(other),
+        };
+        text = text.replace(&format!("{{{name}}}"), &replacement);
+    }
+    Ok((text.into_bytes(), used_secrets))
+}
+
+/// Archive with the content sealed; the file keeps its plaintext
+/// digest for a name, so undo can find it without reading it.
+fn archive_sealed(
+    paths: &Paths,
+    archive_root: &Path,
+    identity: &str,
+    bytes: &[u8],
+) -> Result<(), Error> {
+    let dir = archive_root.join(sanitize(identity));
+    std::fs::create_dir_all(&dir)
+        .map_err(|error| apply_error("archiving the previous bytes", &error))?;
+    let sealed = crate::secrets::seal(paths, bytes)?;
+    std::fs::write(dir.join(digest(bytes)), sealed)
+        .map_err(|error| apply_error("archiving the previous bytes", &error))
+}
+
 /// Archive bytes for an identity, for callers outside the engine's
 /// own effect paths (orphan removal archives what it takes away).
 pub fn archive_bytes(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Error> {
@@ -265,6 +323,7 @@ fn apply_file(
     };
     let target = expand_target(paths, &declaration.identity.key);
 
+    let mut sealed_archives = false;
     let declared: Vec<u8> = match (fields.get("source"), fields.get("content")) {
         (Some(Value::Str(source)), _) => {
             let Some(rest) = source.strip_prefix("@self/") else {
@@ -274,9 +333,14 @@ fn apply_file(
                 .map_err(|error| apply_error(&format!("reading {source}"), &error))?
         }
         (_, Some(Value::Str(content))) => content.clone().into_bytes(),
-        // Rendered content needs secrets; that lands with the secrets
-        // milestone. Until then rendered files stay unchecked at
-        // execution.
+        (_, Some(Value::Map(render))) => {
+            // Secrets resolve here, at apply time, and nowhere
+            // earlier. A file that held secrets gets sealed archives:
+            // undo must never write plaintext into the state dir.
+            let (bytes, used_secrets) = render_content(paths, render)?;
+            sealed_archives = used_secrets;
+            bytes
+        }
         _ => return Ok((Outcome::Unchecked, None)),
     };
 
@@ -285,7 +349,16 @@ fn apply_file(
         if current != declared && !may_overwrite(declaration, journal, &current, force) {
             return Ok((Outcome::Protected, None));
         }
-        archive(archive_root, &declaration.identity.to_string(), &current)?;
+        if sealed_archives {
+            archive_sealed(
+                paths,
+                archive_root,
+                &declaration.identity.to_string(),
+                &current,
+            )?;
+        } else {
+            archive(archive_root, &declaration.identity.to_string(), &current)?;
+        }
         Some(digest(&current))
     } else {
         None
@@ -524,7 +597,7 @@ fn reverse_file(
     }
     match previous {
         Some(digest) => {
-            let bytes = read_archived(archive_root, &step.identity, digest)?;
+            let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
             write_atomic(&target, &bytes)
         }
         None => std::fs::remove_file(&target)
@@ -546,7 +619,7 @@ fn reverse_link(
         std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
     }
     if let Some(digest) = previous {
-        let bytes = read_archived(archive_root, &step.identity, digest)?;
+        let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
         write_atomic(&target, &bytes)?;
     }
     Ok(())
@@ -585,7 +658,7 @@ fn reverse_service(
     }
     match previous {
         Some(digest) => {
-            let bytes = read_archived(archive_root, &step.identity, digest)?;
+            let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
             write_atomic(&target, &bytes)?;
             crate::services::bootstrap(paths, label, false);
         }
@@ -639,8 +712,18 @@ fn reverse_defaults(
         .map_err(|error| apply_error("restoring the preference file", &error))
 }
 
-fn read_archived(archive_root: &Path, identity: &str, digest: &str) -> Result<Vec<u8>, Error> {
+fn read_archived(
+    paths: &Paths,
+    archive_root: &Path,
+    identity: &str,
+    digest: &str,
+) -> Result<Vec<u8>, Error> {
     let path = archive_root.join(sanitize(identity)).join(digest);
-    std::fs::read(&path)
-        .map_err(|error| apply_error(&format!("reading the archived copy for {identity}"), &error))
+    let bytes = std::fs::read(&path).map_err(|error| {
+        apply_error(&format!("reading the archived copy for {identity}"), &error)
+    })?;
+    if crate::secrets::is_sealed(&bytes) {
+        return crate::secrets::unseal(paths, &bytes);
+    }
+    Ok(bytes)
 }

@@ -39,6 +39,8 @@ pub struct RunState {
     /// Memoised queries: the whole run sees one consistent world.
     pub exists_cache: HashMap<String, bool>,
     pub command_cache: HashMap<String, bool>,
+    /// Every `niwa.secret` the run asked for, for `doctor`.
+    pub secrets_used: Vec<(String, Option<String>)>,
 }
 
 /// Shared context for every API function.

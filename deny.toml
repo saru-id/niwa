@@ -15,6 +15,8 @@ allow = [
     # unicode-ident (via clap's derive macros) carries the Unicode
     # character data license alongside MIT OR Apache-2.0.
     "Unicode-3.0",
+    # the dalek elliptic-curve crates under age are BSD-3-Clause.
+    "BSD-3-Clause",
 ]
 
 [bans]
