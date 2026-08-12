@@ -103,11 +103,49 @@ pub struct Identity {
     pub key: String,
 }
 
+impl Kind {
+    /// The inverse of `as_str`, for identity strings read back from
+    /// the journal. An unknown name is a custom kind by definition.
+    pub fn parse(text: &str) -> Self {
+        match text {
+            "brew.formula" => Self::BrewFormula,
+            "brew.cask" => Self::BrewCask,
+            "brew.service" => Self::BrewService,
+            "mas" => Self::Mas,
+            "npm" => Self::Npm,
+            "mise" => Self::Mise,
+            "github_release" => Self::GithubRelease,
+            "defaults" => Self::Defaults,
+            "file" => Self::File,
+            "link" => Self::Link,
+            "hosts" => Self::Hosts,
+            "login_shell" => Self::LoginShell,
+            "hostname" => Self::Hostname,
+            "service" => Self::Service,
+            "run" => Self::Run,
+            "once" => Self::Once,
+            "permission" => Self::Permission,
+            "manual" => Self::Manual,
+            "use" => Self::Use,
+            other => Self::Custom(other.to_string()),
+        }
+    }
+}
+
 impl Identity {
     pub fn new(kind: Kind, key: impl Into<String>) -> Self {
         Self {
             kind,
             key: key.into(),
+        }
+    }
+
+    /// The inverse of `Display`: `brew.formula:jq` comes back apart.
+    /// A string with no separator is a singleton kind.
+    pub fn parse(text: &str) -> Self {
+        match text.split_once(':') {
+            Some((kind, key)) => Self::new(Kind::parse(kind), key),
+            None => Self::new(Kind::parse(text), ""),
         }
     }
 }
@@ -214,6 +252,19 @@ mod tests {
         assert_eq!(id.to_string(), "brew.formula:jq");
         let id = Identity::new(Kind::Defaults, "com.apple.dock:autohide");
         assert_eq!(id.to_string(), "defaults:com.apple.dock:autohide");
+    }
+
+    #[test]
+    fn identities_parse_back_from_their_display() {
+        for text in [
+            "brew.formula:jq",
+            "defaults:com.apple.dock:autohide",
+            "file:~/.zshrc",
+            "dotnet.tool:dotnet-ef",
+            "hostname",
+        ] {
+            assert_eq!(Identity::parse(text).to_string(), text);
+        }
     }
 
     #[test]

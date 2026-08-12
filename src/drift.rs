@@ -382,23 +382,23 @@ fn orphans(
 
 /// Is the thing an acknowledgement describes still on the machine?
 fn still_present(paths: &Paths, identity: &str) -> bool {
-    let Some((kind, key)) = identity.split_once(':') else {
-        return false;
-    };
-    match kind {
-        "file" | "link" => expand(paths, key).symlink_metadata().is_ok(),
-        "defaults" => key.split_once(':').is_some_and(|(domain, key)| {
+    let identity = crate::model::Identity::parse(identity);
+    let key = identity.key.as_str();
+    match &identity.kind {
+        Kind::File | Kind::Link => expand(paths, key).symlink_metadata().is_ok(),
+        Kind::Defaults => key.split_once(':').is_some_and(|(domain, key)| {
             plist::Value::from_file(crate::defaults::domain_path(paths, domain))
                 .ok()
                 .and_then(|root| root.as_dictionary().map(|dict| dict.contains_key(key)))
                 .unwrap_or(false)
         }),
-        "brew.formula" => crate::brew::installed(paths, &Kind::BrewFormula, key).is_some(),
-        "brew.cask" => crate::brew::installed(paths, &Kind::BrewCask, key).is_some(),
-        "npm" => crate::npm::installed(key),
-        "mise" => crate::mise::installed(paths, key).is_some(),
-        "service" => crate::services::agent_plist(paths, key).is_file(),
-        "brew.service" => crate::services::brew_service_plist(paths, key).is_file(),
+        Kind::BrewFormula | Kind::BrewCask => {
+            crate::brew::installed(paths, &identity.kind, key).is_some()
+        }
+        Kind::Npm => crate::npm::installed(key),
+        Kind::Mise => crate::mise::installed(paths, key).is_some(),
+        Kind::Service => crate::services::agent_plist(paths, key).is_file(),
+        Kind::BrewService => crate::services::brew_service_plist(paths, key).is_file(),
         _ => false,
     }
 }

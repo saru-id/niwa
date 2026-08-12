@@ -704,15 +704,20 @@ fn reverse_link(
     Ok(())
 }
 fn reverse_package(step: &Step) -> Result<(), Error> {
-    let Some((provider, name)) = step.identity.split_once(':') else {
-        return Ok(());
-    };
+    uninstall_package(&crate::model::Identity::parse(&step.identity))
+}
+
+/// The one package-uninstall dispatch: undo and orphan removal both
+/// route through it. Kinds no installer owns reverse to nothing.
+pub fn uninstall_package(identity: &crate::model::Identity) -> Result<(), Error> {
     let deadline = std::time::Duration::from_mins(10);
-    let result = match provider {
-        "brew.formula" => crate::brew::uninstall(&crate::model::Kind::BrewFormula, name, deadline),
-        "brew.cask" => crate::brew::uninstall(&crate::model::Kind::BrewCask, name, deadline),
-        "npm" => crate::npm::uninstall(name, deadline),
-        "mise" => crate::mise::unuse(name, deadline),
+    let name = &identity.key;
+    let result = match &identity.kind {
+        Kind::BrewFormula | Kind::BrewCask => {
+            crate::brew::uninstall(&identity.kind, name, deadline)
+        }
+        Kind::Npm => crate::npm::uninstall(name, deadline),
+        Kind::Mise => crate::mise::unuse(name, deadline),
         _ => return Ok(()),
     };
     result.map_err(|detail| Error::Apply {

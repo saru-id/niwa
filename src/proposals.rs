@@ -336,9 +336,10 @@ pub fn pull_file(
 /// ever the only copy.
 pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Result<(), Error> {
     let archive_root = crate::apply::archive_dir(paths);
-    let (kind, key) = identity.split_once(':').unwrap_or((identity, ""));
-    match kind {
-        "file" | "link" => {
+    let parsed = crate::model::Identity::parse(identity);
+    let key = parsed.key.as_str();
+    match &parsed.kind {
+        Kind::File | Kind::Link => {
             let target = paths.expand_home(key);
             if let Ok(current) = std::fs::read(&target) {
                 crate::apply::archive_bytes(&archive_root, identity, &current)?;
@@ -348,7 +349,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
                 detail: error.to_string(),
             })?;
         }
-        "defaults" => {
+        Kind::Defaults => {
             let Some((domain, preference)) = key.split_once(':') else {
                 return Ok(());
             };
@@ -368,37 +369,10 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
                     detail: error.to_string(),
                 })?;
         }
-        "brew.formula" => {
-            crate::brew::uninstall(&Kind::BrewFormula, key, std::time::Duration::from_mins(10))
-                .map_err(|detail| Error::Apply {
-                    doing: format!("uninstalling {key}"),
-                    detail,
-                })?;
+        Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
+            crate::apply::uninstall_package(&parsed)?;
         }
-        "brew.cask" => {
-            crate::brew::uninstall(&Kind::BrewCask, key, std::time::Duration::from_mins(10))
-                .map_err(|detail| Error::Apply {
-                    doing: format!("uninstalling {key}"),
-                    detail,
-                })?;
-        }
-        "npm" => {
-            crate::npm::uninstall(key, std::time::Duration::from_mins(10)).map_err(|detail| {
-                Error::Apply {
-                    doing: format!("uninstalling {key}"),
-                    detail,
-                }
-            })?;
-        }
-        "mise" => {
-            crate::mise::unuse(key, std::time::Duration::from_mins(10)).map_err(|detail| {
-                Error::Apply {
-                    doing: format!("removing {key} from mise"),
-                    detail,
-                }
-            })?;
-        }
-        "service" => {
+        Kind::Service => {
             crate::services::bootout(paths, key);
             let plist = crate::services::agent_plist(paths, key);
             if let Ok(bytes) = std::fs::read(&plist) {
@@ -406,7 +380,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             }
             let _ = std::fs::remove_file(&plist);
         }
-        "brew.service" => {
+        Kind::BrewService => {
             crate::services::brew_service_stop(key).map_err(|detail| Error::Apply {
                 doing: format!("stopping the {key} service"),
                 detail,

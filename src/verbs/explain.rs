@@ -161,11 +161,13 @@ fn summary(spec: &Value) -> String {
 
 /// What the machine says right now, for the identity's kind.
 fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -> String {
-    let Some((kind, key)) = identity.split_once(':') else {
+    let parsed = crate::model::Identity::parse(identity);
+    let key = parsed.key.as_str();
+    if key.is_empty() {
         return "unknown".to_string();
-    };
-    match kind {
-        "defaults" => key.split_once(':').map_or_else(
+    }
+    match &parsed.kind {
+        Kind::Defaults => key.split_once(':').map_or_else(
             || "unknown".to_string(),
             |(domain, preference)| {
                 plist::Value::from_file(crate::defaults::domain_path(paths, domain))
@@ -181,18 +183,12 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
                     )
             },
         ),
-        "brew.formula" | "brew.cask" => {
-            let brew_kind = if kind == "brew.formula" {
-                Kind::BrewFormula
-            } else {
-                Kind::BrewCask
-            };
-            crate::brew::installed(paths, &brew_kind, key).map_or_else(
+        Kind::BrewFormula | Kind::BrewCask => crate::brew::installed(paths, &parsed.kind, key)
+            .map_or_else(
                 || "absent".to_string(),
                 |version| format!("installed ({version})"),
-            )
-        }
-        "file" | "link" => declaration.map_or_else(
+            ),
+        Kind::File | Kind::Link => declaration.map_or_else(
             || "unknown".to_string(),
             |declaration| {
                 let journal = Journal::default();
@@ -204,17 +200,17 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
                 }
             },
         ),
-        "npm" => if crate::npm::installed(key) {
+        Kind::Npm => if crate::npm::installed(key) {
             "installed"
         } else {
             "absent"
         }
         .to_string(),
-        "mise" => crate::mise::installed(paths, key).map_or_else(
+        Kind::Mise => crate::mise::installed(paths, key).map_or_else(
             || "absent".to_string(),
             |version| format!("installed ({version})"),
         ),
-        "service" => {
+        Kind::Service => {
             if crate::services::agent_plist(paths, key).is_file() {
                 "loaded plist present".to_string()
             } else {
