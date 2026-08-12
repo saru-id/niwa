@@ -364,6 +364,100 @@ fn unattended_apply_refuses_a_dirty_or_merging_tree() {
     );
 }
 
+#[test]
+fn the_plan_marks_where_prediction_begins() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         local first = niwa.file(\"~/.pred-a\", { content = \"a\" })\n\
+         niwa.file(\"~/.pred-b\", { content = \"b\" })\n\
+         if first.changed then\n\
+             niwa.file(\"~/.pred-c\", { content = \"c\" })\n\
+         end\n",
+    );
+    let output = niwa(home.path(), &[], &["plan"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        stdout(&output).contains("predictions until apply"),
+        "the plan must mark where prediction begins: {}",
+        stdout(&output)
+    );
+}
+
+#[test]
+fn an_unrequired_module_and_an_unreferenced_source_are_named() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    write(home.path(), "modules/orphan.luau", "return {}\n");
+    write(home.path(), "files/unused", "nobody reads this\n");
+    let output = niwa(home.path(), &[], &["check"]);
+    assert_eq!(output.status.code(), Some(0));
+    let text = stdout(&output);
+    assert!(
+        text.contains("modules/orphan.luau is never required"),
+        "{text}"
+    );
+    assert!(
+        text.contains("files/unused is referenced by nothing"),
+        "{text}"
+    );
+}
+
+#[test]
+fn stack_traces_stay_out_unless_debug_asks() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.run(\"echo hi\")\n",
+    );
+    let plain = niwa(home.path(), &[], &["check"]);
+    assert_eq!(plain.status.code(), Some(1));
+    assert!(
+        !String::from_utf8_lossy(&plain.stderr).contains("stack traceback"),
+        "raw traces never reach a person"
+    );
+    let debug = niwa(home.path(), &[], &["check", "--debug"]);
+    assert!(
+        String::from_utf8_lossy(&debug.stderr).contains("stack traceback"),
+        "--debug keeps one for reports"
+    );
+}
+
+#[test]
+fn the_command_surface_is_exactly_the_twenty_verbs() {
+    let home = tempfile::tempdir().unwrap();
+    let output = niwa(home.path(), &[], &["--help"]);
+    let text = stdout(&output);
+    for verb in [
+        "apply",
+        "plan",
+        "pull",
+        "add",
+        "undo",
+        "explain",
+        "check",
+        "update",
+        "history",
+        "machines",
+        "doctor",
+        "export",
+        "tag",
+        "fmt",
+        "init",
+        "self",
+        "migrate",
+        "seal-key",
+        "uninstall",
+    ] {
+        assert!(text.contains(verb), "verb missing from the surface: {verb}");
+    }
+    // Nineteen subcommands; plain `niwa` — the dashboard — is the
+    // twentieth verb of the contract.
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through

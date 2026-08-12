@@ -110,4 +110,11 @@ check 17 "apply still succeeds under the new name (exit 0)" test "$STATUS" -eq 0
 check 18 "the rename is named, not guessed at" \
     sh -c "grep -q 'oldbox' '$SANDBOX/stdout' && grep -q 'drillbox' '$SANDBOX/stdout'"
 
+# --- unattended refuses what nobody committed -----------------------
+echo "-- an uncommitted edit" >>"$HOME/.config/niwa/init.luau"
+niwa apply --yes
+check 19 "apply --yes refuses a dirty tree (exit 1)" test "$STATUS" -eq 1
+niwa apply --yes --dirty
+check 20 "--dirty says you truly mean it (exit 0)" test "$STATUS" -eq 0
+
 echo "drill: stamps, explain, doctor · all checks passed"
