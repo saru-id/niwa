@@ -37,3 +37,10 @@ pub fn install(names: &[String], deadline: Duration) -> crate::util::proc::Invoc
 pub fn uninstall(name: &str, deadline: Duration) -> Result<(), String> {
     crate::util::proc::run_ok("npm", &["uninstall", "-g", name], deadline)
 }
+
+/// Does the registry still know this package? `None` when npm is
+/// unreachable.
+pub fn exists_upstream(name: &str, deadline: Duration) -> Option<bool> {
+    let finished = crate::util::proc::bounded_output("npm", &["view", name, "version"], deadline)?;
+    Some(finished.code == Some(0))
+}

@@ -68,10 +68,10 @@ pub fn survey(
     missing
 }
 
-/// One `brew info` per kind covers every name; brew's own error
-/// names the ghost.
+/// Ask the brew provider per kind; brew's own error names the
+/// ghosts.
 fn ask_brew(declarations: &[Declaration], missing: &mut Vec<Missing>, skipped: &mut Vec<String>) {
-    for (kind, flag) in [(Kind::BrewFormula, "--formula"), (Kind::BrewCask, "--cask")] {
+    for kind in [Kind::BrewFormula, Kind::BrewCask] {
         let names: Vec<&str> = declarations
             .iter()
             .filter(|declaration| declaration.identity.kind == kind)
@@ -80,54 +80,34 @@ fn ask_brew(declarations: &[Declaration], missing: &mut Vec<Missing>, skipped: &
         if names.is_empty() {
             continue;
         }
-        let mut args = vec!["info", flag];
-        args.extend(&names);
-        let Some(finished) = bounded_output("brew", &args, Duration::from_mins(2)) else {
-            skipped.push(format!(
-                "brew is not reachable · {flag} names were not checked"
-            ));
-            continue;
-        };
-        if finished.code == Some(0) {
-            continue;
-        }
-        // brew names each ghost on its own stderr line.
-        for name in &names {
-            if finished.stderr_tail.contains(name) {
-                missing.push(Missing {
-                    identity: format!("{kind}:{name}"),
-                    detail: "brew no longer knows it".to_string(),
-                });
-            }
+        match crate::brew::exists_upstream(&kind, &names, Duration::from_mins(2)) {
+            None => skipped.push(format!(
+                "brew is not reachable · {kind} names were not checked"
+            )),
+            Some(ghosts) => missing.extend(ghosts.into_iter().map(|name| Missing {
+                identity: format!("{kind}:{name}"),
+                detail: "brew no longer knows it".to_string(),
+            })),
         }
     }
 }
 
 fn ask_npm(declarations: &[Declaration], missing: &mut Vec<Missing>, skipped: &mut Vec<String>) {
-    let names: Vec<&str> = declarations
-        .iter()
-        .filter(|declaration| declaration.identity.kind == Kind::Npm)
-        .map(|declaration| declaration.identity.key.as_str())
-        .collect();
-    if names.is_empty() {
-        return;
-    }
-    let mut asked = false;
-    for name in names {
-        let Some(finished) =
-            bounded_output("npm", &["view", name, "version"], Duration::from_mins(1))
-        else {
-            if !asked {
+    for declaration in declarations {
+        if declaration.identity.kind != Kind::Npm {
+            continue;
+        }
+        let name = &declaration.identity.key;
+        match crate::npm::exists_upstream(name, Duration::from_mins(1)) {
+            None => {
                 skipped.push("npm is not reachable · packages were not checked".to_string());
+                return;
             }
-            return;
-        };
-        asked = true;
-        if finished.code != Some(0) {
-            missing.push(Missing {
+            Some(false) => missing.push(Missing {
                 identity: format!("npm:{name}"),
                 detail: "the registry no longer knows it".to_string(),
-            });
+            }),
+            Some(true) => {}
         }
     }
 }
@@ -188,17 +168,8 @@ pub fn outdated_counts(lock: &Lockfile) -> (usize, usize) {
     );
     let mut lock_outdated = 0;
     for (repo, pin) in &lock.github_release {
-        let url = format!("https://api.github.com/repos/{repo}/releases/latest");
-        let Some(latest) = bounded_stdout(
-            "curl",
-            &["-fsSL", "--max-time", "30", &url],
-            Duration::from_mins(1),
-        ) else {
-            continue;
-        };
-        if let Ok(document) = serde_json::from_str::<serde_json::Value>(&latest)
-            && let Some(tag) = document["tag_name"].as_str()
-            && tag.trim_start_matches('v') != pin.version.trim_start_matches('v')
+        if let Some(latest) = crate::release::latest_version(repo)
+            && latest.trim_start_matches('v') != pin.version.trim_start_matches('v')
         {
             lock_outdated += 1;
         }

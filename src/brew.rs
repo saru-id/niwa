@@ -120,3 +120,27 @@ pub fn install(kind: &Kind, names: &[String], deadline: Duration) -> Invocation 
     args.extend(names.iter().map(String::as_str));
     crate::util::proc::invoke("brew", &args, deadline)
 }
+
+/// Ask brew whether every named formula or cask still exists
+/// upstream. `None` when brew is unreachable — no answer is not a
+/// finding. brew's own stderr names each ghost.
+pub fn exists_upstream(kind: &Kind, names: &[&str], deadline: Duration) -> Option<Vec<String>> {
+    let flag = if matches!(kind, Kind::BrewCask) {
+        "--cask"
+    } else {
+        "--formula"
+    };
+    let mut args = vec!["info", flag];
+    args.extend(names);
+    let finished = crate::util::proc::bounded_output("brew", &args, deadline)?;
+    if finished.code == Some(0) {
+        return Some(Vec::new());
+    }
+    Some(
+        names
+            .iter()
+            .filter(|name| finished.stderr_tail.contains(*name))
+            .map(|name| (*name).to_string())
+            .collect(),
+    )
+}

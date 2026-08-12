@@ -153,17 +153,31 @@ pub fn prefetch(paths: &Paths, repo: &str, pin: &ReleasePin) {
     }
 }
 
-/// The latest release's version and the one asset built for this
-/// machine.
-fn latest_asset(repo: &str) -> Result<(String, String), Error> {
+/// One fetch of the latest-release document, shared by every
+/// question asked of it.
+fn latest_release(repo: &str) -> Result<serde_json::Value, Error> {
     let url = format!("https://api.github.com/repos/{repo}/releases/latest");
     let body =
         bounded_stdout("curl", &["-fsSL", &url], API_DEADLINE).ok_or_else(|| Error::Apply {
             doing: format!("resolving {repo}"),
             detail: "the release API did not answer".to_string(),
         })?;
-    let release: serde_json::Value =
-        serde_json::from_str(&body).map_err(|error| release_error(repo, &error))?;
+    serde_json::from_str(&body).map_err(|error| release_error(repo, &error))
+}
+
+/// The newest version upstream serves, for the outdated count.
+pub fn latest_version(repo: &str) -> Option<String> {
+    let release = latest_release(repo).ok()?;
+    release
+        .get("tag_name")
+        .and_then(|tag| tag.as_str())
+        .map(|tag| tag.trim_start_matches('v').to_string())
+}
+
+/// The latest release's version and the one asset built for this
+/// machine.
+fn latest_asset(repo: &str) -> Result<(String, String), Error> {
+    let release = latest_release(repo)?;
     let version = release
         .get("tag_name")
         .and_then(|tag| tag.as_str())
