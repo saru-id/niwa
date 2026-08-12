@@ -1,9 +1,9 @@
 //! The plan: declared versus actual, one comparison per identity.
 //!
-//! Providers read the machine; nothing here writes to it. The kinds
-//! with providers today are `file`, `link`, and `defaults`. Every
-//! other kind is reported as not yet checkable — pre-1.0 honesty
-//! beats a guessed answer.
+//! `compare` dispatches every kind to the provider that reads it;
+//! nothing here writes to the machine. The file and link read halves
+//! live in this module; every other kind answers through its own
+//! provider module.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
