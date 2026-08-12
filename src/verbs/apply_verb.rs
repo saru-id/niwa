@@ -79,18 +79,21 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     checklist_up_front(out, &intent, pending);
 
-    if !options.yes {
+    let declined = if options.yes {
+        std::collections::HashSet::new()
+    } else {
         if !std::io::stdin().is_terminal() {
             return Err(Error::NeedsConfirmation);
         }
-        eprint!("apply {}? [y/N] ", count(pending, "change"));
-        let mut answer = String::new();
-        if std::io::stdin().read_line(&mut answer).is_err()
-            || !matches!(answer.trim(), "y" | "Y" | "yes")
-        {
+        let Some(declined) = walk(out, &paths, &intent) else {
             out.result(Mark::Ok, "canceled · nothing changed");
             return Ok(ExitCode::FAILURE);
-        }
+        };
+        declined
+    };
+    if declined.len() >= pending {
+        out.result(Mark::Ok, "everything passed over · nothing changed");
+        return Ok(ExitCode::SUCCESS);
     }
 
     // Pass two: the same program, effects live.
@@ -101,6 +104,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
             force: options.force,
             skip_privileged: options.no_privileged,
             only: options.only.clone(),
+            declined,
         },
         paths.clone(),
         journal,
@@ -153,6 +157,51 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         ));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Interactive apply: every remaining difference, one decision at a
+/// time. `d` shows the same diff `plan --diff` renders; `a` switches
+/// to unattended once trust is established. `None` means canceled.
+fn walk(
+    out: &Out,
+    paths: &Paths,
+    intent: &crate::plan::Plan,
+) -> Option<std::collections::HashSet<String>> {
+    let mut declined = std::collections::HashSet::new();
+    let mut all = false;
+    for item in &intent.items {
+        if !matches!(item.action, Action::Create | Action::Change { .. }) {
+            continue;
+        }
+        if all {
+            continue;
+        }
+        loop {
+            eprint!(
+                "{} · [y]es [s]kip [d]iff [a]ll [q]uit ",
+                item.declaration.identity
+            );
+            let mut answer = String::new();
+            if std::io::stdin().read_line(&mut answer).is_err() {
+                return None;
+            }
+            match answer.trim() {
+                "y" | "" => break,
+                "s" => {
+                    declined.insert(item.declaration.identity.to_string());
+                    break;
+                }
+                "d" => super::plan::render_item_diff(out, paths, item),
+                "a" => {
+                    all = true;
+                    break;
+                }
+                "q" => return None,
+                _ => {}
+            }
+        }
+    }
+    Some(declined)
 }
 
 /// The run's closing lines: what changed, what restarted, and what

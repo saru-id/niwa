@@ -28,3 +28,11 @@ notes. The `drills/[0-9]*.sh` glob never matches this directory.
 6. **Terminal matrix.** The dashboard and plan render correctly in
    Terminal.app, Ghostty, and over ssh: marks align, color roles map
    onto the terminal's palette, `NO_COLOR` strips color everywhere.
+7. **Interactive apply.** `niwa apply` at a terminal steps through
+   every pending item: `d` renders the same diff `plan --diff`
+   shows, `s` leaves the item as it stands, `a` stops asking, `q`
+   cancels with nothing changed. Skipped items are still pending on
+   the next plan.
+8. **OSC 8 locations.** In Ghostty or iTerm, `niwa explain` renders
+   the source location as a clickable link; over ssh with a plain
+   TERM it is plain text.

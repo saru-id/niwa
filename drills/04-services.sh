@@ -133,4 +133,23 @@ check 16 "the defaults apply succeeds (exit 0)" test "$STATUS" -eq 0
 check 17 "five dock writes bounced the Dock exactly once" \
     test "$(grep -c "killall Dock" "$CALLS")" = "1"
 
+# --- unattended converge is dogfood ---------------------------------
+# The design's own pattern: a declared service running niwa itself.
+# The watcher never applies; only this, a service the person wrote,
+# converges unattended.
+cat >"$HOME/.config/niwa/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.service {
+  label    = "dev.drill.converge",
+  program  = { "~/.local/bin/niwa", "apply", "--yes", "--no-privileged" },
+  calendar = { hour = 3 },
+  logs     = "~/.local/state/converge/",
+}
+EOF
+niwa apply --yes
+check 18 "the dogfood service applies (exit 0)" test "$STATUS" -eq 0
+check 19 "its plist runs niwa unattended and unprivileged" sh -c "
+    /usr/bin/plutil -p '$HOME/Library/LaunchAgents/dev.drill.converge.plist' |
+    grep -q 'no-privileged'"
+
 echo "drill: services · all checks passed"

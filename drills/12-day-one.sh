@@ -114,6 +114,34 @@ check 10 "NIWA_RELEASE_BASE redirects the fetch (exit 0)" test "$STATUS" -eq 0
 check 11 "the mirror was asked, not the default" \
     grep -q "^mirror.test/niwa/$NAME\$" "$SANDBOX/curl.log"
 
+# --- the second machine: install with a config repo -----------------
+SEED="$SANDBOX/seed-repo"
+mkdir -p "$SEED"
+cat >"$SEED/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.file("~/.cloned", { content = "from the fleet" })
+EOF
+git -C "$SEED" init -q -b main
+git -C "$SEED" -c user.name=drill -c user.email=drill@test \
+    -c commit.gpgsign=false add -A
+git -C "$SEED" -c user.name=drill -c user.email=drill@test \
+    -c commit.gpgsign=false commit -qm seed
+
+STATUS=0
+NIWA_RELEASE_BASE="mirror.test/niwa" \
+    sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+check 11b "an installer with a config repo clones it (exit 0)" \
+    sh -c "test $STATUS -eq 0 && test -f '$HOME/.config/niwa/init.luau'"
+check 11c "the walk is printed: restore, plan, apply" sh -c "
+    grep -q 'seal-key restore' '$SANDBOX/stdout' &&
+    grep -q 'niwa plan' '$SANDBOX/stdout'"
+STATUS=0
+NIWA_RELEASE_BASE="mirror.test/niwa" \
+    sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+check 11d "an existing config is left alone" \
+    sh -c "test $STATUS -eq 0 && grep -q 'leaving it' '$SANDBOX/stdout'"
+rm -rf "$HOME/.config/niwa"
+
 # --- from nothing to a governed machine -----------------------------
 export HOMEBREW_PREFIX="$SANDBOX/brew"
 mkdir -p "$HOMEBREW_PREFIX/Cellar"

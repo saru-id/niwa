@@ -33,6 +33,9 @@ pub enum Mode {
         skip_privileged: bool,
         /// Act on one unit by name; everything else stands as it is.
         only: Option<String>,
+        /// Identities the person passed over in the interactive
+        /// walk; they stand as they are, this run.
+        declined: std::collections::HashSet<String>,
     },
 }
 
@@ -186,11 +189,14 @@ impl Engine {
                 force,
                 skip_privileged,
                 only,
+                declined,
             } => {
-                if let Some(only) = only
-                    && !declaration.unit.is_named(only)
+                if declined.contains(&declaration.identity.to_string())
+                    || only
+                        .as_deref()
+                        .is_some_and(|only| !declaration.unit.is_named(only))
                 {
-                    // Outside the named module nothing moves; the
+                    // Outside the person's choice nothing moves; the
                     // result reads as the machine stands.
                     return Ok(Some(Truth {
                         changed: false,
@@ -260,10 +266,13 @@ impl Engine {
             Mode::Execute {
                 skip_privileged,
                 only,
+                declined,
                 ..
             } => {
-                if let Some(only) = only
-                    && !declaration.unit.is_named(only)
+                if declined.contains(&declaration.identity.to_string())
+                    || only
+                        .as_deref()
+                        .is_some_and(|only| !declaration.unit.is_named(only))
                 {
                     return Ok(Some(Truth {
                         changed: false,

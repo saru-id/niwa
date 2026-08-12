@@ -79,6 +79,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
             force: false,
             skip_privileged: false,
             only: None,
+            declined: std::collections::HashSet::new(),
         },
         paths.clone(),
         journal,

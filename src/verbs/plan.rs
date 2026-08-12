@@ -196,36 +196,43 @@ fn render_diffs(out: &Out, plan: &Plan) {
         return;
     };
     for item in &plan.items {
-        if !matches!(item.action, Action::Create | Action::Change { .. })
-            || item.declaration.identity.kind != Kind::File
-        {
-            continue;
+        if matches!(item.action, Action::Create | Action::Change { .. }) {
+            render_item_diff(out, &paths, item);
         }
-        let Value::Map(fields) = &item.declaration.spec else {
-            continue;
-        };
-        let declared = match (fields.get("source"), fields.get("content")) {
-            (Some(Value::Str(source)), _) => source
-                .strip_prefix("@self/")
-                .and_then(|rest| std::fs::read_to_string(paths.config.join(rest)).ok()),
-            (_, Some(Value::Str(content))) => Some(content.clone()),
-            _ => None,
-        };
-        let Some(declared) = declared else {
-            continue;
-        };
-        let target = &item.declaration.identity.key;
-        let live = target
-            .strip_prefix("~/")
-            .map(|rest| paths.home.join(rest))
-            .map_or_else(String::new, |path| {
-                std::fs::read_to_string(path).unwrap_or_default()
-            });
-        if live == declared {
-            continue;
-        }
-        out.plain("");
-        out.group(target);
-        out.diff(&live, &declared);
     }
+}
+
+/// One pending file's diff, for `--diff` and for interactive apply's
+/// `d`: the same renderer, per the design. Non-file resources and
+/// rendered content stay a name.
+pub fn render_item_diff(out: &Out, paths: &Paths, item: &crate::plan::Item) {
+    if item.declaration.identity.kind != Kind::File {
+        return;
+    }
+    let Value::Map(fields) = &item.declaration.spec else {
+        return;
+    };
+    let declared = match (fields.get("source"), fields.get("content")) {
+        (Some(Value::Str(source)), _) => source
+            .strip_prefix("@self/")
+            .and_then(|rest| std::fs::read_to_string(paths.config.join(rest)).ok()),
+        (_, Some(Value::Str(content))) => Some(content.clone()),
+        _ => None,
+    };
+    let Some(declared) = declared else {
+        return;
+    };
+    let target = &item.declaration.identity.key;
+    let live = target
+        .strip_prefix("~/")
+        .map(|rest| paths.home.join(rest))
+        .map_or_else(String::new, |path| {
+            std::fs::read_to_string(path).unwrap_or_default()
+        });
+    if live == declared {
+        return;
+    }
+    out.plain("");
+    out.group(target);
+    out.diff(&live, &declared);
 }
