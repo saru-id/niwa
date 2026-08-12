@@ -21,6 +21,13 @@ pub enum Value {
 }
 
 impl Value {
+    /// A stable, exact rendering for keys that must never drift:
+    /// declined proposals are remembered under it, so it must not
+    /// follow the screen renderer's formatting.
+    pub fn canonical(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
     /// Canonicalize a Lua value. Functions, userdata, threads, nil,
     /// non-finite numbers, and tables with mixed keys are rejected
     /// with a message naming what arrived.

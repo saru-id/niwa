@@ -83,16 +83,10 @@ impl Finding {
             Self::ValueDrift {
                 domain, key, live, ..
             } => {
-                format!(
-                    "edit:defaults:{domain}:{key}={}",
-                    crate::plan::render_value(live)
-                )
+                format!("edit:defaults:{domain}:{key}={}", live.canonical())
             }
             Self::SettingsFlip { domain, key, live } => {
-                format!(
-                    "set:defaults:{domain}:{key}={}",
-                    crate::plan::render_value(live)
-                )
+                format!("set:defaults:{domain}:{key}={}", live.canonical())
             }
             Self::UnmanagedPackage { kind, name } => format!("add:{kind}:{name}"),
             Self::Orphan { identity } => format!("remove:{identity}"),
