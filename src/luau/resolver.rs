@@ -45,6 +45,20 @@ pub fn run_entry(lua: &Lua) -> mlua::Result<()> {
     load(lua, &resolver, "init").map(|_| ())
 }
 
+/// `niwa.host()`: load `hosts/<name>.luau` if it exists, silently do
+/// nothing when it does not. The design keeps this dynamic lookup in
+/// niwa's own resolver so the static cases stay analysable.
+pub fn load_host(lua: &Lua, name: &str) -> mlua::Result<()> {
+    let resolver = lua
+        .app_data_ref::<Rc<Resolver>>()
+        .ok_or_else(|| mlua::Error::RuntimeError("the resolver is not installed".to_string()))?;
+    let rel = format!("hosts/{name}");
+    if locate(&resolver, &rel).is_err() {
+        return Ok(());
+    }
+    load(lua, &resolver, &rel).map(|_| ())
+}
+
 fn require(lua: &Lua, resolver: &Resolver, spec: &str) -> mlua::Result<Value> {
     if spec == "@niwa" {
         return lua.named_registry_value(NIWA_API);

@@ -1,8 +1,12 @@
+mod api;
 mod cli;
 mod error;
+mod facts;
 mod luau;
+mod model;
 mod out;
 mod paths;
+mod util;
 mod verbs;
 
 use std::process::ExitCode;

@@ -9,12 +9,19 @@
 
 mod resolver;
 
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use mlua::{Lua, VmState};
 
+use crate::api::{Ctx, RunState};
 use crate::error::Error;
+use crate::facts::Facts;
+use crate::model::Declaration;
+
+pub use resolver::load_host;
 
 pub struct Limits {
     /// Wall-clock budget for one whole config run.
@@ -38,13 +45,13 @@ impl Default for Limits {
 pub struct Runtime {
     lua: Lua,
     time: Duration,
+    state: Rc<RefCell<RunState>>,
 }
 
 impl Runtime {
-    /// Build a sandboxed VM rooted at the config directory. The API
-    /// table starts empty and grows as the api module registers the
-    /// surface; `require("@niwa")` already resolves to it.
-    pub fn new(root: &Path, limits: &Limits) -> Result<Self, Error> {
+    /// Build a sandboxed VM rooted at the config directory, with the
+    /// full API surface behind `require("@niwa")`.
+    pub fn new(root: &Path, home: &Path, limits: &Limits) -> Result<Self, Error> {
         let lua = Lua::new();
         lua.set_memory_limit(limits.memory).map_err(Error::from)?;
 
@@ -57,8 +64,14 @@ impl Runtime {
             .set("loadstring", mlua::Value::Nil)
             .map_err(Error::from)?;
 
-        let api = lua.create_table().map_err(Error::from)?;
-        freeze(&lua, &api).map_err(Error::from)?;
+        let state = Rc::new(RefCell::new(RunState::default()));
+        let ctx = Ctx {
+            state: Rc::clone(&state),
+            root: root.to_path_buf(),
+            home: home.to_path_buf(),
+        };
+        let facts = Facts::gather();
+        let api = crate::api::build(&lua, &ctx, &facts).map_err(Error::from)?;
         lua.set_named_registry_value(resolver::NIWA_API, api)
             .map_err(Error::from)?;
 
@@ -67,7 +80,13 @@ impl Runtime {
         Ok(Self {
             lua,
             time: limits.time,
+            state,
         })
+    }
+
+    /// The declarations the run collected, in program order.
+    pub fn declarations(&self) -> Vec<Declaration> {
+        self.state.borrow().declarations.clone()
     }
 
     /// Run `init.luau` from the config root, on the clock.
@@ -88,13 +107,6 @@ impl Runtime {
     }
 }
 
-/// Freeze a table with Luau's own `table.freeze`, so nothing niwa hands
-/// out can be monkey-patched by a config.
-fn freeze(lua: &Lua, table: &mlua::Table) -> mlua::Result<()> {
-    let freeze: mlua::Function = lua.globals().get::<mlua::Table>("table")?.get("freeze")?;
-    freeze.call::<()>(table)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -112,7 +124,7 @@ mod tests {
             time: Duration::from_millis(200),
             memory: 64 * 1024 * 1024,
         };
-        let runtime = Runtime::new(dir.path(), &limits).unwrap();
+        let runtime = Runtime::new(dir.path(), dir.path(), &limits).unwrap();
         let started = Instant::now();
         let error = runtime.run_entry().unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(5));
@@ -131,7 +143,7 @@ mod tests {
             time: Duration::from_secs(30),
             memory: 8 * 1024 * 1024,
         };
-        let runtime = Runtime::new(dir.path(), &limits).unwrap();
+        let runtime = Runtime::new(dir.path(), dir.path(), &limits).unwrap();
         let error = runtime.run_entry().unwrap_err();
         let Error::Script { message } = error else {
             panic!("expected a script error");

@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use crate::error::Error;
 
 pub struct Paths {
+    /// The user's home directory, for `~/` expansion.
+    pub home: PathBuf,
     /// The config repo: `~/.config/niwa`.
     pub config: PathBuf,
 }
@@ -20,7 +22,7 @@ impl Paths {
             .filter(|p| p.is_absolute())
             .ok_or(Error::NoHome)?;
         let config = xdg_dir(&home, "XDG_CONFIG_HOME", ".config").join("niwa");
-        Ok(Self { config })
+        Ok(Self { home, config })
     }
 }
 

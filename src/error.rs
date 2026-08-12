@@ -14,6 +14,12 @@ pub enum Error {
 
     #[error("the config failed to load")]
     Script { message: String },
+
+    #[error("declarations conflict")]
+    Conflicts(Vec<crate::model::analysis::Conflict>),
+
+    #[error("the config points at files that do not exist")]
+    MissingSources(Vec<(String, crate::model::Provenance)>),
 }
 
 impl From<mlua::Error> for Error {
@@ -41,6 +47,24 @@ impl Error {
                 ),
             ],
             Self::Script { message } => message.lines().map(str::to_string).collect(),
+            Self::Conflicts(conflicts) => {
+                let mut lines = Vec::new();
+                for conflict in conflicts {
+                    lines.push(format!(
+                        "{} is declared twice with different values:",
+                        conflict.identity
+                    ));
+                    for location in &conflict.locations {
+                        lines.push(format!("  {location}"));
+                    }
+                }
+                lines.push("keep one, or move the override into a host file".to_string());
+                lines
+            }
+            Self::MissingSources(missing) => missing
+                .iter()
+                .map(|(source, provenance)| format!("{provenance}: `{source}` does not exist"))
+                .collect(),
         }
     }
 }
