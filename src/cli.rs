@@ -55,6 +55,9 @@ pub enum Verb {
         /// Skip the steps that need administrator rights
         #[arg(long = "no-privileged")]
         no_privileged: bool,
+        /// Run one module by name and leave the rest as they stand
+        #[arg(long)]
+        only: Option<String>,
     },
     /// Reverse the most recent apply
     Undo {

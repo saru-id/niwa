@@ -47,6 +47,7 @@ fn main() -> ExitCode {
             force,
             verify,
             no_privileged,
+            only,
         } => verbs::apply_verb::run(
             &out,
             &verbs::apply_verb::Options {
@@ -55,6 +56,7 @@ fn main() -> ExitCode {
                 force,
                 verify,
                 no_privileged,
+                only,
             },
         ),
         cli::Verb::Undo { yes } => verbs::undo::run(&out, yes),

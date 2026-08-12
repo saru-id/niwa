@@ -162,6 +162,15 @@ impl Unit {
             .unwrap_or(Self::Init)
     }
 
+    /// Does this unit answer to the given name? `init` names the
+    /// entry file; modules and hosts answer to their file stem.
+    pub fn is_named(&self, name: &str) -> bool {
+        match self {
+            Self::Init => name == "init",
+            Self::Module(stem) | Self::Host(stem) => stem == name,
+        }
+    }
+
     pub const fn is_host(&self) -> bool {
         matches!(self, Self::Host(_))
     }

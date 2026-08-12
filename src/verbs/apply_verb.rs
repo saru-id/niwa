@@ -30,6 +30,7 @@ pub struct Options {
     pub force: bool,
     pub verify: bool,
     pub no_privileged: bool,
+    pub only: Option<String>,
 }
 
 pub fn run(out: &Out, options: &Options) -> ExitCode {
@@ -57,7 +58,9 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     let journal = Journal::load(&paths.state)?;
     let plan_engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
     super::run_pass(&paths, Some(Rc::clone(&plan_engine)))?;
-    let intent = super::plan_of(plan_engine);
+    let mut intent = super::plan_of(plan_engine);
+
+    scope_to_only(&mut intent, options.only.as_deref())?;
 
     let pending = intent.pending();
     if pending == 0 {
@@ -92,6 +95,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         Mode::Execute {
             force: options.force,
             skip_privileged: options.no_privileged,
+            only: options.only.clone(),
         },
         paths.clone(),
         journal,
@@ -146,7 +150,12 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     }
 
     if options.verify {
-        return Ok(verify(out, &paths, options.no_privileged));
+        return Ok(verify(
+            out,
+            &paths,
+            options.no_privileged,
+            options.only.as_deref(),
+        ));
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -175,6 +184,28 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
 /// The literal definition of idempotence: re-read everything, demand
 /// silence, and name the resource and source line of anything that
 /// still reports a change.
+/// `--only` scopes the run to one unit; a name nothing answers to is
+/// a refusal, not a silent no-op.
+fn scope_to_only(intent: &mut crate::plan::Plan, only: Option<&str>) -> Result<(), Error> {
+    let Some(only) = only else {
+        return Ok(());
+    };
+    if !intent
+        .items
+        .iter()
+        .any(|item| item.declaration.unit.is_named(only))
+    {
+        return Err(Error::Apply {
+            doing: format!("applying --only {only}"),
+            detail: "no module or host has that name".to_string(),
+        });
+    }
+    intent
+        .items
+        .retain(|item| item.declaration.unit.is_named(only));
+    Ok(())
+}
+
 /// On a long run the human steps arrive up front, so hands can work
 /// while the machine does: nothing in the checklist ever blocks the
 /// apply.
@@ -198,7 +229,7 @@ fn checklist_up_front(out: &Out, intent: &crate::plan::Plan, pending: usize) {
     }
 }
 
-fn verify(out: &Out, paths: &Paths, ignore_privileged: bool) -> ExitCode {
+fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>) -> ExitCode {
     let second = Journal::load(&paths.state).and_then(|journal| {
         let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
         super::run_pass(paths, Some(Rc::clone(&engine)))?;
@@ -216,6 +247,7 @@ fn verify(out: &Out, paths: &Paths, ignore_privileged: bool) -> ExitCode {
         .iter()
         .filter(|item| matches!(item.action, Action::Create | Action::Change { .. }))
         .filter(|item| !(ignore_privileged && item.declaration.privileged))
+        .filter(|item| only.is_none_or(|only| item.declaration.unit.is_named(only)))
         .map(|item| {
             format!(
                 "{} ({})",

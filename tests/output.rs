@@ -175,6 +175,49 @@ fn a_long_first_run_prints_the_checklist_up_front() {
 }
 
 #[test]
+fn apply_only_runs_one_module_and_leaves_the_rest() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "modules/a.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.only-a\", { content = \"a\" })\n",
+    );
+    write(
+        home.path(),
+        "modules/b.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.only-b\", { content = \"b\" })\n",
+    );
+    write(
+        home.path(),
+        "init.luau",
+        "require(\"@self/modules/a\")\nrequire(\"@self/modules/b\")\n",
+    );
+    let output = niwa(
+        home.path(),
+        &[],
+        &["apply", "--yes", "--dirty", "--only", "a", "--verify"],
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(home.path().join(".only-a").is_file(), "module a must land");
+    assert!(
+        !home.path().join(".only-b").exists(),
+        "module b must stand as it is"
+    );
+
+    let unknown = niwa(
+        home.path(),
+        &[],
+        &["apply", "--yes", "--dirty", "--only", "zz"],
+    );
+    assert_eq!(unknown.status.code(), Some(1), "an unknown module refuses");
+}
+
+#[test]
 fn a_ticked_step_stays_ticked_until_the_world_moves() {
     let home = tempfile::tempdir().unwrap();
     write(

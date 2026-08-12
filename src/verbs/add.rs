@@ -78,6 +78,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
         Mode::Execute {
             force: false,
             skip_privileged: false,
+            only: None,
         },
         paths.clone(),
         journal,

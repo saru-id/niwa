@@ -31,6 +31,8 @@ pub enum Mode {
         /// Skip everything that needs administrator rights: the
         /// design's answer for unattended and sandboxed runs.
         skip_privileged: bool,
+        /// Act on one unit by name; everything else stands as it is.
+        only: Option<String>,
     },
 }
 
@@ -115,7 +117,20 @@ impl Engine {
             Mode::Execute {
                 force,
                 skip_privileged,
+                only,
             } => {
+                if let Some(only) = only
+                    && !declaration.unit.is_named(only)
+                {
+                    // Outside the named module nothing moves; the
+                    // result reads as the machine stands.
+                    return Ok(Some(Truth {
+                        changed: false,
+                        present: true,
+                        failed: false,
+                        version: None,
+                    }));
+                }
                 if *skip_privileged && declaration.privileged {
                     // Left exactly as it is, counted, and named in
                     // the summary — never attempted without rights.
@@ -172,8 +187,20 @@ impl Engine {
         match &self.mode {
             Mode::Plan => Ok(None),
             Mode::Execute {
-                skip_privileged, ..
+                skip_privileged,
+                only,
+                ..
             } => {
+                if let Some(only) = only
+                    && !declaration.unit.is_named(only)
+                {
+                    return Ok(Some(Truth {
+                        changed: false,
+                        present: true,
+                        failed: false,
+                        version: None,
+                    }));
+                }
                 if *skip_privileged && declaration.privileged {
                     self.privileged_skipped
                         .borrow_mut()

@@ -120,6 +120,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
                 force: false,
                 verify: false,
                 no_privileged: false,
+                only: None,
             },
         ),
         "p" => super::plan::run(out, false, false),
