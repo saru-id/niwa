@@ -1,6 +1,8 @@
 mod api;
 mod apply;
+mod brew;
 mod cli;
+mod engine;
 mod error;
 mod facts;
 mod journal;

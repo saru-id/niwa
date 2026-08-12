@@ -26,6 +26,6 @@ pub fn run(out: &Out) -> ExitCode {
 
 fn check() -> Result<usize, Error> {
     let paths = Paths::resolve()?;
-    let analysis = super::load_config(&paths)?;
+    let analysis = super::run_pass(&paths, None)?;
     Ok(analysis.effective.len())
 }

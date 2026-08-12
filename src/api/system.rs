@@ -12,7 +12,7 @@ use mlua::{Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, aggregate, provenance, result_table, settle, settle_truth, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let hosts_ctx = ctx.clone();
@@ -45,6 +45,7 @@ fn declare_hosts(lua: &Lua, ctx: &Ctx, entries: &Table) -> mlua::Result<Table> {
         provenance: &prov,
     };
     let mut any = false;
+    let mut truths = Vec::new();
     for pair in entries.pairs::<mlua::Value, mlua::Value>() {
         let (host, address) = pair?;
         let (mlua::Value::String(host), mlua::Value::String(address)) = (&host, &address) else {
@@ -59,19 +60,24 @@ fn declare_hosts(lua: &Lua, ctx: &Ctx, entries: &Table) -> mlua::Result<Table> {
         }
         let mut fields = BTreeMap::new();
         fields.insert("address".to_string(), Value::Str(address));
-        ctx.record(Declaration {
-            identity: Identity::new(Kind::Hosts, host),
-            spec: Value::Map(fields),
-            provenance: prov.clone(),
-            unit: unit_of(&prov),
-            privileged: true,
-        });
+        if let Some(truth) = settle_truth(
+            ctx,
+            &Declaration {
+                identity: Identity::new(Kind::Hosts, host),
+                spec: Value::Map(fields),
+                provenance: prov.clone(),
+                unit: unit_of(&prov),
+                privileged: true,
+            },
+        )? {
+            truths.push(truth);
+        }
         any = true;
     }
     if !any {
         return Err(spec.fail("declare at least one entry"));
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 /// `/etc/shells` entry plus `chsh`: two privileged steps that always
@@ -90,14 +96,17 @@ fn declare_login_shell(lua: &Lua, ctx: &Ctx, path: &str) -> mlua::Result<Table> 
     }
     let mut fields = BTreeMap::new();
     fields.insert("path".to_string(), Value::Str(path.to_string()));
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::LoginShell, ""),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: true,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::LoginShell, ""),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: true,
+        },
+    )
 }
 
 fn declare_hostname(lua: &Lua, ctx: &Ctx, name: &str) -> mlua::Result<Table> {
@@ -111,12 +120,15 @@ fn declare_hostname(lua: &Lua, ctx: &Ctx, name: &str) -> mlua::Result<Table> {
     }
     let mut fields = BTreeMap::new();
     fields.insert("name".to_string(), Value::Str(name.to_string()));
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Hostname, ""),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: true,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Hostname, ""),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: true,
+        },
+    )
 }

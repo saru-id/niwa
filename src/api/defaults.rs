@@ -12,7 +12,7 @@ use mlua::{Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Provenance, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, aggregate, provenance, result_table, settle_truth, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let defaults_ctx = ctx.clone();
@@ -73,10 +73,13 @@ fn declare_defaults(
         return Err(spec.fail("declare at least one key"));
     }
 
+    let mut truths = Vec::new();
     for (key, value) in entries {
-        record(ctx, &prov, domain, &key, value, restart.as_deref());
+        if let Some(truth) = record(ctx, &prov, domain, &key, value, restart.as_deref())? {
+            truths.push(truth);
+        }
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 /// One `defaults` key declaration. Everything that lowers to a
@@ -88,19 +91,22 @@ pub fn record(
     key: &str,
     value: Value,
     restart: Option<&str>,
-) {
+) -> mlua::Result<Option<crate::engine::Truth>> {
     let mut fields = BTreeMap::new();
     fields.insert("value".to_string(), value);
     if let Some(restart) = restart {
         fields.insert("restart".to_string(), Value::Str(restart.to_string()));
     }
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Defaults, format!("{domain}:{key}")),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(prov),
-        privileged: domain.starts_with("/Library"),
-    });
+    settle_truth(
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Defaults, format!("{domain}:{key}")),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(prov),
+            privileged: domain.starts_with("/Library"),
+        },
+    )
 }
 
 /// The dock sugar and its lowering table. `apps` becomes
@@ -116,26 +122,31 @@ fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
         settings,
         &["autohide", "tilesize", "apps", "minimize_effect"],
     )?;
+    let mut truths = Vec::new();
 
-    if let Some(autohide) = spec.opt_bool(settings, "autohide")? {
-        record(
+    if let Some(autohide) = spec.opt_bool(settings, "autohide")?
+        && let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.dock",
             "autohide",
             Value::Bool(autohide),
             Some("Dock"),
-        );
+        )?
+    {
+        truths.push(truth);
     }
-    if let Some(tilesize) = spec.opt_int(settings, "tilesize")? {
-        record(
+    if let Some(tilesize) = spec.opt_int(settings, "tilesize")?
+        && let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.dock",
             "tilesize",
             Value::Int(tilesize),
             Some("Dock"),
-        );
+        )?
+    {
+        truths.push(truth);
     }
     match settings.get::<mlua::Value>("apps")? {
         mlua::Value::Nil => {}
@@ -144,14 +155,16 @@ fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
             let Value::List(_) = &value else {
                 return Err(spec.fail("field `apps` expects a list of app names"));
             };
-            record(
+            if let Some(truth) = record(
                 ctx,
                 &prov,
                 "com.apple.dock",
                 "persistent-apps",
                 value,
                 Some("Dock"),
-            );
+            )? {
+                truths.push(truth);
+            }
         }
     }
     if let Some(effect) = spec.opt_str(settings, "minimize_effect")? {
@@ -160,16 +173,18 @@ fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
                 "field `minimize_effect` expects \"genie\", \"scale\", or \"suck\", got \"{effect}\""
             )));
         }
-        record(
+        if let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.dock",
             "mineffect",
             Value::Str(effect),
             Some("Dock"),
-        );
+        )? {
+            truths.push(truth);
+        }
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 /// The finder sugar. `default_view` maps the readable names onto the
@@ -181,16 +196,19 @@ fn declare_finder(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table>
         provenance: &prov,
     };
     spec.no_unknown_fields(settings, &["show_hidden", "default_view", "path_in_title"])?;
+    let mut truths = Vec::new();
 
-    if let Some(show) = spec.opt_bool(settings, "show_hidden")? {
-        record(
+    if let Some(show) = spec.opt_bool(settings, "show_hidden")?
+        && let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.finder",
             "AppleShowAllFiles",
             Value::Bool(show),
             Some("Finder"),
-        );
+        )?
+    {
+        truths.push(truth);
     }
     if let Some(view) = spec.opt_str(settings, "default_view")? {
         let code = match view.as_str() {
@@ -204,24 +222,28 @@ fn declare_finder(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table>
                 )));
             }
         };
-        record(
+        if let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.finder",
             "FXPreferredViewStyle",
             Value::Str(code.to_string()),
             Some("Finder"),
-        );
+        )? {
+            truths.push(truth);
+        }
     }
-    if let Some(in_title) = spec.opt_bool(settings, "path_in_title")? {
-        record(
+    if let Some(in_title) = spec.opt_bool(settings, "path_in_title")?
+        && let Some(truth) = record(
             ctx,
             &prov,
             "com.apple.finder",
             "_FXShowPosixPathInTitle",
             Value::Bool(in_title),
             Some("Finder"),
-        );
+        )?
+    {
+        truths.push(truth);
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }

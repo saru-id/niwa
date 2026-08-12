@@ -15,7 +15,7 @@ use crate::error::Error;
 use crate::journal::{Acknowledgement, ApplyEntry, Effect, Journal, Step, digest};
 use crate::model::{Declaration, Kind, Value};
 use crate::paths::Paths;
-use crate::plan::{Action, Plan};
+use crate::plan::Action;
 
 /// What one resource's execution came to.
 pub enum Outcome {
@@ -27,22 +27,6 @@ pub enum Outcome {
     Protected,
     /// No provider can act on this kind yet.
     Unchecked,
-}
-
-pub struct Report {
-    /// One outcome per resource, in program order.
-    pub executed: Vec<Outcome>,
-    /// Identity strings whose targets were protected hand edits.
-    pub protected: Vec<String>,
-}
-
-impl Report {
-    pub fn changed(&self) -> usize {
-        self.executed
-            .iter()
-            .filter(|outcome| matches!(outcome, Outcome::Done))
-            .count()
-    }
 }
 
 /// The exclusive lock: one apply at a time. Plan, check, and the
@@ -76,59 +60,27 @@ impl Drop for Lock {
     }
 }
 
-/// Execute a plan. Effects land in program order; the journal is
-/// saved after every resource, so a Ctrl-C leaves the same coherent
-/// partial state as an error. `force` lifts the overwrite protection
-/// for every file (the per-file form arrives with pull).
-pub fn execute(
-    plan: Plan,
+/// Settle one pending declaration against the machine: compare, then
+/// act when there is work. The engine calls this in program order.
+pub fn perform(
+    declaration: &Declaration,
     paths: &Paths,
     journal: &mut Journal,
     force: bool,
-) -> Result<Report, Error> {
+) -> Result<(Outcome, Option<Effect>), Error> {
     let archive_root = archive_dir(paths);
-    let apply_id = journal.begin_apply();
-    let mut executed = Vec::new();
-    let mut protected = Vec::new();
-
-    for item in plan.items {
-        let outcome = match &item.action {
-            Action::InSync => {
-                // Already true is agreement, not an event; acknowledge
-                // silently so drift detection has its baseline.
-                acknowledge_current(&item.declaration, paths, journal);
-                Outcome::InSync
-            }
-            Action::Unchecked => Outcome::Unchecked,
-            Action::Create | Action::Change { .. } => {
-                let (outcome, effect) =
-                    apply_one(&item.declaration, paths, journal, &archive_root, force)?;
-                if let Some(effect) = effect {
-                    journal.record_step(
-                        apply_id,
-                        Step {
-                            identity: item.declaration.identity.to_string(),
-                            effect,
-                        },
-                    );
-                }
-                outcome
-            }
-        };
-        if matches!(outcome, Outcome::Protected) {
-            protected.push(item.declaration.identity.to_string());
+    match crate::plan::compare(declaration, paths, journal) {
+        Action::InSync => {
+            // Already true is agreement, not an event; acknowledge
+            // silently so drift detection has its baseline.
+            acknowledge_current(declaration, paths, journal);
+            Ok((Outcome::InSync, None))
         }
-        journal.save(&paths.state)?;
-        executed.push(outcome);
+        Action::Unchecked => Ok((Outcome::Unchecked, None)),
+        Action::Create | Action::Change { .. } => {
+            apply_one(declaration, paths, journal, &archive_root, force)
+        }
     }
-
-    journal.discard_empty_apply(apply_id);
-    journal.save(&paths.state)?;
-
-    Ok(Report {
-        executed,
-        protected,
-    })
 }
 
 /// Where this run's displaced bytes go. One directory per apply,
@@ -476,6 +428,19 @@ fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path) -> Result<(), E
                 let bytes = read_archived(archive_root, &step.identity, digest)?;
                 write_atomic(&target, &bytes)?;
             }
+        }
+        Effect::PackageInstalled => {
+            let (kind, name) = match step.identity.split_once(':') {
+                Some(("brew.formula", name)) => (crate::model::Kind::BrewFormula, name),
+                Some(("brew.cask", name)) => (crate::model::Kind::BrewCask, name),
+                _ => return Ok(()),
+            };
+            crate::brew::uninstall(&kind, name, std::time::Duration::from_mins(10)).map_err(
+                |detail| Error::Apply {
+                    doing: format!("uninstalling {name}"),
+                    detail,
+                },
+            )?;
         }
         Effect::DefaultsSet { previous } => {
             let Some(rest) = step.identity.strip_prefix("defaults:") else {

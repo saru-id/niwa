@@ -11,7 +11,7 @@ use mlua::{Function, Lua, Table};
 use crate::model::{Declaration, Identity, Kind};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, provenance, settle, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let resource_ctx = ctx.clone();
@@ -111,12 +111,15 @@ fn declare_custom(
     }
     let canonical = spec.value("spec", &mlua::Value::Table(resource_spec.clone()))?;
 
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Custom(kind.to_string()), name),
-        spec: canonical,
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Custom(kind.to_string()), name),
+            spec: canonical,
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged,
+        },
+    )
 }

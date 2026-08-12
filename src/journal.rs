@@ -53,6 +53,8 @@ pub enum Effect {
     /// A preference key was set. `previous` is the value it replaced;
     /// `None` means the key did not exist.
     DefaultsSet { previous: Option<Value> },
+    /// A package was installed by this run; undo uninstalls it.
+    PackageInstalled,
 }
 
 /// What one apply left behind for one identity: the spec it made true

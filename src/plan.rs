@@ -48,26 +48,23 @@ impl Plan {
     }
 }
 
-/// Compare every effective declaration with the machine.
-pub fn plan(effective: Vec<Declaration>, paths: &Paths, journal: &Journal) -> Plan {
-    let items = effective
-        .into_iter()
-        .map(|declaration| {
-            let action = compare(&declaration, paths, journal);
-            Item {
-                declaration,
-                action,
-            }
-        })
-        .collect();
-    Plan { items }
-}
-
-fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> Action {
+/// Compare one declaration with the machine. The engine calls this
+/// per declaration, in both passes.
+pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> Action {
     match &declaration.identity.kind {
         Kind::File => compare_file(declaration, paths, journal),
         Kind::Link => compare_link(declaration, paths),
         Kind::Defaults => compare_defaults(declaration, paths),
+        Kind::BrewFormula | Kind::BrewCask => {
+            match crate::brew::installed(
+                paths,
+                &declaration.identity.kind,
+                &declaration.identity.key,
+            ) {
+                Some(_) => Action::InSync,
+                None => Action::Create,
+            }
+        }
         _ => Action::Unchecked,
     }
 }
@@ -295,6 +292,7 @@ mod tests {
             home: dir.to_path_buf(),
             config: dir.join(".config/niwa"),
             state: dir.join(".local/state/niwa"),
+            brew_prefix: dir.join("brew"),
         }
     }
 
@@ -406,7 +404,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = paths_in(dir.path());
         let declaration = Declaration {
-            identity: Identity::new(Kind::BrewFormula, "jq"),
+            identity: Identity::new(Kind::Service, "dev.x.sync"),
             spec: Value::Map(BTreeMap::new()),
             provenance: Provenance {
                 file: "test.luau".to_string(),

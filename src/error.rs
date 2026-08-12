@@ -40,15 +40,60 @@ pub enum Error {
 
     #[error("apply needs a confirmation and no terminal is attached")]
     NeedsConfirmation,
+
+    #[error("{identity} failed · {provenance}")]
+    ResourceFailed {
+        identity: String,
+        provenance: String,
+        command: String,
+        code: Option<i32>,
+        stderr: String,
+    },
 }
 
 impl From<mlua::Error> for Error {
-    /// The VM's message already carries `file:line`, because chunks
-    /// are named after their config-relative paths.
+    /// A niwa error thrown inside a VM callback comes back out with
+    /// its structure; anything else is a script failure whose message
+    /// already carries `file:line`, because chunks are named after
+    /// their config-relative paths.
     fn from(error: mlua::Error) -> Self {
+        if let Some(recovered) = recover(&error) {
+            return recovered;
+        }
         Self::Script {
             message: error.to_string(),
         }
+    }
+}
+
+/// Walk an mlua error for a niwa error smuggled through the VM as an
+/// external error, and rebuild it. Only the variants a verb renders
+/// specially need recovering.
+fn recover(error: &mlua::Error) -> Option<Error> {
+    match error {
+        mlua::Error::ExternalError(source) => {
+            let error = source.downcast_ref::<Error>()?;
+            match error {
+                Error::ResourceFailed {
+                    identity,
+                    provenance,
+                    command,
+                    code,
+                    stderr,
+                } => Some(Error::ResourceFailed {
+                    identity: identity.clone(),
+                    provenance: provenance.clone(),
+                    command: command.clone(),
+                    code: *code,
+                    stderr: stderr.clone(),
+                }),
+                _ => None,
+            }
+        }
+        mlua::Error::CallbackError { cause, .. } | mlua::Error::WithContext { cause, .. } => {
+            recover(cause)
+        }
+        _ => None,
     }
 }
 
@@ -100,6 +145,19 @@ impl Error {
             ],
             Self::NeedsConfirmation => {
                 vec!["pass --yes to apply without a prompt".to_string()]
+            }
+            Self::ResourceFailed {
+                command,
+                code,
+                stderr,
+                ..
+            } => {
+                let mut lines = vec![code.map_or_else(
+                    || format!("{command} (no exit: killed at the deadline, or not found)"),
+                    |code| format!("{command} (exit {code})"),
+                )];
+                lines.extend(stderr.lines().map(str::to_string));
+                lines
             }
             Self::JournalUnreadable { detail } => {
                 vec![detail.clone(), "run `niwa doctor` once it exists; the journal file lives under ~/.local/state/niwa".to_string()]

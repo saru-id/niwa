@@ -11,7 +11,7 @@ use mlua::{Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, provenance, settle, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let permission_ctx = ctx.clone();
@@ -47,14 +47,17 @@ fn declare_permission(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Tab
     let mut fields = BTreeMap::new();
     fields.insert("app".to_string(), Value::Str(app.clone()));
     fields.insert("needs".to_string(), Value::Str(needs.clone()));
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Permission, format!("{app}:{needs}")),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Permission, format!("{app}:{needs}")),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }
 
 /// `niwa.manual { "Sign in to X", open = … }`. A step's identity is
@@ -86,12 +89,15 @@ fn declare_manual(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Table> 
     if let Some(command) = spec.opt_str(options, "command")? {
         fields.insert("command".to_string(), Value::Str(command));
     }
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Manual, text),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Manual, text),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }

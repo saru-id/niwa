@@ -17,9 +17,11 @@ use std::time::{Duration, Instant};
 use mlua::{Lua, VmState};
 
 use crate::api::{Ctx, RunState};
+use crate::engine::Engine;
 use crate::error::Error;
 use crate::facts::Facts;
 use crate::model::Declaration;
+use crate::paths::Paths;
 
 pub use resolver::load_host;
 
@@ -50,8 +52,12 @@ pub struct Runtime {
 
 impl Runtime {
     /// Build a sandboxed VM rooted at the config directory, with the
-    /// full API surface behind `require("@niwa")`.
-    pub fn new(root: &Path, home: &Path, limits: &Limits) -> Result<Self, Error> {
+    /// full API surface behind `require("@niwa")`. Without an engine
+    /// the pass validates and records; with one, resources predict or
+    /// act according to its mode.
+    pub fn new(paths: &Paths, limits: &Limits, engine: Option<Rc<Engine>>) -> Result<Self, Error> {
+        let root: &Path = &paths.config;
+        let home: &Path = &paths.home;
         let lua = Lua::new();
         lua.set_memory_limit(limits.memory).map_err(Error::from)?;
 
@@ -69,8 +75,9 @@ impl Runtime {
             state: Rc::clone(&state),
             root: root.to_path_buf(),
             home: home.to_path_buf(),
+            engine,
         };
-        let facts = Facts::gather();
+        let facts = Facts::gather(paths);
         let api = crate::api::build(&lua, &ctx, &facts).map_err(Error::from)?;
         lua.set_named_registry_value(resolver::NIWA_API, api)
             .map_err(Error::from)?;
@@ -117,6 +124,15 @@ mod tests {
         dir
     }
 
+    fn paths_in(dir: &Path) -> Paths {
+        Paths {
+            home: dir.to_path_buf(),
+            config: dir.to_path_buf(),
+            state: dir.join("state"),
+            brew_prefix: dir.join("brew"),
+        }
+    }
+
     #[test]
     fn a_config_that_never_finishes_dies_at_the_time_limit() {
         let dir = sandbox_with("while true do end");
@@ -124,7 +140,7 @@ mod tests {
             time: Duration::from_millis(200),
             memory: 64 * 1024 * 1024,
         };
-        let runtime = Runtime::new(dir.path(), dir.path(), &limits).unwrap();
+        let runtime = Runtime::new(&paths_in(dir.path()), &limits, None).unwrap();
         let started = Instant::now();
         let error = runtime.run_entry().unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(5));
@@ -143,7 +159,7 @@ mod tests {
             time: Duration::from_secs(30),
             memory: 8 * 1024 * 1024,
         };
-        let runtime = Runtime::new(dir.path(), dir.path(), &limits).unwrap();
+        let runtime = Runtime::new(&paths_in(dir.path()), &limits, None).unwrap();
         let error = runtime.run_entry().unwrap_err();
         let Error::Script { message } = error else {
             panic!("expected a script error");

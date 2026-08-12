@@ -6,21 +6,25 @@ pub mod check;
 pub mod plan;
 pub mod undo;
 
+use std::rc::Rc;
+
+use crate::engine::Engine;
 use crate::error::Error;
 use crate::luau::{Limits, Runtime};
 use crate::model::analysis::{Analysis, analyze};
 use crate::model::{Kind, Value};
 use crate::paths::Paths;
 
-/// Load and validate the config: run it, lint conflicts, and require
-/// every `@self/` source to exist. Both `check` and `plan` start here.
-pub fn load_config(paths: &Paths) -> Result<Analysis, Error> {
+/// One pass over the config: run it, lint conflicts, and require
+/// every `@self/` source to exist. Check passes no engine; plan and
+/// apply pass one in the mode they mean.
+pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, Error> {
     if !paths.config.join("init.luau").is_file() {
         return Err(Error::ConfigMissing {
             dir: paths.config.clone(),
         });
     }
-    let runtime = Runtime::new(&paths.config, &paths.home, &Limits::default())?;
+    let runtime = Runtime::new(paths, &Limits::default(), engine)?;
     runtime.run_entry()?;
 
     let declarations = runtime.declarations();
@@ -54,4 +58,35 @@ pub fn load_config(paths: &Paths) -> Result<Analysis, Error> {
     }
 
     Ok(analysis)
+}
+
+/// Turn a finished plan pass into the display plan: one item per
+/// identity, the last host declaration winning over modules, in
+/// first-declared order.
+pub fn plan_of(engine: Rc<Engine>) -> crate::plan::Plan {
+    let items = Rc::try_unwrap(engine).map_or_else(|_| Vec::new(), Engine::into_items);
+    let mut order: Vec<crate::model::Identity> = Vec::new();
+    let mut chosen: std::collections::HashMap<crate::model::Identity, crate::plan::Item> =
+        std::collections::HashMap::new();
+    for item in items {
+        let identity = item.declaration.identity.clone();
+        match chosen.entry(identity.clone()) {
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                order.push(identity);
+                slot.insert(item);
+            }
+            std::collections::hash_map::Entry::Occupied(mut slot) => {
+                // Later host declarations win; everything else keeps
+                // its first appearance.
+                if item.declaration.unit.is_host() {
+                    slot.insert(item);
+                }
+            }
+        }
+    }
+    let items = order
+        .into_iter()
+        .filter_map(|identity| chosen.remove(&identity))
+        .collect();
+    crate::plan::Plan { items }
 }

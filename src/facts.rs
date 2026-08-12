@@ -3,6 +3,7 @@
 
 use std::time::Duration;
 
+use crate::paths::Paths;
 use crate::util::proc::bounded_stdout;
 
 /// How long a fact-gathering child may take. Facts are optional
@@ -27,7 +28,7 @@ pub struct Facts {
 }
 
 impl Facts {
-    pub fn gather() -> Self {
+    pub fn gather(paths: &Paths) -> Self {
         let name = bounded_stdout("scutil", &["--get", "LocalHostName"], FACT_TIMEOUT)
             .or_else(|| bounded_stdout("uname", &["-n"], FACT_TIMEOUT))
             .map(|raw| raw.trim_end_matches(".local").to_string())
@@ -40,7 +41,7 @@ impl Facts {
             arch: arch().to_string(),
             os,
             tags: Vec::new(),
-            brew_prefix: brew_prefix(),
+            brew_prefix: paths.brew_prefix.display().to_string(),
         }
     }
 }
@@ -50,19 +51,5 @@ const fn arch() -> &'static str {
         "arm64"
     } else {
         "x86_64"
-    }
-}
-
-fn brew_prefix() -> String {
-    if let Some(prefix) = std::env::var_os("HOMEBREW_PREFIX") {
-        let prefix = prefix.to_string_lossy();
-        if prefix.starts_with('/') {
-            return prefix.into_owned();
-        }
-    }
-    if cfg!(target_arch = "aarch64") {
-        "/opt/homebrew".to_string()
-    } else {
-        "/usr/local".to_string()
     }
 }

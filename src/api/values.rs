@@ -11,7 +11,7 @@ use crate::facts::Facts;
 use crate::model::{Declaration, Identity, Kind, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, freeze, provenance, unit_of};
+use super::{Ctx, freeze, provenance, settle_truth, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx, facts: &Facts) -> mlua::Result<()> {
     let machine = lua.create_table()?;
@@ -273,13 +273,16 @@ fn declare_use(lua: &Lua, ctx: &Ctx, source: &str) -> mlua::Result<Table> {
 
     let mut fields = BTreeMap::new();
     fields.insert("ref".to_string(), Value::Str(reference.to_string()));
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Use, format!("github:{repo}")),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
+    settle_truth(
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Use, format!("github:{repo}")),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )?;
 
     let handle = lua.create_table()?;
     freeze(lua, &handle)?;

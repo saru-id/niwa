@@ -13,6 +13,47 @@
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// A finished run: the exit code and what the child said. `code` is
+/// `None` when the deadline killed it.
+pub struct Finished {
+    pub code: Option<i32>,
+    pub stderr_tail: String,
+}
+
+/// Run a program to completion under the deadline and report what
+/// happened, or `None` when it could not start or ran past the clock.
+pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option<Finished> {
+    let mut child = Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .ok()?;
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                let output = child.wait_with_output().ok()?;
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let skip = stderr.lines().count().saturating_sub(6);
+                let tail: Vec<&str> = stderr.lines().skip(skip).collect();
+                return Some(Finished {
+                    code: output.status.code(),
+                    stderr_tail: tail.join("\n"),
+                });
+            }
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+            Err(_) => return None,
+        }
+    }
+}
+
 /// Run a program and return its trimmed stdout, or `None` for a
 /// failure, a timeout, or a program that is not there. From the
 /// caller's side those are one answer: no information.

@@ -11,7 +11,7 @@ use mlua::{Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Provenance, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, freeze, provenance, stub_result, unit_of};
+use super::{Ctx, aggregate, freeze, provenance, result_table, settle, settle_truth, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx, brew_prefix: &str) -> mlua::Result<()> {
     let brew = lua.create_table()?;
@@ -158,14 +158,14 @@ fn declare_names(
     };
     match parse_names(&spec, arg)? {
         Names::One { name, optional } => {
-            record_package(ctx, &prov, kind, &name, optional);
-            Ok(mlua::Value::Table(stub_result(lua)?))
+            let declared = package(&prov, kind, &name, optional);
+            Ok(mlua::Value::Table(settle(lua, ctx, &declared)?))
         }
         Names::Many(names) => {
             let results = lua.create_table()?;
             for (index, name) in names.iter().enumerate() {
-                record_package(ctx, &prov, kind.clone(), name, false);
-                results.set(index + 1, stub_result(lua)?)?;
+                let declared = package(&prov, kind.clone(), name, false);
+                results.set(index + 1, settle(lua, ctx, &declared)?)?;
             }
             freeze(lua, &results)?;
             Ok(mlua::Value::Table(results))
@@ -173,18 +173,18 @@ fn declare_names(
     }
 }
 
-fn record_package(ctx: &Ctx, prov: &Provenance, kind: Kind, name: &str, optional: bool) {
+fn package(prov: &Provenance, kind: Kind, name: &str, optional: bool) -> Declaration {
     let mut fields = BTreeMap::new();
     if optional {
         fields.insert("optional".to_string(), Value::Bool(true));
     }
-    ctx.record(Declaration {
+    Declaration {
         identity: Identity::new(kind, name),
         spec: Value::Map(fields),
         provenance: prov.clone(),
         unit: unit_of(prov),
         privileged: false,
-    });
+    }
 }
 
 /// `niwa.brew.service` declares the service and implies the formula,
@@ -206,11 +206,16 @@ fn declare_brew_services(lua: &Lua, ctx: &Ctx, arg: &mlua::Value) -> mlua::Resul
         }
         Names::Many(names) => names,
     };
+    let mut truths = Vec::new();
     for name in &names {
-        record_package(ctx, &prov, Kind::BrewFormula, name, false);
-        record_package(ctx, &prov, Kind::BrewService, name, false);
+        // The formula joins the batch; the service settles on its own
+        // terms once its provider lands.
+        settle_truth(ctx, &package(&prov, Kind::BrewFormula, name, false))?;
+        if let Some(truth) = settle_truth(ctx, &package(&prov, Kind::BrewService, name, false))? {
+            truths.push(truth);
+        }
     }
-    stub_result(lua).map(mlua::Value::Table)
+    result_table(lua, &aggregate(&truths)).map(mlua::Value::Table)
 }
 
 /// `niwa.mas.app { ["Things 3"] = 904280696 }`: the App Store id is
@@ -222,6 +227,7 @@ fn declare_mas(lua: &Lua, ctx: &Ctx, apps: &Table) -> mlua::Result<Table> {
         provenance: &prov,
     };
     let mut any = false;
+    let mut truths = Vec::new();
     for pair in apps.pairs::<mlua::Value, mlua::Value>() {
         let (name, id) = pair?;
         let mlua::Value::String(name) = name else {
@@ -238,19 +244,24 @@ fn declare_mas(lua: &Lua, ctx: &Ctx, apps: &Table) -> mlua::Result<Table> {
         };
         let mut fields = BTreeMap::new();
         fields.insert("name".to_string(), Value::Str(name));
-        ctx.record(Declaration {
-            identity: Identity::new(Kind::Mas, id.to_string()),
-            spec: Value::Map(fields),
-            provenance: prov.clone(),
-            unit: unit_of(&prov),
-            privileged: false,
-        });
+        if let Some(truth) = settle_truth(
+            ctx,
+            &Declaration {
+                identity: Identity::new(Kind::Mas, id.to_string()),
+                spec: Value::Map(fields),
+                provenance: prov.clone(),
+                unit: unit_of(&prov),
+                privileged: false,
+            },
+        )? {
+            truths.push(truth);
+        }
         any = true;
     }
     if !any {
         return Err(spec.fail("declare at least one app"));
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 /// `niwa.mise.tool { node = "lts" }`: versions pin in niwa.lock when
@@ -262,6 +273,7 @@ fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
         provenance: &prov,
     };
     let mut any = false;
+    let mut truths = Vec::new();
     for pair in tools.pairs::<mlua::Value, mlua::Value>() {
         let (tool, version) = pair?;
         let (mlua::Value::String(tool), mlua::Value::String(version)) = (&tool, &version) else {
@@ -274,19 +286,24 @@ fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
             "version".to_string(),
             Value::Str(version.to_str()?.to_string()),
         );
-        ctx.record(Declaration {
-            identity: Identity::new(Kind::Mise, tool.to_str()?.to_string()),
-            spec: Value::Map(fields),
-            provenance: prov.clone(),
-            unit: unit_of(&prov),
-            privileged: false,
-        });
+        if let Some(truth) = settle_truth(
+            ctx,
+            &Declaration {
+                identity: Identity::new(Kind::Mise, tool.to_str()?.to_string()),
+                spec: Value::Map(fields),
+                provenance: prov.clone(),
+                unit: unit_of(&prov),
+                privileged: false,
+            },
+        )? {
+            truths.push(truth);
+        }
         any = true;
     }
     if !any {
         return Err(spec.fail("declare at least one tool"));
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 fn declare_github_release(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Table> {
@@ -309,12 +326,15 @@ fn declare_github_release(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result
     if let Some(bin) = spec.opt_str(options, "bin")? {
         fields.insert("bin".to_string(), Value::Str(bin));
     }
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::GithubRelease, repo),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::GithubRelease, repo),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::Error;
 
+#[derive(Clone)]
 pub struct Paths {
     /// The user's home directory, for `~/` expansion.
     pub home: PathBuf,
@@ -16,6 +17,9 @@ pub struct Paths {
     /// Per-machine state that is never committed: the journal, and
     /// later the undo archives. `~/.local/state/niwa`.
     pub state: PathBuf,
+    /// Where Homebrew lives: `HOMEBREW_PREFIX` when set and absolute,
+    /// the architecture's default otherwise.
+    pub brew_prefix: PathBuf,
 }
 
 impl Paths {
@@ -26,10 +30,21 @@ impl Paths {
             .ok_or(Error::NoHome)?;
         let config = xdg_dir(&home, "XDG_CONFIG_HOME", ".config").join("niwa");
         let state = xdg_dir(&home, "XDG_STATE_HOME", ".local/state").join("niwa");
+        let brew_prefix = std::env::var_os("HOMEBREW_PREFIX")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .unwrap_or_else(|| {
+                if cfg!(target_arch = "aarch64") {
+                    PathBuf::from("/opt/homebrew")
+                } else {
+                    PathBuf::from("/usr/local")
+                }
+            });
         Ok(Self {
             home,
             config,
             state,
+            brew_prefix,
         })
     }
 }

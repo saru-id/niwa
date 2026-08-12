@@ -22,8 +22,9 @@ use std::rc::Rc;
 
 use mlua::{Lua, Table};
 
+use crate::engine::{Engine, Truth};
 use crate::facts::Facts;
-use crate::model::{Declaration, Provenance, Unit};
+use crate::model::{Declaration, Identity, Provenance, Unit};
 
 /// Everything a config run collects.
 #[derive(Default)]
@@ -47,6 +48,9 @@ pub struct Ctx {
     pub root: PathBuf,
     /// The user's home, for `~/` targets.
     pub home: PathBuf,
+    /// The engine behind this pass. `None` is check mode: validate
+    /// and record, touch nothing, predict nothing.
+    pub engine: Option<Rc<Engine>>,
 }
 
 impl Ctx {
@@ -137,12 +141,81 @@ pub fn unit_of(provenance: &Provenance) -> Unit {
     Unit::from_chunk(&provenance.file)
 }
 
-/// The stub result every resource returns while providers do not read
-/// the machine yet: nothing changed, the resource reads as present.
-pub fn stub_result(lua: &Lua) -> mlua::Result<Table> {
+/// Check mode's answer: nothing changed, the resource reads present.
+pub const STUB: Truth = Truth {
+    changed: false,
+    present: true,
+    failed: false,
+    version: None,
+};
+
+/// Record a declaration and let the engine settle it. `None` means
+/// the answer waits behind the batch barrier.
+pub fn settle_truth(ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Option<Truth>> {
+    ctx.record(declaration.clone());
+    ctx.engine.as_ref().map_or(Ok(Some(STUB)), |engine| {
+        engine.settle(declaration).map_err(mlua::Error::external)
+    })
+}
+
+/// The frozen result table for a settled truth.
+pub fn result_table(lua: &Lua, truth: &Truth) -> mlua::Result<Table> {
     let result = lua.create_table()?;
-    result.set("changed", false)?;
-    result.set("present", true)?;
+    result.set("changed", truth.changed)?;
+    result.set("present", truth.present)?;
+    result.set("failed", truth.failed)?;
+    if let Some(version) = &truth.version {
+        result.set("version", version.as_str())?;
+    }
     freeze(lua, &result)?;
     Ok(result)
+}
+
+/// Settle one declaration into one result table, pending or not.
+pub fn settle(lua: &Lua, ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Table> {
+    settle_truth(ctx, declaration)?.map_or_else(
+        || pending_result(lua, ctx, declaration.identity.clone()),
+        |truth| result_table(lua, &truth),
+    )
+}
+
+/// One result standing for several declarations (a defaults table, a
+/// directory fan-out): changed when any changed, present when all are.
+pub fn aggregate(truths: &[Truth]) -> Truth {
+    Truth {
+        changed: truths.iter().any(|truth| truth.changed),
+        present: truths.iter().all(|truth| truth.present),
+        failed: truths.iter().any(|truth| truth.failed),
+        version: None,
+    }
+}
+
+/// A result whose fields resolve on first read: reading any of them
+/// flushes the pending batch, so `.changed` is the truth, never a
+/// guess.
+fn pending_result(lua: &Lua, ctx: &Ctx, identity: Identity) -> mlua::Result<Table> {
+    let Some(engine) = ctx.engine.clone() else {
+        return Err(mlua::Error::RuntimeError(
+            "a pending result needs an engine".to_string(),
+        ));
+    };
+    let table = lua.create_table()?;
+    let meta = lua.create_table()?;
+    let index = lua.create_function(move |lua, (_, key): (Table, String)| {
+        let truth = engine.resolve(&identity).map_err(mlua::Error::external)?;
+        Ok(match key.as_str() {
+            "changed" => mlua::Value::Boolean(truth.changed),
+            "present" => mlua::Value::Boolean(truth.present),
+            "failed" => mlua::Value::Boolean(truth.failed),
+            "version" => match truth.version {
+                Some(version) => mlua::Value::String(lua.create_string(&version)?),
+                None => mlua::Value::Nil,
+            },
+            _ => mlua::Value::Nil,
+        })
+    })?;
+    meta.set("__index", index)?;
+    table.set_metatable(Some(meta))?;
+    freeze(lua, &table)?;
+    Ok(table)
 }

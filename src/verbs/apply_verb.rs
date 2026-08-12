@@ -1,18 +1,23 @@
-//! `niwa apply`: plan, confirm, execute. Exit 0 on success, 1 on an
-//! error. `--yes` skips the confirmation and refuses a dirty config
-//! tree unless `--dirty` says you truly mean it. `--verify` re-checks
-//! everything after the run and names anything not idempotent.
+//! `niwa apply`: one program, two passes. The plan pass predicts and
+//! nothing more; after one confirmation the script runs again with
+//! effects live, in program order, packages batching until a barrier.
+//! Exit 0 on success, 1 on an error. `--yes` skips the confirmation
+//! and refuses a dirty config tree unless `--dirty` says you truly
+//! mean it. `--verify` re-checks everything after the run and names
+//! anything not idempotent.
 
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
+use std::rc::Rc;
 use std::time::Duration;
 
-use crate::apply::{Lock, Outcome, execute};
+use crate::apply::Lock;
+use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
-use crate::plan::{Action, plan};
+use crate::plan::Action;
 use crate::util::proc::bounded_stdout;
 
 #[allow(
@@ -38,7 +43,6 @@ pub fn run(out: &Out, options: &Options) -> ExitCode {
 
 fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
-    let analysis = super::load_config(&paths)?;
 
     // Unattended, a dirty tree means someone forgot to commit, and an
     // apply nobody watched would poison the stamp's honesty.
@@ -47,8 +51,12 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     }
 
     let _lock = Lock::take(&paths.state)?;
-    let mut journal = Journal::load(&paths.state)?;
-    let intent = plan(analysis.effective, &paths, &journal);
+
+    // Pass one: predict.
+    let journal = Journal::load(&paths.state)?;
+    let plan_engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    super::run_pass(&paths, Some(Rc::clone(&plan_engine)))?;
+    let intent = super::plan_of(plan_engine);
 
     let pending = intent.pending();
     if pending == 0 {
@@ -73,31 +81,47 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         }
     }
 
-    let report = execute(intent, &paths, &mut journal, options.force)?;
+    // Pass two: the same program, effects live.
+    let journal = Journal::load(&paths.state)?;
+    let engine = Rc::new(Engine::new(
+        Mode::Execute {
+            force: options.force,
+        },
+        paths.clone(),
+        journal,
+    ));
+    let run = super::run_pass(&paths, Some(Rc::clone(&engine))).and_then(|_| engine.finish());
+    if let Err(error) = run {
+        engine.abort();
+        let applied = engine.changed_count();
+        out.error(&error);
+        out.result(
+            Mark::Failed,
+            &format!(
+                "{} applied · {} not reached · re-run to continue (done work is skipped)",
+                count(applied, "change"),
+                pending.saturating_sub(applied)
+            ),
+        );
+        return Ok(ExitCode::FAILURE);
+    }
 
-    let unchecked = report
-        .executed
-        .iter()
-        .filter(|outcome| matches!(outcome, Outcome::Unchecked))
-        .count();
-    let mut summary = format!(
-        "{} checked · {} changed",
-        report.executed.len() - unchecked,
-        report.changed()
-    );
-    if !report.protected.is_empty() {
+    let checked = intent.items.len() - intent.unchecked();
+    let mut summary = format!("{checked} checked · {} changed", engine.changed_count());
+    let protected = engine.protected();
+    if !protected.is_empty() {
         use std::fmt::Write as _;
-        let _ = write!(summary, " · {} protected", report.protected.len());
+        let _ = write!(summary, " · {} protected", protected.len());
     }
     out.result(Mark::Ok, &summary);
-    for identity in &report.protected {
+    for identity in &protected {
         out.note(&format!(
             "{identity} holds edits niwa never wrote: pull them home, or apply --force"
         ));
     }
 
     if options.verify {
-        return Ok(verify(out, &paths, &journal));
+        return Ok(verify(out, &paths));
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -105,15 +129,19 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 /// The literal definition of idempotence: re-read everything, demand
 /// silence, and name the resource and source line of anything that
 /// still reports a change.
-fn verify(out: &Out, paths: &Paths, journal: &Journal) -> ExitCode {
-    let analysis = match super::load_config(paths) {
-        Ok(analysis) => analysis,
+fn verify(out: &Out, paths: &Paths) -> ExitCode {
+    let second = Journal::load(&paths.state).and_then(|journal| {
+        let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+        super::run_pass(paths, Some(Rc::clone(&engine)))?;
+        Ok(super::plan_of(engine))
+    });
+    let second = match second {
+        Ok(second) => second,
         Err(error) => {
             out.error(&error);
             return ExitCode::FAILURE;
         }
     };
-    let second = plan(analysis.effective, paths, journal);
     let unsettled: Vec<String> = second
         .items
         .iter()

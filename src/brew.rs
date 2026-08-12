@@ -1,0 +1,102 @@
+//! Homebrew, read through receipts.
+//!
+//! Detection never asks brew what is installed: every install leaves a
+//! receipt on disk — `Cellar/<name>/<version>/INSTALL_RECEIPT.json`
+//! for formulae, `Caskroom/<token>/` for casks — and reading those is
+//! both faster and more truthful than shelling out. brew itself is
+//! invoked only to change the machine, always on a deadline.
+
+use std::path::Path;
+use std::time::Duration;
+
+use crate::model::Kind;
+use crate::paths::Paths;
+use crate::util::proc::bounded_output;
+
+/// Is this formula or cask installed? Returns the newest version
+/// directory's name when it is. Presence is presence: a formula that
+/// arrived as someone's dependency still satisfies a declaration.
+pub fn installed(paths: &Paths, kind: &Kind, name: &str) -> Option<String> {
+    let prefix = Path::new(&paths.brew_prefix);
+    match kind {
+        Kind::BrewFormula => {
+            let cellar = prefix.join("Cellar").join(name);
+            newest_version_dir(&cellar, |version| {
+                version.join("INSTALL_RECEIPT.json").is_file()
+            })
+        }
+        Kind::BrewCask => {
+            let caskroom = prefix.join("Caskroom").join(name);
+            newest_version_dir(&caskroom, |version| {
+                !version
+                    .file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with('.'))
+            })
+        }
+        _ => None,
+    }
+}
+
+fn newest_version_dir(root: &Path, valid: impl Fn(&Path) -> bool) -> Option<String> {
+    let mut versions: Vec<String> = std::fs::read_dir(root)
+        .ok()?
+        .flatten()
+        .filter(|entry| entry.path().is_dir() && valid(&entry.path()))
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| !name.starts_with('.'))
+        .collect();
+    versions.sort();
+    versions.pop()
+}
+
+/// Uninstall one package, for undo. Returns the failure detail when
+/// brew objects.
+pub fn uninstall(kind: &Kind, name: &str, deadline: Duration) -> Result<(), String> {
+    let mut args: Vec<&str> = vec!["uninstall"];
+    if matches!(kind, Kind::BrewCask) {
+        args.push("--cask");
+    }
+    args.push(name);
+    match bounded_output("brew", &args, deadline) {
+        Some(finished) if finished.code == Some(0) => Ok(()),
+        Some(finished) => Err(finished.stderr_tail),
+        None => Err("brew did not finish inside the deadline, or is not installed".to_string()),
+    }
+}
+
+/// What one installer invocation came to, kept for the failure screen.
+pub struct Invocation {
+    pub command: String,
+    pub code: Option<i32>,
+    pub stderr_tail: String,
+}
+
+/// Install a batch in one brew invocation. The caller reads receipts
+/// afterwards for the per-name truth; this only reports what was run
+/// and what brew said.
+pub fn install(kind: &Kind, names: &[String], deadline: Duration) -> Invocation {
+    let mut args: Vec<&str> = vec!["install"];
+    if matches!(kind, Kind::BrewCask) {
+        args.push("--cask");
+    }
+    let mut command = format!("brew {}", args.join(" "));
+    for name in names {
+        command.push(' ');
+        command.push_str(name);
+    }
+    let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
+    args.extend(name_refs);
+
+    match bounded_output("brew", &args, deadline) {
+        Some(output) => Invocation {
+            command,
+            code: output.code,
+            stderr_tail: output.stderr_tail,
+        },
+        None => Invocation {
+            command,
+            code: None,
+            stderr_tail: "brew did not finish inside the deadline, or is not installed".to_string(),
+        },
+    }
+}

@@ -9,7 +9,7 @@ use mlua::{Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Value};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, aggregate, provenance, result_table, settle, settle_truth, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let file_ctx = ctx.clone();
@@ -61,13 +61,11 @@ fn declare_file(lua: &Lua, ctx: &Ctx, target: &str, options: &Table) -> mlua::Re
                 return fan_out(lua, ctx, &spec, target, &source, &fields);
             }
             fields.insert("source".to_string(), Value::Str(source));
-            record(ctx, &prov, target, fields);
-            stub_result(lua)
+            settle(lua, ctx, &declaration(&prov, target, fields))
         }
         (None, Some(content)) => {
             fields.insert("content".to_string(), content);
-            record(ctx, &prov, target, fields);
-            stub_result(lua)
+            settle(lua, ctx, &declaration(&prov, target, fields))
         }
         (Some(_), Some(_)) => Err(spec.fail("declare `source` or `content`, not both")),
         (None, None) => Err(spec.fail("declare one of `source` or `content`")),
@@ -141,20 +139,19 @@ fn fan_out(
 
     let target_base = target.trim_end_matches('/');
     let source_base = source.trim_end_matches('/');
+    let mut truths = Vec::new();
     for rel in relatives {
         let mut fields = shared_fields.clone();
         fields.insert(
             "source".to_string(),
             Value::Str(format!("{source_base}/{rel}")),
         );
-        record(
-            ctx,
-            spec.provenance,
-            &format!("{target_base}/{rel}"),
-            fields,
-        );
+        let declared = declaration(spec.provenance, &format!("{target_base}/{rel}"), fields);
+        if let Some(truth) = settle_truth(ctx, &declared)? {
+            truths.push(truth);
+        }
     }
-    stub_result(lua)
+    result_table(lua, &aggregate(&truths))
 }
 
 fn collect_files(
@@ -179,19 +176,18 @@ fn collect_files(
     Ok(())
 }
 
-fn record(
-    ctx: &Ctx,
+fn declaration(
     prov: &crate::model::Provenance,
     target: &str,
     fields: std::collections::BTreeMap<String, Value>,
-) {
-    ctx.record(Declaration {
+) -> Declaration {
+    Declaration {
         identity: Identity::new(Kind::File, target),
         spec: Value::Map(fields),
         provenance: prov.clone(),
         unit: unit_of(prov),
         privileged: false,
-    });
+    }
 }
 
 fn declare_link(lua: &Lua, ctx: &Ctx, target: &str, options: &Table) -> mlua::Result<Table> {
@@ -216,12 +212,15 @@ fn declare_link(lua: &Lua, ctx: &Ctx, target: &str, options: &Table) -> mlua::Re
 
     let mut fields = std::collections::BTreeMap::new();
     fields.insert("to".to_string(), Value::Str(to));
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Link, target),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Link, target),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }

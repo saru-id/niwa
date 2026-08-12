@@ -12,7 +12,7 @@ use mlua::{Function, Lua, Table};
 use crate::model::{Declaration, Identity, Kind, Value};
 
 use super::spec::{SpecCtx, parse_duration};
-use super::{Ctx, provenance, stub_result, unit_of};
+use super::{Ctx, provenance, settle, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let run_ctx = ctx.clone();
@@ -104,14 +104,17 @@ fn declare_run(
         ));
     }
 
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Run, command),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Run, command),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }
 
 /// `niwa.once(name, fn)`: the marker is the guard, and the journal
@@ -126,13 +129,13 @@ fn declare_once(lua: &Lua, ctx: &Ctx, name: &str, body: &Function) -> mlua::Resu
         return Err(spec.fail("the marker needs a name"));
     }
 
-    ctx.record(Declaration {
+    let marker = Declaration {
         identity: Identity::new(Kind::Once, name),
         spec: Value::Map(BTreeMap::new()),
         provenance: prov.clone(),
         unit: unit_of(&prov),
         privileged: false,
-    });
+    };
 
     // The body runs with the guard requirement lifted; the journal
     // marker decides whether it runs at apply time.
@@ -141,7 +144,7 @@ fn declare_once(lua: &Lua, ctx: &Ctx, name: &str, body: &Function) -> mlua::Resu
     let result = body.call::<mlua::Value>(());
     ctx.state.borrow_mut().in_once = previous;
     result?;
-    stub_result(lua)
+    settle(lua, ctx, &marker)
 }
 
 /// `niwa.service`: a launchd agent as a declaration. Exactly one
@@ -222,14 +225,17 @@ fn declare_service(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Table>
         fields.insert("logs".to_string(), Value::Str(logs));
     }
 
-    ctx.record(Declaration {
-        identity: Identity::new(Kind::Service, label),
-        spec: Value::Map(fields),
-        provenance: prov.clone(),
-        unit: unit_of(&prov),
-        privileged: false,
-    });
-    stub_result(lua)
+    settle(
+        lua,
+        ctx,
+        &Declaration {
+            identity: Identity::new(Kind::Service, label),
+            spec: Value::Map(fields),
+            provenance: prov.clone(),
+            unit: unit_of(&prov),
+            privileged: false,
+        },
+    )
 }
 
 fn calendar_field(spec: &SpecCtx<'_>, options: &Table) -> mlua::Result<Option<Value>> {
