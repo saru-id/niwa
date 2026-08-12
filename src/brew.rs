@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use crate::model::Kind;
 use crate::paths::Paths;
-use crate::util::proc::bounded_output;
+use crate::util::proc::Invocation;
 
 /// Is this formula or cask installed? Returns the newest version
 /// directory's name when it is. Presence is presence: a formula that
@@ -106,18 +106,7 @@ pub fn uninstall(kind: &Kind, name: &str, deadline: Duration) -> Result<(), Stri
         args.push("--cask");
     }
     args.push(name);
-    match bounded_output("brew", &args, deadline) {
-        Some(finished) if finished.code == Some(0) => Ok(()),
-        Some(finished) => Err(finished.stderr_tail),
-        None => Err("brew did not finish inside the deadline, or is not installed".to_string()),
-    }
-}
-
-/// What one installer invocation came to, kept for the failure screen.
-pub struct Invocation {
-    pub command: String,
-    pub code: Option<i32>,
-    pub stderr_tail: String,
+    crate::util::proc::run_ok("brew", &args, deadline)
 }
 
 /// Install a batch in one brew invocation. The caller reads receipts
@@ -128,24 +117,6 @@ pub fn install(kind: &Kind, names: &[String], deadline: Duration) -> Invocation 
     if matches!(kind, Kind::BrewCask) {
         args.push("--cask");
     }
-    let mut command = format!("brew {}", args.join(" "));
-    for name in names {
-        command.push(' ');
-        command.push_str(name);
-    }
-    let name_refs: Vec<&str> = names.iter().map(String::as_str).collect();
-    args.extend(name_refs);
-
-    match bounded_output("brew", &args, deadline) {
-        Some(output) => Invocation {
-            command,
-            code: output.code,
-            stderr_tail: output.stderr_tail,
-        },
-        None => Invocation {
-            command,
-            code: None,
-            stderr_tail: "brew did not finish inside the deadline, or is not installed".to_string(),
-        },
-    }
+    args.extend(names.iter().map(String::as_str));
+    crate::util::proc::invoke("brew", &args, deadline)
 }

@@ -176,27 +176,11 @@ pub fn bootout(paths: &Paths, label: &str) {
 
 /// Start a Homebrew service; brew writes the plist that the check
 /// reads back.
-pub fn brew_service_start(name: &str) -> crate::brew::Invocation {
-    let command = format!("brew services start {name}");
-    match bounded_output("brew", &["services", "start", name], Duration::from_mins(5)) {
-        Some(finished) => crate::brew::Invocation {
-            command,
-            code: finished.code,
-            stderr_tail: finished.stderr_tail,
-        },
-        None => crate::brew::Invocation {
-            command,
-            code: None,
-            stderr_tail: "brew did not finish inside the deadline, or is not installed".to_string(),
-        },
-    }
+pub fn brew_service_start(name: &str) -> crate::util::proc::Invocation {
+    crate::util::proc::invoke("brew", &["services", "start", name], Duration::from_mins(5))
 }
 
 /// Stop and unregister a Homebrew service, for undo.
 pub fn brew_service_stop(name: &str) -> Result<(), String> {
-    match bounded_output("brew", &["services", "stop", name], Duration::from_mins(5)) {
-        Some(finished) if finished.code == Some(0) => Ok(()),
-        Some(finished) => Err(finished.stderr_tail),
-        None => Err("brew did not finish inside the deadline, or is not installed".to_string()),
-    }
+    crate::util::proc::run_ok("brew", &["services", "stop", name], Duration::from_mins(5))
 }

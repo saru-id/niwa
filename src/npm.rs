@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use crate::util::proc::{bounded_output, bounded_stdout};
+use crate::util::proc::bounded_stdout;
 
 static ROOT: OnceLock<Option<PathBuf>> = OnceLock::new();
 
@@ -27,29 +27,13 @@ pub fn installed(name: &str) -> bool {
 
 /// Install a batch in one npm invocation. Returns what was run and
 /// what npm said, for the failure screen.
-pub fn install(names: &[String], deadline: Duration) -> crate::brew::Invocation {
+pub fn install(names: &[String], deadline: Duration) -> crate::util::proc::Invocation {
     let mut args: Vec<&str> = vec!["install", "-g"];
     args.extend(names.iter().map(String::as_str));
-    let command = format!("npm {}", args.join(" "));
-    match bounded_output("npm", &args, deadline) {
-        Some(finished) => crate::brew::Invocation {
-            command,
-            code: finished.code,
-            stderr_tail: finished.stderr_tail,
-        },
-        None => crate::brew::Invocation {
-            command,
-            code: None,
-            stderr_tail: "npm did not finish inside the deadline, or is not installed".to_string(),
-        },
-    }
+    crate::util::proc::invoke("npm", &args, deadline)
 }
 
 /// Uninstall one global package, for undo.
 pub fn uninstall(name: &str, deadline: Duration) -> Result<(), String> {
-    match bounded_output("npm", &["uninstall", "-g", name], deadline) {
-        Some(finished) if finished.code == Some(0) => Ok(()),
-        Some(finished) => Err(finished.stderr_tail),
-        None => Err("npm did not finish inside the deadline, or is not installed".to_string()),
-    }
+    crate::util::proc::run_ok("npm", &["uninstall", "-g", name], deadline)
 }

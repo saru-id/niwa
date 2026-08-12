@@ -136,6 +136,51 @@ pub fn bounded_stdout(program: &str, args: &[&str], timeout: Duration) -> Option
     }
 }
 
+/// What one tool invocation came to, kept for the failure screen:
+/// the command as a person could re-run it, and what the tool said.
+pub struct Invocation {
+    pub command: String,
+    pub code: Option<i32>,
+    pub stderr_tail: String,
+}
+
+/// Run a tool and report the invocation whole. A tool that is not
+/// installed, or that runs past the deadline, reports that in its
+/// own words instead of vanishing.
+pub fn invoke(program: &str, args: &[&str], deadline: Duration) -> Invocation {
+    let mut command = String::from(program);
+    for arg in args {
+        command.push(' ');
+        command.push_str(arg);
+    }
+    match bounded_output(program, args, deadline) {
+        Some(finished) => Invocation {
+            command,
+            code: finished.code,
+            stderr_tail: finished.stderr_tail,
+        },
+        None => Invocation {
+            command,
+            code: None,
+            stderr_tail: format!(
+                "{program} did not finish inside the deadline, or is not installed"
+            ),
+        },
+    }
+}
+
+/// Run a tool that must simply succeed; failures come back in the
+/// tool's own words.
+pub fn run_ok(program: &str, args: &[&str], deadline: Duration) -> Result<(), String> {
+    match bounded_output(program, args, deadline) {
+        Some(finished) if finished.code == Some(0) => Ok(()),
+        Some(finished) => Err(finished.stderr_tail),
+        None => Err(format!(
+            "{program} did not finish inside the deadline, or is not installed"
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
