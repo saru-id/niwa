@@ -98,13 +98,21 @@ struct Progress {
 }
 
 impl Engine {
-    pub fn new(mode: Mode, paths: Paths, mut journal: Journal, screen: crate::out::Out) -> Self {
+    /// A lockfile that cannot be read is a refusal, never an empty
+    /// default: an empty lock would quietly install whatever
+    /// resolves today — the exact drift the lockfile exists to stop.
+    pub fn new(
+        mode: Mode,
+        paths: Paths,
+        mut journal: Journal,
+        screen: crate::out::Out,
+    ) -> Result<Self, Error> {
         let apply_id = match mode {
             Mode::Execute { .. } => Some(journal.begin_apply()),
             Mode::Plan => None,
         };
-        let lock = Lockfile::load(&paths).unwrap_or_default();
-        Self {
+        let lock = Lockfile::load(&paths)?;
+        Ok(Self {
             mode,
             paths,
             lock,
@@ -120,7 +128,7 @@ impl Engine {
             privileged_skipped: RefCell::new(Vec::new()),
             progress: RefCell::new(None),
             screen,
-        }
+        })
     }
 
     /// Arm the long-run progress display: how much work the plan

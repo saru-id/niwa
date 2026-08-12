@@ -121,6 +121,23 @@ pub fn secrets_used(paths: &Paths) -> Option<Vec<(String, Option<String>)>> {
     Some(used)
 }
 
+/// The plan-pass prologue every reading verb shares: journal, a
+/// plan-mode engine, one run of the config, and the display plan.
+pub fn plan_pass(
+    out: &crate::out::Out,
+    paths: &Paths,
+) -> Result<(crate::model::action::Plan, Analysis), Error> {
+    let journal = crate::journal::Journal::load(&paths.state)?;
+    let engine = Rc::new(Engine::new(
+        crate::engine::Mode::Plan,
+        paths.clone(),
+        journal,
+        out.clone(),
+    )?);
+    let analysis = run_pass(paths, Some(Rc::clone(&engine)))?;
+    Ok((plan_of(engine), analysis))
+}
+
 /// Turn a finished plan pass into the display plan: one item per
 /// identity, the last host declaration winning over modules, in
 /// first-declared order.

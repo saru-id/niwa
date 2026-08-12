@@ -5,10 +5,8 @@
 
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
-use std::rc::Rc;
 
 use crate::drift::{Baseline, survey};
-use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::model::Kind;
@@ -28,10 +26,7 @@ pub fn run(out: &Out) -> ExitCode {
 fn dashboard(out: &Out) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
 
-    let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
-    let analysis = super::run_pass(&paths, Some(Rc::clone(&engine)))?;
-    let plan = super::plan_of(engine);
+    let (plan, analysis) = super::plan_pass(out, &paths)?;
     let pending = plan.pending();
 
     let journal = Journal::load(&paths.state)?;

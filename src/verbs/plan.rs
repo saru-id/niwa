@@ -3,11 +3,8 @@
 //! 1 error. `niwa plan || niwa apply` is a legitimate thing to write.
 
 use std::process::ExitCode;
-use std::rc::Rc;
 
-use crate::engine::{Engine, Mode};
 use crate::error::Error;
-use crate::journal::Journal;
 use crate::model::action::{Action, Plan};
 use crate::model::{Kind, Unit, Value};
 use crate::out::{Mark, Out, count};
@@ -40,10 +37,8 @@ pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
 
 fn build(out: &Out) -> Result<(Plan, bool), Error> {
     let paths = Paths::resolve()?;
-    let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
-    let analysis = super::run_pass(&paths, Some(Rc::clone(&engine)))?;
-    Ok((super::plan_of(engine), analysis.results_read))
+    let (plan, analysis) = super::plan_pass(out, &paths)?;
+    Ok((plan, analysis.results_read))
 }
 
 fn render(out: &Out, plan: &Plan) -> ExitCode {

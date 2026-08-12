@@ -72,10 +72,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     }
 
     // Pass one: predict.
-    let journal = Journal::load(&paths.state)?;
-    let plan_engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
-    super::run_pass(&paths, Some(Rc::clone(&plan_engine)))?;
-    let mut intent = super::plan_of(plan_engine);
+    let (mut intent, _) = super::plan_pass(out, &paths)?;
 
     scope_to_only(&mut intent, options.only.as_deref())?;
 
@@ -121,7 +118,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         paths.clone(),
         journal,
         out.clone(),
-    ));
+    )?);
     let prefetches = arm_progress(&engine, &paths, &intent, pending);
 
     let run = super::run_pass(&paths, Some(Rc::clone(&engine))).and_then(|_| engine.finish());
@@ -286,10 +283,7 @@ fn sandbox_rehearsal(out: &Out, real: &Paths) -> Result<ExitCode, Error> {
 }
 
 fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
-    let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
-    super::run_pass(paths, Some(Rc::clone(&engine)))?;
-    let intent = super::plan_of(engine);
+    let (intent, _) = super::plan_pass(out, paths)?;
 
     let mut journal = Journal::load(&paths.state)?;
     let lock = crate::lockfile::Lockfile::load(paths)?;
@@ -425,11 +419,7 @@ fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: u
 }
 
 fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>) -> ExitCode {
-    let second = Journal::load(&paths.state).and_then(|journal| {
-        let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
-        super::run_pass(paths, Some(Rc::clone(&engine)))?;
-        Ok(super::plan_of(engine))
-    });
+    let second = super::plan_pass(out, paths).map(|(plan, _)| plan);
     let second = match second {
         Ok(second) => second,
         Err(error) => {

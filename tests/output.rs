@@ -458,6 +458,32 @@ fn the_command_surface_is_exactly_the_twenty_verbs() {
     // twentieth verb of the contract.
 }
 
+#[test]
+fn a_torn_lockfile_refuses_instead_of_installing_latest() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.mise.tool { node = \"lts\" }\n",
+    );
+    write(
+        home.path(),
+        "niwa.lock",
+        "[github_release.\"broken\ngarbage = {{{",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "a torn lock must refuse, not default to empty: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("niwa.lock"),
+        "the refusal names the file"
+    );
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through

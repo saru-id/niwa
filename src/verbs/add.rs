@@ -84,7 +84,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
         paths,
         journal,
         out.clone(),
-    ));
+    )?);
     engine.settle(&declaration)?;
     engine.finish()?;
 
