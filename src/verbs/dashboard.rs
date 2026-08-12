@@ -87,13 +87,14 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
             &format!("{} · niwa pull to review", count(proposals, "proposal")),
         );
     }
+    let outdated = outdated_line(out, &paths);
     if manual > 0 {
         out.result(
             Mark::Busy,
             &format!("{} in the checklist", count(manual, "manual step")),
         );
     }
-    if pending == 0 && proposals == 0 {
+    if pending == 0 && proposals == 0 && outdated == 0 {
         out.result(Mark::Ok, "in sync · nothing waiting");
     }
     // The keys work where a terminal is attached; piped output is the
@@ -131,6 +132,26 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         "h" => super::history::run(out),
         _ => ExitCode::SUCCESS,
     })
+}
+
+/// The watcher's warm answer: outdated counts wait here for your
+/// visit instead of pinging you. Returns the total shown.
+fn outdated_line(out: &Out, paths: &Paths) -> usize {
+    crate::upstream::Digest::load(paths)
+        .filter(|digest| !digest.is_stale())
+        .map_or(0, |digest| {
+            let total = digest.brew_outdated + digest.lock_outdated;
+            if total > 0 {
+                out.result(
+                    Mark::Busy,
+                    &format!(
+                        "{total} outdated · brew {} · lock {}",
+                        digest.brew_outdated, digest.lock_outdated
+                    ),
+                );
+            }
+            total
+        })
 }
 
 /// Tick one checklist step off, remembering the world it was ticked

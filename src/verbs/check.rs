@@ -17,8 +17,8 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 use crate::util::proc::bounded_output;
 
-pub fn run(out: &Out, notify: bool) -> ExitCode {
-    match check(out, notify) {
+pub fn run(out: &Out, notify: bool, upstream: bool) -> ExitCode {
+    match check(out, notify, upstream) {
         Ok(code) => code,
         Err(error) => {
             if notify {
@@ -37,7 +37,7 @@ pub fn run(out: &Out, notify: bool) -> ExitCode {
     }
 }
 
-fn check(out: &Out, notify: bool) -> Result<ExitCode, Error> {
+fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
     let analysis = super::run_pass(&paths, None)?;
     let line = format!(
@@ -50,6 +50,14 @@ fn check(out: &Out, notify: bool) -> Result<ExitCode, Error> {
         return Ok(ExitCode::FAILURE);
     }
 
+    if upstream && !ask_upstream(&paths, out, &analysis)? {
+        return Ok(ExitCode::FAILURE);
+    }
+
+    // The watcher pings for exactly three things: a config error you
+    // just saved (handled in `run`), drift you just caused (below),
+    // and a weekly rot finding worth a decision (below). Everything
+    // else waits in the dashboard.
     if notify {
         let journal = Journal::load(&paths.state)?;
         let mut baseline = Baseline::load(&paths.state);
@@ -73,8 +81,47 @@ fn check(out: &Out, notify: bool) -> Result<ExitCode, Error> {
                 count(result.findings.len(), "proposal")
             ));
         }
+
+        // The weekly digest: outdated counts wait in the dashboard;
+        // only actual breakage pings.
+        if crate::upstream::Digest::load(&paths).is_none_or(|digest| digest.is_stale()) {
+            let lock = crate::lockfile::Lockfile::load(&paths)?;
+            let digest = crate::upstream::refresh(&paths, &analysis.effective, &lock);
+            if !digest.missing.is_empty() {
+                post_notification(&format!(
+                    "gone upstream: {} · niwa check --upstream",
+                    count(digest.missing.len(), "declared thing")
+                ));
+            }
+        }
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// `--upstream`: the rot survey, spoken. Ghosts fail the check;
+/// what could not be asked is named, never guessed.
+fn ask_upstream(
+    paths: &Paths,
+    out: &Out,
+    analysis: &crate::model::analysis::Analysis,
+) -> Result<bool, Error> {
+    let lock = crate::lockfile::Lockfile::load(paths)?;
+    let mut skipped = Vec::new();
+    let missing = crate::upstream::survey(&analysis.effective, &lock, &mut skipped);
+    for line in &skipped {
+        out.note(line);
+    }
+    if missing.is_empty() {
+        out.result(Mark::Ok, "everything you declare still exists upstream");
+        return Ok(true);
+    }
+    for finding in &missing {
+        out.result(
+            Mark::Failed,
+            &format!("{} · {}", finding.identity, finding.detail),
+        );
+    }
+    Ok(false)
 }
 
 /// Deeper type checks through luau-analyze when it is installed;

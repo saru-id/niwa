@@ -26,6 +26,10 @@ pub enum Verb {
         /// needs a decision. Never applies anything
         #[arg(long)]
         notify: bool,
+        /// Ask the upstreams: does everything you declare still
+        /// exist? The watcher runs this weekly
+        #[arg(long)]
+        upstream: bool,
     },
     /// Show what apply would do. Exit 0 when in sync, 2 when changes
     /// are pending, 1 on an error

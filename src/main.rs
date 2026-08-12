@@ -24,6 +24,7 @@ mod release;
 mod secrets;
 mod services;
 mod stamp;
+mod upstream;
 mod util;
 mod verbs;
 mod watch;
@@ -39,7 +40,7 @@ fn main() -> ExitCode {
         return verbs::dashboard::run(&out);
     };
     match verb {
-        cli::Verb::Check { notify } => verbs::check::run(&out, notify),
+        cli::Verb::Check { notify, upstream } => verbs::check::run(&out, notify, upstream),
         cli::Verb::Plan { diff, json } => verbs::plan::run(&out, diff, json),
         cli::Verb::Apply {
             yes,
