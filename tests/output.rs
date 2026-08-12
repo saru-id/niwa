@@ -150,6 +150,31 @@ fn converged_output_is_one_line_then_groups_then_everything() {
 }
 
 #[test]
+fn a_long_first_run_prints_the_checklist_up_front() {
+    let home = tempfile::tempdir().unwrap();
+    let mut script = String::from("local niwa = require(\"@niwa\")\n");
+    for index in 0..12 {
+        use std::fmt::Write as _;
+        let _ = writeln!(
+            script,
+            "niwa.file(\"~/.front-{index}\", {{ content = \"{index}\" }})"
+        );
+    }
+    script.push_str("niwa.manual({ \"insert the yubikey\" })\n");
+    write(home.path(), "init.luau", &script);
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(0));
+    let text = stdout(&output);
+    let checklist = text.find("yours meanwhile").expect("checklist heading");
+    let first_effect = text.find("12 changed").expect("summary");
+    assert!(
+        checklist < first_effect,
+        "the checklist must print before the work: {text}"
+    );
+    assert!(text.contains("insert the yubikey"));
+}
+
+#[test]
 fn check_says_plainly_when_the_analyzer_is_missing() {
     let home = tempfile::tempdir().unwrap();
     pending_config(home.path());

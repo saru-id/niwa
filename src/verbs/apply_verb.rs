@@ -69,6 +69,8 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     super::plan::render_pending(out, &intent);
 
+    checklist_up_front(out, &intent, pending);
+
     if !options.yes {
         if !std::io::stdin().is_terminal() {
             return Err(Error::NeedsConfirmation);
@@ -173,6 +175,29 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
 /// The literal definition of idempotence: re-read everything, demand
 /// silence, and name the resource and source line of anything that
 /// still reports a change.
+/// On a long run the human steps arrive up front, so hands can work
+/// while the machine does: nothing in the checklist ever blocks the
+/// apply.
+fn checklist_up_front(out: &Out, intent: &crate::plan::Plan, pending: usize) {
+    let manual: Vec<&crate::plan::Item> = intent
+        .items
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.declaration.identity.kind,
+                crate::model::Kind::Permission | crate::model::Kind::Manual
+            )
+        })
+        .collect();
+    if pending >= 10 && !manual.is_empty() {
+        out.plain("");
+        out.group("yours meanwhile");
+        for item in manual {
+            out.result(Mark::Busy, &item.declaration.identity.key);
+        }
+    }
+}
+
 fn verify(out: &Out, paths: &Paths, ignore_privileged: bool) -> ExitCode {
     let second = Journal::load(&paths.state).and_then(|journal| {
         let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
