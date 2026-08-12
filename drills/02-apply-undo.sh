@@ -60,4 +60,17 @@ niwa apply --yes
 check 13 "a held lock refuses a second apply (exit 1)" test "$STATUS" -eq 1
 rm "$HOME/.local/state/niwa/apply.lock"
 
+# --- the archive horizon --------------------------------------------
+# An archive past ninety days that the newest apply does not
+# reference goes quietly on the next apply.
+STALE="$HOME/.local/state/niwa/archive/drill-stale"
+mkdir -p "$STALE"
+echo "old bytes" >"$STALE/0000000000000000000000000000000000000000000000000000000000000000"
+/usr/bin/touch -t 202001010000 \
+    "$STALE/0000000000000000000000000000000000000000000000000000000000000000"
+niwa apply --yes
+check 14 "the apply still succeeds (exit 0)" test "$STATUS" -eq 0
+check 15 "the stale archive was pruned, directory and all" \
+    sh -c "! test -e '$STALE'"
+
 echo "drill: apply and undo · all checks passed"

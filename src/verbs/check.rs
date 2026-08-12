@@ -54,6 +54,8 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
         return Ok(ExitCode::FAILURE);
     }
 
+    lint_unreferenced(&paths, out, &analysis);
+
     // The watcher pings for exactly three things: a config error you
     // just saved (handled in `run`), drift you just caused (below),
     // and a weekly rot finding worth a decision (below). Everything
@@ -122,6 +124,65 @@ fn ask_upstream(
         );
     }
     Ok(false)
+}
+
+/// A module no one requires and a source no declaration reads are
+/// rot in waiting; the lint names them quietly.
+fn lint_unreferenced(paths: &Paths, out: &Out, analysis: &crate::model::analysis::Analysis) {
+    if let Ok(entries) = std::fs::read_dir(paths.config.join("modules")) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if std::path::Path::new(&name)
+                .extension()
+                .is_none_or(|extension| extension != "luau")
+            {
+                continue;
+            }
+            if !analysis
+                .loaded
+                .iter()
+                .any(|chunk| chunk == &format!("modules/{name}"))
+            {
+                out.note(&format!("modules/{name} is never required"));
+            }
+        }
+    }
+    let referenced: std::collections::HashSet<&str> = analysis
+        .all
+        .iter()
+        .filter_map(|declaration| match &declaration.spec {
+            crate::model::Value::Map(fields) => match (fields.get("source"), fields.get("to")) {
+                (Some(crate::model::Value::Str(s)), _) | (_, Some(crate::model::Value::Str(s))) => {
+                    s.strip_prefix("@self/")
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+    let mut stack = vec![paths.config.join("files")];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let Ok(relative) = path.strip_prefix(&paths.config) else {
+                continue;
+            };
+            let relative = relative.to_string_lossy();
+            let covered = referenced.iter().any(|source| {
+                relative.as_ref() == *source || relative.starts_with(&format!("{source}/"))
+            });
+            if !covered {
+                out.note(&format!("{relative} is referenced by nothing"));
+            }
+        }
+    }
 }
 
 /// Deeper type checks through luau-analyze when it is installed;

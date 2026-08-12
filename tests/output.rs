@@ -347,6 +347,23 @@ fn check_says_plainly_when_the_analyzer_is_missing() {
     );
 }
 
+#[test]
+fn unattended_apply_refuses_a_dirty_or_merging_tree() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    // A mid-merge tree refuses even with --dirty; the marker file is
+    // the whole signal.
+    let git = home.path().join(".config/niwa/.git");
+    std::fs::create_dir_all(&git).unwrap();
+    std::fs::write(git.join("MERGE_HEAD"), "0000\n").unwrap();
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("mid-merge"),
+        "the refusal must say why"
+    );
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through

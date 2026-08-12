@@ -15,6 +15,9 @@ pub struct Cli {
     /// `-vv` lists every resource
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
+    /// Keep the raw stack trace on config errors, for reports
+    #[arg(long, global = true)]
+    pub debug: bool,
 }
 
 #[derive(Subcommand)]

@@ -73,6 +73,10 @@ impl Mark {
 }
 
 /// Where output lands, decided once at startup.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each is an independent terminal capability, detected once"
+)]
 pub struct Out {
     /// Marks and layout are for humans at a terminal.
     tty: bool,
@@ -86,6 +90,8 @@ pub struct Out {
     width: Option<usize>,
     /// OSC 8 hyperlinks, on terminals known to render them.
     links: bool,
+    /// `--debug`: raw stack traces stay, for reports.
+    debug: bool,
 }
 
 impl Out {
@@ -93,7 +99,7 @@ impl Out {
     /// `0`) turns everything on even when piped. `NO_COLOR` (set,
     /// non-empty) and `TERM=dumb` remove color but keep the marks a
     /// terminal user still sees.
-    pub fn detect(verbose: u8) -> Self {
+    pub fn detect(verbose: u8, debug: bool) -> Self {
         let tty = std::io::stdout().is_terminal();
         let force = std::env::var_os("FORCE_COLOR").is_some_and(|v| !v.is_empty() && v != "0");
         let no_color = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
@@ -126,6 +132,7 @@ impl Out {
             verbose,
             width,
             links,
+            debug,
         }
     }
 
@@ -339,6 +346,11 @@ impl Out {
         };
         eprintln!("{mark}{error}");
         for line in error.detail() {
+            // Raw stack traces never reach a person; `--debug` keeps
+            // one for reports.
+            if !self.debug && line.trim_start().starts_with("stack traceback") {
+                break;
+            }
             eprintln!("  {line}");
         }
     }
@@ -391,5 +403,60 @@ pub fn count(n: usize, singular: &str) -> String {
         format!("1 {singular}")
     } else {
         format!("{n} {singular}s")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, reason = "tests panic loudly by design")]
+
+    use super::*;
+
+    fn plain_out() -> Out {
+        Out {
+            tty: false,
+            color: false,
+            verbose: 0,
+            width: None,
+            links: false,
+            debug: false,
+        }
+    }
+
+    #[test]
+    fn truncation_keeps_the_tail_of_a_path() {
+        let cut = truncate_keep_tail("~/.local/bin/notes-sync", 12);
+        assert!(cut.starts_with('…'), "{cut}");
+        assert!(cut.ends_with("notes-sync"), "{cut}");
+        assert!(display_width(&cut) <= 12, "{cut}");
+        assert_eq!(truncate_keep_tail("short", 12), "short");
+    }
+
+    #[test]
+    fn wide_characters_count_by_columns_not_chars() {
+        // Two-column characters: four of them fill eight columns.
+        let wide = "日本語表";
+        assert_eq!(display_width(wide), 8);
+        let cut = truncate_keep_tail(wide, 5);
+        assert!(display_width(&cut) <= 5);
+        assert!(cut.starts_with('…'));
+    }
+
+    #[test]
+    fn locations_stay_plain_without_link_support() {
+        let out = plain_out();
+        let text = out.locate(std::path::Path::new("/cfg"), "modules/dev.luau:22");
+        assert_eq!(text, "modules/dev.luau:22");
+    }
+
+    #[test]
+    fn locations_wrap_in_osc8_when_the_terminal_renders_them() {
+        let out = Out {
+            links: true,
+            ..plain_out()
+        };
+        let text = out.locate(std::path::Path::new("/cfg"), "modules/dev.luau:22");
+        assert!(text.contains("\x1b]8;;file:///cfg/modules/dev.luau"));
+        assert!(text.contains("modules/dev.luau:22"));
     }
 }

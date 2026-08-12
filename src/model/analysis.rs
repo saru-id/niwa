@@ -19,6 +19,12 @@ pub struct Analysis {
     /// `explain`'s layer-by-layer story.
     pub all: Vec<Declaration>,
     pub conflicts: Vec<Conflict>,
+    /// Whether the config read any result field: past the first
+    /// change, such reads are predictions until apply.
+    pub results_read: bool,
+    /// Config-relative names of the chunks that loaded, for the
+    /// unrequired-module lint.
+    pub loaded: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -89,6 +95,8 @@ pub fn analyze(declarations: &[Declaration]) -> Analysis {
         effective,
         all: declarations.to_vec(),
         conflicts,
+        results_read: false,
+        loaded: Vec::new(),
     }
 }
 

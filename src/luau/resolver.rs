@@ -37,6 +37,14 @@ pub fn install(lua: &Lua, root: &std::path::Path) -> mlua::Result<()> {
     lua.globals().set("require", require)
 }
 
+/// The config-relative names of every chunk that loaded, for the
+/// unrequired-module lint.
+pub fn loaded(lua: &Lua) -> Vec<String> {
+    lua.app_data_ref::<Rc<Resolver>>()
+        .map(|resolver| resolver.cache.borrow().keys().cloned().collect())
+        .unwrap_or_default()
+}
+
 /// Load `init.luau` through the same machinery every module uses.
 pub fn run_entry(lua: &Lua) -> mlua::Result<()> {
     let resolver = lua

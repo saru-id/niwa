@@ -92,6 +92,17 @@ impl Runtime {
     }
 
     /// The declarations the run collected, in program order.
+    /// Did the config read any result field? Past the first change,
+    /// such reads are predictions until apply.
+    pub fn results_read(&self) -> bool {
+        self.state.borrow().results_read
+    }
+
+    /// The config-relative names of every chunk that loaded.
+    pub fn loaded(&self) -> Vec<String> {
+        resolver::loaded(&self.lua)
+    }
+
     pub fn declarations(&self) -> Vec<Declaration> {
         self.state.borrow().declarations.clone()
     }

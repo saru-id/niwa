@@ -35,7 +35,7 @@ use clap::Parser as _;
 
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
-    let out = out::Out::detect(cli.verbose);
+    let out = out::Out::detect(cli.verbose, cli.debug);
     let Some(verb) = cli.verb else {
         return verbs::dashboard::run(&out);
     };

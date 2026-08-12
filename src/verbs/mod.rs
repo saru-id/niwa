@@ -44,7 +44,9 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
     runtime.run_entry()?;
 
     let declarations = runtime.declarations();
-    let analysis = analyze(&declarations);
+    let mut analysis = analyze(&declarations);
+    analysis.results_read = runtime.results_read();
+    analysis.loaded = runtime.loaded();
     if !analysis.conflicts.is_empty() {
         return Err(Error::Conflicts(analysis.conflicts));
     }

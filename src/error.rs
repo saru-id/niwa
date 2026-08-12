@@ -123,10 +123,8 @@ impl Error {
             Self::NoHome => vec!["set HOME and run niwa again".to_string()],
             Self::ConfigMissing { dir } => vec![
                 format!("looked in {}", dir.display()),
-                format!(
-                    "create {}/init.luau, or clone your config repo there",
-                    dir.display()
-                ),
+                "run `niwa init` to scan this machine into a starter config".to_string(),
+                format!("or clone your config repo to {}", dir.display()),
             ],
             Self::Script { message } => message.lines().map(str::to_string).collect(),
             Self::Conflicts(conflicts) => {

@@ -118,7 +118,7 @@ impl Engine {
             restarted: RefCell::new(Vec::new()),
             privileged_skipped: RefCell::new(Vec::new()),
             progress: RefCell::new(None),
-            screen: crate::out::Out::detect(0),
+            screen: crate::out::Out::detect(0, false),
         }
     }
 

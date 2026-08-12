@@ -42,7 +42,7 @@ fn a_missing_config_fails_and_names_the_place_to_create_it() {
     let err = stderr(&output);
     assert!(err.contains("no config found"), "{err}");
     assert!(err.contains(".config/niwa"), "{err}");
-    assert!(err.contains("init.luau"), "{err}");
+    assert!(err.contains("niwa init"), "{err}");
 }
 
 #[test]

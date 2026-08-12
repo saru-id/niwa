@@ -51,6 +51,15 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return sandbox_rehearsal(out, &paths);
     }
 
+    // A tree mid-merge is nobody's config: refuse plainly, dirty
+    // flag or not, until the person finishes or aborts the merge.
+    if paths.config.join(".git/MERGE_HEAD").exists() {
+        return Err(Error::Apply {
+            doing: "applying".to_string(),
+            detail: "the config tree is mid-merge · finish or abort the merge first".to_string(),
+        });
+    }
+
     // Unattended, a dirty tree means someone forgot to commit, and an
     // apply nobody watched would poison the stamp's honesty.
     if options.yes && !options.dirty && tree_is_dirty(&paths) {

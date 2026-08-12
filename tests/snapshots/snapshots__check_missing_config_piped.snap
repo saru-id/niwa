@@ -4,4 +4,5 @@ expression: run.stderr
 ---
 no config found
   looked in ~/.config/niwa
-  create ~/.config/niwa/init.luau, or clone your config repo there
+  run `niwa init` to scan this machine into a starter config
+  or clone your config repo to ~/.config/niwa

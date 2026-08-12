@@ -15,11 +15,17 @@ use crate::plan::{Action, Plan};
 
 pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
     match build() {
-        Ok(plan) => {
+        Ok((plan, results_read)) => {
             if json {
                 return render_json(out, &plan);
             }
             let code = render(out, &plan);
+            // The design's honesty rule: prediction begins after the
+            // first change, and the plan says so instead of
+            // pretending to omniscience.
+            if results_read && plan.pending() > 1 {
+                out.note("results read past the first change are predictions until apply");
+            }
             if diff {
                 render_diffs(out, &plan);
             }
@@ -32,12 +38,12 @@ pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
     }
 }
 
-fn build() -> Result<Plan, Error> {
+fn build() -> Result<(Plan, bool), Error> {
     let paths = Paths::resolve()?;
     let journal = Journal::load(&paths.state)?;
     let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
-    super::run_pass(&paths, Some(Rc::clone(&engine)))?;
-    Ok(super::plan_of(engine))
+    let analysis = super::run_pass(&paths, Some(Rc::clone(&engine)))?;
+    Ok((super::plan_of(engine), analysis.results_read))
 }
 
 fn render(out: &Out, plan: &Plan) -> ExitCode {
