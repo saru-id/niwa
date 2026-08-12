@@ -9,9 +9,9 @@
 use std::time::Duration;
 
 use crate::journal::Journal;
+use crate::model::action::Action;
 use crate::model::{Declaration, Value};
 use crate::paths::Paths;
-use crate::plan::Action;
 use crate::util::proc::bounded_output;
 
 /// The default budget for a guarded command; a spec's `timeout`

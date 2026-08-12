@@ -15,9 +15,9 @@ use crate::apply::Lock;
 use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
+use crate::model::action::Action;
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
-use crate::plan::Action;
 use crate::util::proc::bounded_stdout;
 
 #[allow(
@@ -174,7 +174,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 fn walk(
     out: &Out,
     paths: &Paths,
-    intent: &crate::plan::Plan,
+    intent: &crate::model::action::Plan,
 ) -> Option<std::collections::HashSet<String>> {
     let mut declined = std::collections::HashSet::new();
     let mut all = false;
@@ -215,7 +215,7 @@ fn walk(
 
 /// The run's closing lines: what changed, what restarted, and what
 /// stayed protected because a person's edits live there.
-fn summarize(out: &Out, engine: &Engine, intent: &crate::plan::Plan) {
+fn summarize(out: &Out, engine: &Engine, intent: &crate::model::action::Plan) {
     let checked = intent.items.len() - intent.unchecked();
     let mut summary = format!("{checked} checked · {} changed", engine.changed_count());
     let protected = engine.protected();
@@ -321,7 +321,7 @@ fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
 fn arm_progress(
     engine: &Engine,
     paths: &Paths,
-    intent: &crate::plan::Plan,
+    intent: &crate::model::action::Plan,
     pending: usize,
 ) -> Vec<std::thread::JoinHandle<()>> {
     let open_checklist = intent
@@ -340,7 +340,10 @@ fn arm_progress(
 
 /// Every pending release download starts now, in the background;
 /// each thread is bounded by its own network deadlines.
-fn spawn_prefetches(paths: &Paths, intent: &crate::plan::Plan) -> Vec<std::thread::JoinHandle<()>> {
+fn spawn_prefetches(
+    paths: &Paths,
+    intent: &crate::model::action::Plan,
+) -> Vec<std::thread::JoinHandle<()>> {
     let Ok(lock) = crate::lockfile::Lockfile::load(paths) else {
         return Vec::new();
     };
@@ -364,7 +367,7 @@ fn spawn_prefetches(paths: &Paths, intent: &crate::plan::Plan) -> Vec<std::threa
 
 /// `--only` scopes the run to one unit; a name nothing answers to is
 /// a refusal, not a silent no-op.
-fn scope_to_only(intent: &mut crate::plan::Plan, only: Option<&str>) -> Result<(), Error> {
+fn scope_to_only(intent: &mut crate::model::action::Plan, only: Option<&str>) -> Result<(), Error> {
     let Some(only) = only else {
         return Ok(());
     };
@@ -387,8 +390,8 @@ fn scope_to_only(intent: &mut crate::plan::Plan, only: Option<&str>) -> Result<(
 /// On a long run the human steps arrive up front, so hands can work
 /// while the machine does: nothing in the checklist ever blocks the
 /// apply.
-fn checklist_up_front(out: &Out, intent: &crate::plan::Plan, pending: usize) {
-    let manual: Vec<&crate::plan::Item> = intent
+fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: usize) {
+    let manual: Vec<&crate::model::action::Item> = intent
         .items
         .iter()
         .filter(|item| {

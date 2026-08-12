@@ -4,6 +4,7 @@
 //! lowers to the same identities as the generic forms, so conflict
 //! detection sees straight through the syntax.
 
+pub mod action;
 pub mod analysis;
 pub mod value;
 

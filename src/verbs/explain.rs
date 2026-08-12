@@ -197,10 +197,10 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
             |declaration| {
                 let journal = Journal::default();
                 match crate::plan::compare(declaration, paths, &journal) {
-                    crate::plan::Action::InSync => "matches the config".to_string(),
-                    crate::plan::Action::Create => "absent".to_string(),
-                    crate::plan::Action::Change { detail } => detail,
-                    crate::plan::Action::Unchecked => "unknown".to_string(),
+                    crate::model::action::Action::InSync => "matches the config".to_string(),
+                    crate::model::action::Action::Create => "absent".to_string(),
+                    crate::model::action::Action::Change { detail } => detail,
+                    crate::model::action::Action::Unchecked => "unknown".to_string(),
                 }
             },
         ),

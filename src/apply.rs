@@ -13,9 +13,9 @@ use std::path::{Path, PathBuf};
 
 use crate::error::Error;
 use crate::journal::{Acknowledgement, ApplyEntry, Effect, Journal, Step, digest};
+use crate::model::action::Action;
 use crate::model::{Declaration, Kind, Value};
 use crate::paths::Paths;
-use crate::plan::Action;
 
 /// What one resource's execution came to.
 pub enum Outcome {

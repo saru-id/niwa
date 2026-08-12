@@ -100,10 +100,10 @@ pub fn secrets_used(paths: &Paths) -> Option<Vec<(String, Option<String>)>> {
 /// Turn a finished plan pass into the display plan: one item per
 /// identity, the last host declaration winning over modules, in
 /// first-declared order.
-pub fn plan_of(engine: Rc<Engine>) -> crate::plan::Plan {
+pub fn plan_of(engine: Rc<Engine>) -> crate::model::action::Plan {
     let items = Rc::try_unwrap(engine).map_or_else(|_| Vec::new(), Engine::into_items);
     let mut order: Vec<crate::model::Identity> = Vec::new();
-    let mut chosen: std::collections::HashMap<crate::model::Identity, crate::plan::Item> =
+    let mut chosen: std::collections::HashMap<crate::model::Identity, crate::model::action::Item> =
         std::collections::HashMap::new();
     for item in items {
         let identity = item.declaration.identity.clone();
@@ -125,5 +125,5 @@ pub fn plan_of(engine: Rc<Engine>) -> crate::plan::Plan {
         .into_iter()
         .filter_map(|identity| chosen.remove(&identity))
         .collect();
-    crate::plan::Plan { items }
+    crate::model::action::Plan { items }
 }

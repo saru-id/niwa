@@ -8,10 +8,10 @@ use std::rc::Rc;
 use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
+use crate::model::action::{Action, Plan};
 use crate::model::{Kind, Unit, Value};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
-use crate::plan::{Action, Plan};
 
 pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
     match build() {
@@ -211,7 +211,7 @@ fn render_diffs(out: &Out, plan: &Plan) {
 /// One pending file's diff, for `--diff` and for interactive apply's
 /// `d`: the same renderer, per the design. Non-file resources and
 /// rendered content stay a name.
-pub fn render_item_diff(out: &Out, paths: &Paths, item: &crate::plan::Item) {
+pub fn render_item_diff(out: &Out, paths: &Paths, item: &crate::model::action::Item) {
     if item.declaration.identity.kind != Kind::File {
         return;
     }

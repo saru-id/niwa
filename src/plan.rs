@@ -9,44 +9,9 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use crate::journal::{Journal, digest};
+use crate::model::action::Action;
 use crate::model::{Declaration, Kind, Value};
 use crate::paths::Paths;
-
-pub enum Action {
-    /// Nothing to do; the machine already agrees.
-    InSync,
-    /// The resource does not exist yet.
-    Create,
-    /// The resource exists with another value.
-    Change { detail: String },
-    /// No provider reads this kind yet.
-    Unchecked,
-}
-
-pub struct Item {
-    pub declaration: Declaration,
-    pub action: Action,
-}
-
-pub struct Plan {
-    pub items: Vec<Item>,
-}
-
-impl Plan {
-    pub fn pending(&self) -> usize {
-        self.items
-            .iter()
-            .filter(|item| matches!(item.action, Action::Create | Action::Change { .. }))
-            .count()
-    }
-
-    pub fn unchecked(&self) -> usize {
-        self.items
-            .iter()
-            .filter(|item| matches!(item.action, Action::Unchecked))
-            .count()
-    }
-}
 
 /// Compare one declaration with the machine. The engine calls this
 /// per declaration, in both passes.

@@ -18,9 +18,10 @@ use crate::brew;
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::lockfile::Lockfile;
+use crate::model::action::Action;
 use crate::model::{Declaration, Identity, Kind};
 use crate::paths::Paths;
-use crate::plan::{Action, compare};
+use crate::plan::compare;
 
 pub enum Mode {
     /// Read the machine, predict results, change nothing.
@@ -517,11 +518,11 @@ impl Engine {
     }
 
     /// The plan pass's items, in declaration order.
-    pub fn into_items(self) -> Vec<crate::plan::Item> {
+    pub fn into_items(self) -> Vec<crate::model::action::Item> {
         self.items
             .into_inner()
             .into_iter()
-            .map(|(declaration, action)| crate::plan::Item {
+            .map(|(declaration, action)| crate::model::action::Item {
                 declaration,
                 action,
             })
