@@ -1,9 +1,12 @@
 //! One module per verb. Verbs orchestrate; the layers below them own
 //! the behavior.
 
+pub mod add;
 pub mod apply_verb;
 pub mod check;
+pub mod fmt;
 pub mod plan;
+pub mod pull;
 pub mod undo;
 
 use std::rc::Rc;
@@ -55,6 +58,16 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
     }
     if !missing.is_empty() {
         return Err(Error::MissingSources(missing));
+    }
+
+    let gate_hits = crate::gate::scan_repo(&paths.config);
+    if !gate_hits.is_empty() {
+        return Err(Error::Gate(
+            gate_hits
+                .into_iter()
+                .map(|hit| (hit.file, hit.line, hit.reason))
+                .collect(),
+        ));
     }
 
     Ok(analysis)

@@ -81,6 +81,26 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
     }
 }
 
+/// Run a program that owns the terminal — the one shape an $EDITOR
+/// session can take. The deadline exists because every child gets
+/// one; a day covers any editing session that is still a session.
+pub fn interactive(program: &str, args: &[&str]) -> Option<i32> {
+    let mut child = Command::new(resolve(program)?).args(args).spawn().ok()?;
+    let deadline = Instant::now() + Duration::from_hours(24);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.code(),
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(50)),
+            Err(_) => return None,
+        }
+    }
+}
+
 /// Run a program and return its trimmed stdout, or `None` for a
 /// failure, a timeout, or a program that is not there. From the
 /// caller's side those are one answer: no information.

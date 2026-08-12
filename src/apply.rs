@@ -240,6 +240,12 @@ fn archive(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Erro
         .map_err(|error| apply_error("archiving the previous bytes", &error))
 }
 
+/// Archive bytes for an identity, for callers outside the engine's
+/// own effect paths (orphan removal archives what it takes away).
+pub fn archive_bytes(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Error> {
+    archive(archive_root, identity, bytes)
+}
+
 fn sanitize(identity: &str) -> String {
     identity
         .chars()

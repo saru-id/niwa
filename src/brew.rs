@@ -49,6 +49,55 @@ fn newest_version_dir(root: &Path, valid: impl Fn(&Path) -> bool) -> Option<Stri
     versions.pop()
 }
 
+/// Formulae someone asked for by name, off their receipts. What came
+/// along as a dependency never surfaces as a proposal.
+pub fn requested_formulae(paths: &Paths) -> Vec<String> {
+    let cellar = Path::new(&paths.brew_prefix).join("Cellar");
+    let mut names = Vec::new();
+    let Ok(entries) = std::fs::read_dir(&cellar) else {
+        return names;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') || !entry.path().is_dir() {
+            continue;
+        }
+        let requested = std::fs::read_dir(entry.path())
+            .into_iter()
+            .flatten()
+            .flatten()
+            .any(|version| {
+                std::fs::read_to_string(version.path().join("INSTALL_RECEIPT.json"))
+                    .ok()
+                    .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+                    .and_then(|receipt| receipt.get("installed_on_request")?.as_bool())
+                    .unwrap_or(false)
+            });
+        if requested {
+            names.push(name);
+        }
+    }
+    names.sort();
+    names
+}
+
+/// Every cask in the Caskroom. Casks are always asked for by name.
+pub fn installed_casks(paths: &Paths) -> Vec<String> {
+    let caskroom = Path::new(&paths.brew_prefix).join("Caskroom");
+    let mut names = Vec::new();
+    let Ok(entries) = std::fs::read_dir(&caskroom) else {
+        return names;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !name.starts_with('.') && entry.path().is_dir() {
+            names.push(name);
+        }
+    }
+    names.sort();
+    names
+}
+
 /// Uninstall one package, for undo. Returns the failure detail when
 /// brew objects.
 pub fn uninstall(kind: &Kind, name: &str, deadline: Duration) -> Result<(), String> {

@@ -4,7 +4,7 @@
 //! The file is schema versioned, and a journal from a newer niwa is
 //! refused with the way out spelled, never guessed at.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,11 @@ pub struct Journal {
     /// One entry per apply that changed something, oldest first.
     #[serde(default)]
     applies: Vec<ApplyEntry>,
+    /// Proposals answered "never": the permanent no, per machine.
+    /// The one thing in the system that is neither declared, actual,
+    /// nor acknowledged — the model's single appendix.
+    #[serde(default)]
+    declined: BTreeSet<String>,
 }
 
 /// What one apply changed, in order, with everything undo needs.
@@ -77,6 +82,7 @@ impl Default for Journal {
             schema: SCHEMA,
             acknowledged: BTreeMap::new(),
             applies: Vec::new(),
+            declined: BTreeSet::new(),
         }
     }
 }
@@ -170,6 +176,21 @@ impl Journal {
 
     pub fn last_apply(&self) -> Option<&ApplyEntry> {
         self.applies.last()
+    }
+
+    /// Has this exact proposal been refused for good?
+    pub fn is_declined(&self, proposal: &str) -> bool {
+        self.declined.contains(proposal)
+    }
+
+    /// Remember a "never" so nobody is asked twice.
+    pub fn decline(&mut self, proposal: String) {
+        self.declined.insert(proposal);
+    }
+
+    /// Every acknowledged identity, for the drift survey.
+    pub fn acknowledged_identities(&self) -> Vec<String> {
+        self.acknowledged.keys().cloned().collect()
     }
 
     pub fn pop_apply(&mut self) -> Option<ApplyEntry> {

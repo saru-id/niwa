@@ -41,6 +41,12 @@ pub enum Error {
     #[error("apply needs a confirmation and no terminal is attached")]
     NeedsConfirmation,
 
+    #[error("pull walks differences one at a time and needs a terminal")]
+    NeedsWalk,
+
+    #[error("the config holds lines that read like credentials")]
+    Gate(Vec<(String, usize, String)>),
+
     #[error("{identity} failed · {provenance}")]
     ResourceFailed {
         identity: String,
@@ -145,6 +151,20 @@ impl Error {
             ],
             Self::NeedsConfirmation => {
                 vec!["pass --yes to apply without a prompt".to_string()]
+            }
+            Self::NeedsWalk => {
+                vec!["pass --all to stage everything and review with `git diff`".to_string()]
+            }
+            Self::Gate(hits) => {
+                let mut lines: Vec<String> = hits
+                    .iter()
+                    .map(|(file, line, reason)| format!("{file}:{line} looks like {reason}"))
+                    .collect();
+                lines.push(
+                    "move real secrets into the keychain or secrets/<name>.age; niwa never commits sealed files in the clear"
+                        .to_string(),
+                );
+                lines
             }
             Self::ResourceFailed {
                 command,

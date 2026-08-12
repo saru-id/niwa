@@ -17,7 +17,12 @@ pub struct Cli {
 pub enum Verb {
     /// Validate the config: it loads, every spec is well formed, and
     /// declarations do not conflict
-    Check,
+    Check {
+        /// The watcher's voice: post a notification when something
+        /// needs a decision. Never applies anything
+        #[arg(long)]
+        notify: bool,
+    },
     /// Show what apply would do. Exit 0 when in sync, 2 when changes
     /// are pending, 1 on an error
     Plan,
@@ -43,4 +48,20 @@ pub enum Verb {
         #[arg(long)]
         yes: bool,
     },
+    /// Bring machine-side changes home to the config: the inverse of
+    /// apply
+    Pull {
+        /// Stage every finding without the one-at-a-time walk
+        #[arg(long)]
+        all: bool,
+    },
+    /// Install something and write its config line, in one motion
+    Add {
+        /// One of: brew, cask, npm
+        provider: String,
+        /// The package name
+        name: String,
+    },
+    /// Normalize the config files' formatting
+    Fmt,
 }
