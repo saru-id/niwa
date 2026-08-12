@@ -78,6 +78,8 @@ pub struct Engine {
     restarted: RefCell<Vec<String>>,
     /// Privileged identities left untouched under --no-privileged.
     privileged_skipped: RefCell<Vec<String>>,
+    /// Optional resources that failed, for the summary's honesty.
+    failed: RefCell<usize>,
     /// Long-run progress, armed by `expect` on the execute pass.
     progress: RefCell<Option<Progress>>,
     /// The engine's own view of the terminal, for the progress line
@@ -126,6 +128,7 @@ impl Engine {
             restarts_pending: RefCell::new(Vec::new()),
             restarted: RefCell::new(Vec::new()),
             privileged_skipped: RefCell::new(Vec::new()),
+            failed: RefCell::new(0),
             progress: RefCell::new(None),
             screen,
         })
@@ -539,7 +542,8 @@ impl Engine {
                 .protected
                 .borrow_mut()
                 .push(declaration.identity.to_string()),
-            Outcome::InSync | Outcome::Unchecked | Outcome::Failed => {}
+            Outcome::InSync | Outcome::Unchecked => {}
+            Outcome::Failed => *self.failed.borrow_mut() += 1,
         }
         Ok(match outcome {
             Outcome::Done => Truth {
@@ -618,6 +622,11 @@ impl Engine {
         if !pending.contains(&target) {
             pending.push(target);
         }
+    }
+
+    /// Optional resources that failed this run.
+    pub fn failed_count(&self) -> usize {
+        *self.failed.borrow()
     }
 
     /// The processes this run actually bounced, in order.

@@ -45,6 +45,7 @@ pub fn run(out: &Out, options: &Options) -> ExitCode {
 }
 
 fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
+    let started = std::time::Instant::now();
     let paths = Paths::resolve()?;
 
     if options.sandbox {
@@ -141,7 +142,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return Ok(ExitCode::FAILURE);
     }
 
-    summarize(out, &engine, &intent);
+    summarize(out, &engine, &intent, started.elapsed());
 
     close_run(out, &paths, intent.items.len());
 
@@ -211,14 +212,24 @@ fn walk(
 
 /// The run's closing lines: what changed, what restarted, and what
 /// stayed protected because a person's edits live there.
-fn summarize(out: &Out, engine: &Engine, intent: &crate::model::action::Plan) {
+fn summarize(
+    out: &Out,
+    engine: &Engine,
+    intent: &crate::model::action::Plan,
+    elapsed: std::time::Duration,
+) {
+    use std::fmt::Write as _;
     let checked = intent.items.len() - intent.unchecked();
     let mut summary = format!("{checked} checked · {} changed", engine.changed_count());
+    let failed = engine.failed_count();
+    if failed > 0 {
+        let _ = write!(summary, " · {failed} failed");
+    }
     let protected = engine.protected();
     if !protected.is_empty() {
-        use std::fmt::Write as _;
         let _ = write!(summary, " · {} protected", protected.len());
     }
+    let _ = write!(summary, " · {:.1}s", elapsed.as_secs_f64());
     out.result(Mark::Ok, &summary);
     for target in engine.restarted() {
         out.result(Mark::Restarted, &format!("{target} restarted (once)"));
