@@ -121,7 +121,7 @@ pub fn perform(
         Action::Unchecked => Ok((Outcome::Unchecked, None)),
         Action::Create | Action::Change { .. } => match &declaration.identity.kind {
             Kind::GithubRelease => apply_release(declaration, paths, journal, lock),
-            Kind::Run | Kind::Once => apply_exec(declaration, journal),
+            Kind::Run | Kind::Once => apply_exec(declaration, paths, journal),
             _ => apply_one(declaration, paths, journal, &archive_root, force),
         },
     }
@@ -131,10 +131,11 @@ pub fn perform(
 /// irreversible, and the journal says exactly that.
 fn apply_exec(
     declaration: &Declaration,
+    paths: &Paths,
     journal: &mut Journal,
 ) -> Result<(Outcome, Option<Effect>), Error> {
     if matches!(declaration.identity.kind, Kind::Run)
-        && let Err((code, stderr)) = crate::exec::run(declaration)
+        && let Err((code, stderr)) = crate::exec::run(declaration, paths)
     {
         if declaration.is_optional() {
             return Ok((Outcome::Failed, None));

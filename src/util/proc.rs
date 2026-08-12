@@ -52,6 +52,9 @@ fn resolve_in(program: &str, path: Option<&std::ffi::OsStr>) -> Option<PathBuf> 
 pub struct Finished {
     pub code: Option<i32>,
     pub stdout: String,
+    /// The whole of stderr; screens show `stderr_tail`, the run log
+    /// keeps this.
+    pub stderr: String,
     pub stderr_tail: String,
 }
 
@@ -70,13 +73,15 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
         match child.try_wait() {
             Ok(Some(_)) => {
                 let output = child.wait_with_output().ok()?;
-                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
                 let skip = stderr.lines().count().saturating_sub(6);
                 let tail: Vec<&str> = stderr.lines().skip(skip).collect();
+                let stderr_tail = tail.join("\n");
                 return Some(Finished {
                     code: output.status.code(),
                     stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-                    stderr_tail: tail.join("\n"),
+                    stderr,
+                    stderr_tail,
                 });
             }
             Ok(None) if Instant::now() >= deadline => {

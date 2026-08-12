@@ -61,8 +61,9 @@ fn guard_satisfied(declaration: &Declaration, paths: &Paths) -> bool {
 }
 
 /// Run the command through the shell, on its declared clock. The
-/// stderr tail comes back for the failure screen.
-pub fn run(declaration: &Declaration) -> Result<(), (Option<i32>, String)> {
+/// stderr tail comes back for the failure screen; the whole of
+/// stderr lands in the run log the error names.
+pub fn run(declaration: &Declaration, paths: &Paths) -> Result<(), (Option<i32>, String)> {
     let command = &declaration.identity.key;
     let timeout = match &declaration.spec {
         Value::Map(fields) => match fields.get("timeout") {
@@ -73,7 +74,15 @@ pub fn run(declaration: &Declaration) -> Result<(), (Option<i32>, String)> {
     };
     match bounded_output("/bin/sh", &["-c", command], timeout) {
         Some(finished) if finished.code == Some(0) => Ok(()),
-        Some(finished) => Err((finished.code, finished.stderr_tail)),
+        Some(finished) => {
+            let log = paths.state.join("run.log");
+            let mut tail = finished.stderr_tail;
+            if crate::util::write_atomic(&log, finished.stderr.as_bytes(), None, false).is_ok() {
+                use std::fmt::Write as _;
+                let _ = write!(tail, "\nthe full log: {}", log.display());
+            }
+            Err((finished.code, tail))
+        }
         None => Err((
             None,
             "the command did not finish inside its timeout".to_string(),
