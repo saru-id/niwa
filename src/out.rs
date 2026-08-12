@@ -362,7 +362,53 @@ impl Out {
             }
             eprintln!("  {line}");
         }
+        self.frame(error);
     }
+
+    /// The compiler-quality frame a config error earns: the offending
+    /// line quoted, underlined, under its `file:line`. Best effort —
+    /// a file that cannot be read gets no frame, never a wrong one.
+    fn frame(&self, error: &Error) {
+        let Error::Script { message } = error else {
+            return;
+        };
+        let Some((file, line_number)) = locate_frame(message) else {
+            return;
+        };
+        let Ok(paths) = crate::paths::Paths::resolve() else {
+            return;
+        };
+        let Ok(text) = std::fs::read_to_string(paths.config.join(&file)) else {
+            return;
+        };
+        let Some(line) = text.lines().nth(line_number.saturating_sub(1)) else {
+            return;
+        };
+        let indent = line.len() - line.trim_start().len();
+        eprintln!("  --> {file}:{line_number}");
+        eprintln!("   |  {line}");
+        eprintln!(
+            "   |  {}{}",
+            " ".repeat(indent),
+            self.paint(Role::Bad, &"^".repeat(line.trim().len().max(1)))
+        );
+    }
+}
+
+/// The first `file.luau:line` a script error names, for the frame.
+fn locate_frame(message: &str) -> Option<(String, usize)> {
+    for token in message.split_whitespace() {
+        let token = token.trim_end_matches(':');
+        if let Some(position) = token.find(".luau:") {
+            let file = &token[..position + 5];
+            let rest = &token[position + 6..];
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if let Ok(line) = digits.parse() {
+                return Some((file.to_string(), line));
+            }
+        }
+    }
+    None
 }
 
 /// A string's width in terminal columns, not bytes or chars.
