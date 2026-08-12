@@ -108,7 +108,7 @@ pub fn perform(
     force: bool,
 ) -> Result<(Outcome, Option<Effect>), Error> {
     let archive_root = archive_dir(paths);
-    match crate::plan::compare(declaration, paths, journal) {
+    match crate::plan::compare(declaration, paths, journal, lock) {
         Action::InSync => {
             // Already true is agreement, not an event; acknowledge
             // silently so drift detection has its baseline.
@@ -175,9 +175,11 @@ fn apply_release(
     };
     let bin = crate::release::bin_of(declaration);
     crate::release::install(paths, repo, &bin, pin)?;
+    // The acknowledged digest is the pin's: compare reads it back to
+    // tell a converged binary from a bumped pin's leftovers.
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement::new(declaration.spec.clone(), None),
+        Acknowledgement::new(declaration.spec.clone(), Some(pin.sha256.clone())),
     );
     let path = crate::release::bin_dir(paths)
         .join(&bin)
@@ -636,7 +638,11 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
             let target = expand_target(paths, &declaration.identity.key);
             std::fs::read(target).ok().map(|bytes| digest(&bytes))
         }
-        _ => None,
+        // A converged re-ack keeps what the install recorded — the
+        // release digest compare reads back must survive row two.
+        _ => journal
+            .acknowledged(&declaration.identity.to_string())
+            .and_then(|ack| ack.bytes.clone()),
     };
     journal.acknowledge(
         declaration.identity.to_string(),

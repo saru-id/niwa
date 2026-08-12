@@ -185,7 +185,7 @@ impl Engine {
             Mode::Plan => {
                 let action = {
                     let journal = self.journal.borrow();
-                    compare(declaration, &self.paths, &journal)
+                    compare(declaration, &self.paths, &journal, &self.lock)
                 };
                 let truth = truth_of(&action);
                 self.items.borrow_mut().push((declaration.clone(), action));

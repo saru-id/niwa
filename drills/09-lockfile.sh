@@ -156,4 +156,26 @@ check 16 "a fresh resolve heals the pin (exit 0)" test "$STATUS" -eq 0
 niwa undo --yes
 check 17 "undo removes the installed binary" test ! -e "$HOME/.local/bin/lazygit"
 
+# --- a bumped pin converges -----------------------------------------
+# Reinstall the current version, then move upstream and the pin: the
+# machine holds 0.44.1, the lock says 0.45.0, and apply must replace
+# the binary — presence is not convergence.
+niwa apply --yes
+check 18 "the binary is back (exit 0)" \
+    sh -c "test $STATUS -eq 0 && test -x '$HOME/.local/bin/lazygit'"
+cat >"$RELEASE/pack/lazygit" <<'LUAU'
+#!/bin/sh
+echo "lazygit 0.45.0"
+LUAU
+chmod 755 "$RELEASE/pack/lazygit"
+tar -czf "$RELEASE/lazygit_Darwin_arm64.tar.gz" -C "$RELEASE/pack" lazygit
+/usr/bin/perl -pi -e 's/v0\.44\.1/v0.45.0/' "$RELEASE/api.json"
+niwa update lazygit
+check 19 "update moves the pin (exit 0)" \
+    sh -c "test $STATUS -eq 0 && grep -q '0.45.0' '$HOME/.config/niwa/niwa.lock'"
+niwa apply --yes
+check 20 "apply converges onto the new pin (exit 0)" test "$STATUS" -eq 0
+check 21 "the binary is the pinned version's bytes" \
+    sh -c "'$HOME/.local/bin/lazygit' | grep -q '0.45.0'"
+
 echo "drill: lockfile · all checks passed"

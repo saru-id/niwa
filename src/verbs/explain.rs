@@ -192,7 +192,8 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
             || "unknown".to_string(),
             |declaration| {
                 let journal = Journal::default();
-                match crate::plan::compare(declaration, paths, &journal) {
+                let lock = crate::lockfile::Lockfile::load(paths).unwrap_or_default();
+                match crate::plan::compare(declaration, paths, &journal, &lock) {
                     crate::model::action::Action::InSync => "matches the config".to_string(),
                     crate::model::action::Action::Create => "absent".to_string(),
                     crate::model::action::Action::Change { detail } => detail,

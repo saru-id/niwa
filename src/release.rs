@@ -82,18 +82,16 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
 
     // Content decides the unpack: release assets are tarballs or
     // bare binaries, and the gzip magic is truer than a file name.
+    // Either way the binary lands whole and executable in one
+    // rename — a crash never leaves a torn half on the PATH.
     if bytes.starts_with(&[0x1f, 0x8b]) {
         extract_binary(repo, &temp, bin, &target)?;
     } else {
-        std::fs::copy(&temp, &target).map_err(|error| release_error(repo, &error))?;
+        crate::util::write_atomic(&target, &bytes, Some(0o755), false)
+            .map_err(|error| release_error(repo, &error))?;
     }
     let _ = std::fs::remove_file(&temp);
-
-    let mut permissions = std::fs::metadata(&target)
-        .map_err(|error| release_error(repo, &error))?
-        .permissions();
-    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
-    std::fs::set_permissions(&target, permissions).map_err(|error| release_error(repo, &error))
+    Ok(())
 }
 
 /// The binary a release declaration installs: its `bin` field, or
@@ -269,7 +267,9 @@ fn extract_binary(repo: &str, archive: &Path, bin: &str, target: &Path) -> Resul
         doing: format!("unpacking {repo}"),
         detail: format!("the asset holds no file named {bin}"),
     })?;
-    std::fs::copy(&found, target).map_err(|error| release_error(repo, &error))?;
+    let bytes = std::fs::read(&found).map_err(|error| release_error(repo, &error))?;
+    crate::util::write_atomic(target, &bytes, Some(0o755), false)
+        .map_err(|error| release_error(repo, &error))?;
     let _ = std::fs::remove_dir_all(&unpack);
     Ok(())
 }

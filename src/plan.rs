@@ -15,7 +15,12 @@ use crate::paths::Paths;
 
 /// Compare one declaration with the machine. The engine calls this
 /// per declaration, in both passes.
-pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> Action {
+pub fn compare(
+    declaration: &Declaration,
+    paths: &Paths,
+    journal: &Journal,
+    lock: &crate::lockfile::Lockfile,
+) -> Action {
     match &declaration.identity.kind {
         Kind::File => compare_file(declaration, paths, journal),
         Kind::Link => compare_link(declaration, paths),
@@ -57,7 +62,18 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
         }
         Kind::GithubRelease => {
             if crate::release::installed(paths, &crate::release::bin_of(declaration)) {
-                Action::InSync
+                // Present is not convergence: the pin names the bytes.
+                let pinned = lock.github_release.get(&declaration.identity.key);
+                let acked = journal
+                    .acknowledged(&declaration.identity.to_string())
+                    .and_then(|ack| ack.bytes.as_deref());
+                match (pinned, acked) {
+                    (Some(pin), Some(sha)) if sha == pin.sha256 => Action::InSync,
+                    (Some(pin), _) => Action::Change {
+                        detail: format!("pinned {} waits", pin.version),
+                    },
+                    (None, _) => Action::InSync,
+                }
             } else {
                 Action::Create
             }
@@ -200,6 +216,10 @@ pub fn render_value(value: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
+    fn lock_default() -> crate::lockfile::Lockfile {
+        crate::lockfile::Lockfile::default()
+    }
+
     use super::*;
     use crate::model::{Identity, Provenance, Unit};
     use std::collections::BTreeMap;
@@ -239,15 +259,30 @@ mod tests {
         let declaration = file_declaration("~/.zshrc", "@self/files/zshrc");
         let journal = Journal::default();
 
-        let action = compare(&declaration, &paths, &journal);
+        let action = compare(
+            &declaration,
+            &paths,
+            &journal,
+            &crate::lockfile::Lockfile::default(),
+        );
         assert!(matches!(action, Action::Create));
 
         std::fs::write(dir.path().join(".zshrc"), "alias ls=eza\n").unwrap();
-        let action = compare(&declaration, &paths, &journal);
+        let action = compare(
+            &declaration,
+            &paths,
+            &journal,
+            &crate::lockfile::Lockfile::default(),
+        );
         assert!(matches!(action, Action::InSync));
 
         std::fs::write(dir.path().join(".zshrc"), "alias ls=exa\n").unwrap();
-        let action = compare(&declaration, &paths, &journal);
+        let action = compare(
+            &declaration,
+            &paths,
+            &journal,
+            &crate::lockfile::Lockfile::default(),
+        );
         assert!(matches!(action, Action::Change { .. }));
     }
 
@@ -277,7 +312,8 @@ mod tests {
             privileged: false,
         };
         let journal = Journal::default();
-        let Action::Change { detail } = compare(&declaration, &paths, &journal) else {
+        let Action::Change { detail } = compare(&declaration, &paths, &journal, &lock_default())
+        else {
             panic!("expected a change");
         };
         assert_eq!(detail, "false → true");
@@ -295,7 +331,7 @@ mod tests {
             privileged: false,
         };
         assert!(matches!(
-            compare(&declaration, &paths, &journal),
+            compare(&declaration, &paths, &journal, &lock_default()),
             Action::InSync
         ));
 
@@ -312,7 +348,7 @@ mod tests {
             privileged: false,
         };
         assert!(matches!(
-            compare(&declaration, &paths, &journal),
+            compare(&declaration, &paths, &journal, &lock_default()),
             Action::Create
         ));
     }
@@ -333,7 +369,7 @@ mod tests {
         };
         let journal = Journal::default();
         assert!(matches!(
-            compare(&declaration, &paths, &journal),
+            compare(&declaration, &paths, &journal, &lock_default()),
             Action::Unchecked
         ));
     }
