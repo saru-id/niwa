@@ -36,21 +36,59 @@ pub struct Lock {
 }
 
 impl Lock {
-    pub fn take(state: &Path) -> Result<Self, Error> {
+    /// Take the lock, stamping this process id into it. A lock whose
+    /// stamped holder is dead is reclaimed — a crash must never need
+    /// a human with an `rm`. The bool reports a reclaim, so the verb
+    /// can say it out loud.
+    pub fn take(state: &Path) -> Result<(Self, bool), Error> {
         std::fs::create_dir_all(state)
             .map_err(|error| apply_error("creating the state directory", &error))?;
         let path = state.join("apply.lock");
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
-            Ok(_) => Ok(Self { path }),
+        match Self::try_stamp(&path) {
+            Ok(lock) => Ok((lock, false)),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                if Self::holder_is_dead(&path) {
+                    let _ = std::fs::remove_file(&path);
+                    let lock = Self::try_stamp(&path)
+                        .map_err(|error| apply_error("taking the apply lock", &error))?;
+                    return Ok((lock, true));
+                }
                 Err(Error::ApplyLocked { path })
             }
             Err(error) => Err(apply_error("taking the apply lock", &error)),
         }
+    }
+
+    fn try_stamp(path: &Path) -> std::io::Result<Self> {
+        use std::io::Write as _;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)?;
+        write!(file, "{}", std::process::id())?;
+        Ok(Self {
+            path: path.to_path_buf(),
+        })
+    }
+
+    /// Only a lock that names a pid, and whose pid no longer runs,
+    /// reads as dead. An empty or garbled lock is treated as held —
+    /// it may be mid-write by a live process.
+    fn holder_is_dead(path: &Path) -> bool {
+        let Some(pid) = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|text| text.trim().parse::<u32>().ok())
+        else {
+            return false;
+        };
+        let probe = crate::util::proc::bounded_output(
+            "ps",
+            &["-p", &pid.to_string()],
+            std::time::Duration::from_secs(5),
+        );
+        // ps answers 0 for a live pid, 1 for a dead one. No answer at
+        // all (ps unreachable) reads as held: never steal on a guess.
+        matches!(probe, Some(finished) if finished.code == Some(1))
     }
 }
 

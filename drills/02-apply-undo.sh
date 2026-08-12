@@ -60,6 +60,18 @@ niwa apply --yes
 check 13 "a held lock refuses a second apply (exit 1)" test "$STATUS" -eq 1
 rm "$HOME/.local/state/niwa/apply.lock"
 
+# --- the stale-lock story -------------------------------------------
+# A lock stamped by a live process refuses; one stamped by a dead
+# process is reclaimed, because a crash must never need a human with
+# an rm.
+echo "$$" >"$HOME/.local/state/niwa/apply.lock"
+niwa apply --yes
+check 13b "a live holder's lock refuses (exit 1)" test "$STATUS" -eq 1
+echo "4194000" >"$HOME/.local/state/niwa/apply.lock"
+niwa apply --yes
+check 13c "a dead holder's lock is reclaimed (exit 0)" test "$STATUS" -eq 0
+check 13d "the reclaim is said out loud"     grep -q "reclaimed" "$SANDBOX/stdout"
+
 # --- the archive horizon --------------------------------------------
 # An archive past ninety days that the newest apply does not
 # reference goes quietly on the next apply.

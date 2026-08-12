@@ -66,7 +66,10 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return Err(Error::DirtyTree);
     }
 
-    let _lock = Lock::take(&paths.state)?;
+    let (_lock, reclaimed) = Lock::take(&paths.state)?;
+    if reclaimed {
+        out.note("reclaimed a stale lock from a crashed run");
+    }
 
     // Pass one: predict.
     let journal = Journal::load(&paths.state)?;
@@ -80,7 +83,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     if pending == 0 {
         let line = format!("{} · nothing to do", count(intent.items.len(), "resource"));
         out.result(Mark::Ok, &line);
-        stamp_and_warn(out, &paths, intent.items.len());
+        close_run(out, &paths, intent.items.len());
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -142,13 +145,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     summarize(out, &engine, &intent);
 
-    stamp_and_warn(out, &paths, intent.items.len());
-
-    // The safety net has a horizon: archives the newest apply cannot
-    // reach and ninety days old go quietly.
-    if let Ok(journal) = crate::journal::Journal::load(&paths.state) {
-        crate::apply::prune_archives(&paths, &journal);
-    }
+    close_run(out, &paths, intent.items.len());
 
     let skipped = engine.privileged_skipped();
     if !skipped.is_empty() {
@@ -232,6 +229,16 @@ fn summarize(out: &Out, engine: &Engine, intent: &crate::model::action::Plan) {
         out.note(&format!(
             "{identity} holds edits niwa never wrote: pull them home, or apply --force"
         ));
+    }
+}
+
+/// Every apply's closing bookkeeping: the stamp, and the archive
+/// horizon — time-based hygiene that runs whether or not anything
+/// changed.
+fn close_run(out: &Out, paths: &Paths, resources: usize) {
+    stamp_and_warn(out, paths, resources);
+    if let Ok(journal) = crate::journal::Journal::load(&paths.state) {
+        crate::apply::prune_archives(paths, &journal);
     }
 }
 

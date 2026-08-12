@@ -38,6 +38,10 @@ enum Answer {
 
 fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
+    let (_lock, reclaimed) = crate::apply::Lock::take(&paths.state)?;
+    if reclaimed {
+        out.note("reclaimed a stale lock from a crashed run");
+    }
     let analysis = super::run_pass(&paths, None)?;
     let mut journal = Journal::load(&paths.state)?;
     let mut baseline = Baseline::load(&paths.state);
