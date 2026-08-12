@@ -41,6 +41,9 @@ pub struct Journal {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApplyEntry {
     pub id: u64,
+    /// When the apply began, for `history`'s story.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub when: Option<String>,
     pub steps: Vec<Step>,
 }
 
@@ -199,8 +202,10 @@ impl Journal {
     /// saved with every step, so an interruption keeps what landed.
     pub fn begin_apply(&mut self) -> u64 {
         let id = self.applies.last().map_or(1, |entry| entry.id + 1);
+        let now = jiff::Timestamp::now();
         self.applies.push(ApplyEntry {
             id,
+            when: Some(now.round(jiff::Unit::Second).unwrap_or(now).to_string()),
             steps: Vec::new(),
         });
         id
@@ -226,6 +231,11 @@ impl Journal {
 
     pub fn last_apply(&self) -> Option<&ApplyEntry> {
         self.applies.last()
+    }
+
+    /// Every apply that changed something, oldest first.
+    pub fn applies(&self) -> &[ApplyEntry] {
+        &self.applies
     }
 
     /// Has this exact proposal been refused for good?

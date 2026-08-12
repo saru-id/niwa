@@ -40,10 +40,24 @@ impl Facts {
             owner,
             arch: arch().to_string(),
             os,
-            tags: Vec::new(),
+            tags: read_tags(paths),
             brew_prefix: paths.brew_prefix.display().to_string(),
         }
     }
+}
+
+/// Tags live beside the journal, one per line, written by `niwa tag`.
+pub fn read_tags(paths: &Paths) -> Vec<String> {
+    std::fs::read_to_string(paths.state.join("tags")).map_or_else(
+        |_| Vec::new(),
+        |text| {
+            text.lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(ToString::to_string)
+                .collect()
+        },
+    )
 }
 
 const fn arch() -> &'static str {

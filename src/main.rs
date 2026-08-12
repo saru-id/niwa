@@ -26,6 +26,7 @@ mod services;
 mod stamp;
 mod util;
 mod verbs;
+mod watch;
 
 use std::process::ExitCode;
 
@@ -34,7 +35,10 @@ use clap::Parser as _;
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
     let out = out::Out::detect();
-    match cli.verb {
+    let Some(verb) = cli.verb else {
+        return verbs::dashboard::run(&out);
+    };
+    match verb {
         cli::Verb::Check { notify } => verbs::check::run(&out, notify),
         cli::Verb::Plan => verbs::plan::run(&out),
         cli::Verb::Apply {
@@ -62,5 +66,12 @@ fn main() -> ExitCode {
         cli::Verb::Machines => verbs::machines::run(&out),
         cli::Verb::Doctor { deep } => verbs::doctor::run(&out, deep),
         cli::Verb::Update { name } => verbs::update::run(&out, name.as_deref()),
+        cli::Verb::Init => verbs::init::run(&out),
+        cli::Verb::History => verbs::history::run(&out),
+        cli::Verb::Export { markdown } => verbs::export::run(&out, markdown),
+        cli::Verb::Tag { name, remove } => verbs::tag::run(&out, name.as_deref(), remove),
+        cli::Verb::Migrate => verbs::migrate::run(&out),
+        cli::Verb::SelfCmd { action, rollback } => verbs::self_update::run(&out, &action, rollback),
+        cli::Verb::Uninstall { purge } => verbs::uninstall::run(&out, purge),
     }
 }

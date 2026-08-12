@@ -22,6 +22,7 @@ pub enum Role {
     Warn,
     Bad,
     Muted,
+    Accent,
 }
 
 impl Role {
@@ -31,6 +32,7 @@ impl Role {
             Self::Warn => "33",
             Self::Bad => "31",
             Self::Muted => "2",
+            Self::Accent => "36",
         }
     }
 }
@@ -44,6 +46,7 @@ pub enum Mark {
     Changed,
     Failed,
     Restarted,
+    Busy,
 }
 
 impl Mark {
@@ -54,6 +57,7 @@ impl Mark {
             Self::Changed => "~",
             Self::Failed => "✗",
             Self::Restarted => "↻",
+            Self::Busy => "▸",
         }
     }
 
@@ -63,6 +67,7 @@ impl Mark {
             Self::Changed => Role::Warn,
             Self::Failed => Role::Bad,
             Self::Restarted => Role::Muted,
+            Self::Busy => Role::Accent,
         }
     }
 }
@@ -146,6 +151,13 @@ impl Out {
         } else {
             println!("{text}");
         }
+    }
+
+    /// Verbatim output: a generated document leaves exactly as
+    /// written, on any terminal.
+    #[expect(clippy::unused_self, reason = "every screen prints through Out")]
+    pub fn raw(&self, text: &str) {
+        print!("{text}");
     }
 
     /// A quiet, indented note.

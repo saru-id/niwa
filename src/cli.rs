@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 #[command(name = "niwa", version, about)]
 pub struct Cli {
     #[command(subcommand)]
-    pub verb: Verb,
+    pub verb: Option<Verb>,
 }
 
 #[derive(Subcommand)]
@@ -94,5 +94,41 @@ pub enum Verb {
     Update {
         /// Only pins whose name contains this
         name: Option<String>,
+    },
+    /// Write a starter config that describes this machine, install
+    /// the editor types, and load the watcher. Once per machine
+    Init,
+    /// Browse the applies before the most recent one
+    History,
+    /// Render this machine as a readable document
+    Export {
+        /// The one format that exists
+        #[arg(long)]
+        markdown: bool,
+    },
+    /// Set, list, or remove this machine's tags
+    Tag {
+        /// The tag to set (or remove, with --remove); bare `tag` lists
+        name: Option<String>,
+        /// Remove the named tag instead of setting it
+        #[arg(long)]
+        remove: bool,
+    },
+    /// Rewrite deprecated config forms in place
+    Migrate,
+    /// The tool updating itself, always as a decision
+    #[command(name = "self")]
+    SelfCmd {
+        /// One of: update
+        action: String,
+        /// Swap back to the previous pair
+        #[arg(long)]
+        rollback: bool,
+    },
+    /// Remove niwa and leave the machine exactly as it stands
+    Uninstall {
+        /// Also remove the journal and its undo archives
+        #[arg(long)]
+        purge: bool,
     },
 }

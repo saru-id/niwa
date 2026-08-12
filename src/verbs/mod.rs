@@ -4,14 +4,22 @@
 pub mod add;
 pub mod apply_verb;
 pub mod check;
+pub mod dashboard;
 pub mod doctor;
 pub mod explain;
+pub mod export;
 pub mod fmt;
+pub mod history;
+pub mod init;
 pub mod machines;
+pub mod migrate;
 pub mod plan;
 pub mod pull;
 pub mod seal_key;
+pub mod self_update;
+pub mod tag;
 pub mod undo;
+pub mod uninstall;
 pub mod update;
 
 use std::rc::Rc;

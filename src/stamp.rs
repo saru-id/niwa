@@ -27,6 +27,9 @@ pub struct Stamp {
     pub dirty: bool,
     pub niwa: String,
     pub resources: usize,
+    /// Machine tags, when any are set.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 /// The stable identity this machine stamps with: the hardware UUID
@@ -110,6 +113,7 @@ pub fn write(paths: &Paths, name: &str, resources: usize) -> Result<PathBuf, Err
         dirty,
         niwa: env!("CARGO_PKG_VERSION").to_string(),
         resources,
+        tags: crate::facts::read_tags(paths),
     };
     let dir = paths.config.join("state");
     std::fs::create_dir_all(&dir).map_err(|error| Error::Apply {
