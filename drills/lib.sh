@@ -23,6 +23,11 @@ SANDBOX="$(mktemp -d)"
 export HOME="$SANDBOX/home"
 mkdir -p "$HOME"
 
+# Managed preferences resolve into the sandbox too; the real
+# machine's configuration profiles must never shape a drill.
+export NIWA_MANAGED_PREFS="$SANDBOX/managed"
+mkdir -p "$NIWA_MANAGED_PREFS"
+
 # Default stubs for every tool that could reach the real machine. A
 # drill that forgets to stub one of these must hit a harmless no-op,
 # never the real thing. Drills prepend their own bin to override.

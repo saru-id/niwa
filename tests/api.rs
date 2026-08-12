@@ -15,6 +15,7 @@ fn niwa(home: &Path, args: &[&str]) -> Output {
         .args(args)
         .env_clear()
         .env("HOME", home)
+        .env("NIWA_MANAGED_PREFS", home.join("managed"))
         .envs(coverage_env())
         .output()
         .unwrap()

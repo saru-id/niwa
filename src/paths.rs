@@ -53,6 +53,16 @@ impl Paths {
         })
     }
 
+    /// Where configuration profiles park the keys they own. The
+    /// override exists for the hermetic tests; the default is the
+    /// system's own place.
+    pub fn managed_prefs() -> PathBuf {
+        std::env::var_os("NIWA_MANAGED_PREFS")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .unwrap_or_else(|| PathBuf::from("/Library/Managed Preferences"))
+    }
+
     /// The sandbox rehearsal's world: the real config, and everything
     /// else under a scratch root that never existed before this run.
     pub fn sandboxed(&self, scratch: &Path) -> Self {

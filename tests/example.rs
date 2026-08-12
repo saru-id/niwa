@@ -51,6 +51,7 @@ fn check(home: &Path, path: Option<&Path>) -> Output {
         .arg("check")
         .env_clear()
         .env("HOME", home)
+        .env("NIWA_MANAGED_PREFS", home.join("managed"))
         .envs(coverage_env());
     if let Some(path) = path {
         command.env("PATH", path);

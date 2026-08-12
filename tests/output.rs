@@ -291,6 +291,50 @@ fn a_ticked_step_stays_ticked_until_the_world_moves() {
 }
 
 #[test]
+fn a_profile_managed_key_fails_naming_the_owner() {
+    let home = tempfile::tempdir().unwrap();
+    let managed = home.path().join("managed");
+    std::fs::create_dir_all(&managed).unwrap();
+    std::fs::write(
+        managed.join("com.apple.dock.plist"),
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+         <plist version=\"1.0\"><dict><key>autohide</key><true/></dict></plist>\n",
+    )
+    .unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.dock { autohide = true }\n",
+    );
+    let managed_env = managed.display().to_string();
+    let output = niwa(
+        home.path(),
+        &[("NIWA_MANAGED_PREFS", managed_env.as_str())],
+        &["check"],
+    );
+    assert_eq!(output.status.code(), Some(1));
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        err.contains("configuration profile"),
+        "the owner must be named: {err}"
+    );
+
+    // A different, unmanaged key in the same domain stays declarable.
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.dock { tilesize = 48 }\n",
+    );
+    let output = niwa(
+        home.path(),
+        &[("NIWA_MANAGED_PREFS", managed_env.as_str())],
+        &["check"],
+    );
+    assert_eq!(output.status.code(), Some(0));
+}
+
+#[test]
 fn check_says_plainly_when_the_analyzer_is_missing() {
     let home = tempfile::tempdir().unwrap();
     pending_config(home.path());

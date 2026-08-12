@@ -92,6 +92,26 @@ pub fn record(
     value: Value,
     restart: Option<&str>,
 ) -> mlua::Result<Option<crate::engine::Truth>> {
+    // A key a configuration profile owns is not yours to declare:
+    // writes would succeed and mean nothing. Fail naming the owner.
+    // Profiles manage bare domains; an absolute-path domain is the
+    // admin half of the machine, not MDM territory.
+    let managed = crate::paths::Paths::managed_prefs().join(format!("{domain}.plist"));
+    if !domain.starts_with('/')
+        && let Ok(profile) = plist::Value::from_file(&managed)
+        && profile
+            .as_dictionary()
+            .is_some_and(|dict| dict.contains_key(key))
+    {
+        let spec = SpecCtx {
+            resource: "niwa.defaults",
+            provenance: prov,
+        };
+        return Err(spec.fail(&format!(
+            "{domain} {key} is managed by a configuration profile ({}) · the profile is the owner, remove the declaration",
+            managed.display()
+        )));
+    }
     let mut fields = BTreeMap::new();
     fields.insert("value".to_string(), value);
     if let Some(restart) = restart {

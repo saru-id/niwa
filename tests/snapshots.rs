@@ -22,6 +22,7 @@ fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
         .args(args)
         .env_clear()
         .env("HOME", home)
+        .env("NIWA_MANAGED_PREFS", home.join("managed"))
         // Hermetic by construction: without this, surveys would read
         // the developer machine's real Homebrew receipts.
         .env("HOMEBREW_PREFIX", home.join("brew"))
