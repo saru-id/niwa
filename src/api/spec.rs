@@ -85,32 +85,11 @@ impl SpecCtx<'_> {
     }
 }
 
-/// Parse a human duration: `500ms`, `30s`, `5m`, `2h`.
-pub fn parse_duration(text: &str) -> Option<std::time::Duration> {
-    let (digits, unit) = text.split_at(text.find(|c: char| !c.is_ascii_digit())?);
-    let amount: u64 = digits.parse().ok()?;
-    let millis = match unit {
-        "ms" => amount,
-        "s" => amount.checked_mul(1000)?,
-        "m" => amount.checked_mul(60 * 1000)?,
-        "h" => amount.checked_mul(60 * 60 * 1000)?,
-        _ => return None,
-    };
-    Some(std::time::Duration::from_millis(millis))
-}
+pub use crate::util::parse_duration;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
-
-    #[test]
-    fn durations_parse_with_their_units() {
-        assert_eq!(parse_duration("500ms"), Some(Duration::from_millis(500)));
-        assert_eq!(parse_duration("30s"), Some(Duration::from_secs(30)));
-        assert_eq!(parse_duration("5m"), Some(Duration::from_mins(5)));
-        assert_eq!(parse_duration("2h"), Some(Duration::from_hours(2)));
-    }
 
     #[test]
     fn malformed_durations_are_rejected() {

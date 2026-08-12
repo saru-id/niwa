@@ -263,17 +263,7 @@ impl Journal {
     }
 }
 
-/// The digest format acknowledgements use for bytes: sha256, hex.
-pub fn digest(bytes: &[u8]) -> String {
-    use sha2::Digest as _;
-    use std::fmt::Write as _;
-    let hash = sha2::Sha256::digest(bytes);
-    let mut out = String::with_capacity(64);
-    for byte in hash {
-        let _ = write!(out, "{byte:02x}");
-    }
-    out
-}
+pub use crate::util::digest;
 
 #[cfg(test)]
 mod tests {

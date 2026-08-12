@@ -1,1 +1,60 @@
+//! The utility floor: pure helpers with no niwa knowledge, shared by
+//! every layer above.
+
 pub mod proc;
+
+/// Parse a human duration: `500ms`, `30s`, `5m`, `2h`.
+pub fn parse_duration(text: &str) -> Option<std::time::Duration> {
+    let (digits, unit) = text.split_at(text.find(|c: char| !c.is_ascii_digit())?);
+    let amount: u64 = digits.parse().ok()?;
+    let millis = match unit {
+        "ms" => amount,
+        "s" => amount.checked_mul(1000)?,
+        "m" => amount.checked_mul(60 * 1000)?,
+        "h" => amount.checked_mul(60 * 60 * 1000)?,
+        _ => return None,
+    };
+    Some(std::time::Duration::from_millis(millis))
+}
+
+/// The digest format acknowledgements and checksums use: sha256, hex.
+pub fn digest(bytes: &[u8]) -> String {
+    use sha2::Digest as _;
+    use std::fmt::Write as _;
+    let hash = sha2::Sha256::digest(bytes);
+    let mut out = String::with_capacity(64);
+    for byte in hash {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn durations_parse_with_their_units() {
+        assert_eq!(parse_duration("500ms"), Some(Duration::from_millis(500)));
+        assert_eq!(parse_duration("30s"), Some(Duration::from_secs(30)));
+        assert_eq!(parse_duration("5m"), Some(Duration::from_mins(5)));
+        assert_eq!(parse_duration("2h"), Some(Duration::from_hours(2)));
+    }
+
+    #[test]
+    fn junk_durations_parse_to_nothing() {
+        for junk in ["", "10", "s", "10d", "-5s", "1.5h"] {
+            assert_eq!(parse_duration(junk), None, "{junk}");
+        }
+    }
+
+    #[test]
+    fn digests_are_sha256_hex() {
+        assert_eq!(
+            digest(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(digest(b"niwa").len(), 64);
+    }
+}
