@@ -18,7 +18,11 @@ struct Run {
 
 fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
     let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
-    command.args(args).env_clear().env("HOME", home);
+    command
+        .args(args)
+        .env_clear()
+        .env("HOME", home)
+        .envs(coverage_env());
     if force_color {
         command.env("FORCE_COLOR", "1");
     }
@@ -172,4 +176,14 @@ fn the_missing_config_error_says_where_to_start() {
     let run = niwa(home.path(), &["check"], false);
     assert_eq!(run.code, 1);
     insta::assert_snapshot!("check_missing_config_piped", run.stderr);
+}
+
+/// Instrumented builds tell children where to write coverage profiles
+/// through this variable; without it an instrumented child dumps a
+/// `default_*.profraw` into its working directory. Passing it through
+/// keeps coverage collectable and the filesystem clean.
+fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
+    std::env::var_os("LLVM_PROFILE_FILE")
+        .map(|value| ("LLVM_PROFILE_FILE", value))
+        .into_iter()
 }

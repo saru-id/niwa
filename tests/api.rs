@@ -15,6 +15,7 @@ fn niwa(home: &Path, args: &[&str]) -> Output {
         .args(args)
         .env_clear()
         .env("HOME", home)
+        .envs(coverage_env())
         .output()
         .unwrap()
 }
@@ -166,6 +167,7 @@ fn a_host_file_overriding_a_module_is_allowed() {
         .arg("check")
         .env_clear()
         .env("HOME", home.path())
+        .envs(coverage_env())
         .env("PATH", &bin)
         .output()
         .unwrap();
@@ -380,4 +382,14 @@ assert(list[2].present == true)
         ),
     );
     checks_clean(home.path());
+}
+
+/// Instrumented builds tell children where to write coverage profiles
+/// through this variable; without it an instrumented child dumps a
+/// `default_*.profraw` into its working directory. Passing it through
+/// keeps coverage collectable and the filesystem clean.
+fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
+    std::env::var_os("LLVM_PROFILE_FILE")
+        .map(|value| ("LLVM_PROFILE_FILE", value))
+        .into_iter()
 }

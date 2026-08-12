@@ -47,7 +47,11 @@ fn stub_machine_name(home: &Path, name: &str) -> PathBuf {
 
 fn check(home: &Path, path: Option<&Path>) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
-    command.arg("check").env_clear().env("HOME", home);
+    command
+        .arg("check")
+        .env_clear()
+        .env("HOME", home)
+        .envs(coverage_env());
     if let Some(path) = path {
         command.env("PATH", path);
     }
@@ -95,4 +99,14 @@ fn the_host_overrides_change_the_count_not_the_verdict() {
         String::from_utf8(check(home.path(), Some(&bin)).stdout).unwrap()
     };
     assert_ne!(plain, as_airborne, "airborne adds casks and a hostname");
+}
+
+/// Instrumented builds tell children where to write coverage profiles
+/// through this variable; without it an instrumented child dumps a
+/// `default_*.profraw` into its working directory. Passing it through
+/// keeps coverage collectable and the filesystem clean.
+fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
+    std::env::var_os("LLVM_PROFILE_FILE")
+        .map(|value| ("LLVM_PROFILE_FILE", value))
+        .into_iter()
 }

@@ -22,12 +22,12 @@ carve-out is documented here.
 Anything that genuinely needs a real machine goes in a clearly named
 manual tier that no gate runs.
 
-## Known gaps
+## Subprocess coverage
 
-- **Subprocess coverage.** Integration tests clear the environment
-  before spawning the binary, which also clears `LLVM_PROFILE_FILE`,
-  so `cargo llvm-cov` cannot see code exercised only through the
-  spawned binary (`main.rs`, `out.rs`, `paths.rs`, the verbs). The
-  test helpers will pass the coverage variables through before the
-  coverage target becomes a gate. Until then the coverage report
-  understates what the integration tests prove.
+Integration tests clear the environment before spawning the binary.
+The helpers pass `LLVM_PROFILE_FILE` back through, so an instrumented
+child writes its profile where `cargo llvm-cov` expects it instead of
+littering `default_*.profraw` into the working directory, and the
+coverage report sees the code that only the spawned binary exercises.
+Drills inherit the variable from the calling shell for the same
+reason.
