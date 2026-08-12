@@ -9,10 +9,19 @@ set -eu
 
 : "${NIWA_BIN:?NIWA_BIN must point at the built niwa binary}"
 
+# The host's environment never reaches a drill. Everything outside
+# this allowlist is dropped, so no stray variable (ZDOTDIR, GIT_*,
+# XDG_*, HOMEBREW_*) can point a tool at the real machine.
+for var in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+    case "$var" in
+    HOME | PATH | PWD | TERM | LANG | TMPDIR | SHLVL | _ | NIWA_BIN | LLVM_PROFILE_FILE) ;;
+    *) unset "$var" 2>/dev/null || true ;;
+    esac
+done
+
 SANDBOX="$(mktemp -d)"
 export HOME="$SANDBOX/home"
 mkdir -p "$HOME"
-unset XDG_CONFIG_HOME XDG_STATE_HOME XDG_DATA_HOME 2>/dev/null || true
 
 # Default stubs for every tool that could reach the real machine. A
 # drill that forgets to stub one of these must hit a harmless no-op,

@@ -134,6 +134,9 @@ fn luau_list(names: &[String]) -> String {
 }
 
 fn cli_luau(formulae: &[String]) -> String {
+    if formulae.is_empty() {
+        return "--!strict\n-- Everyday CLI tools. (scanned: none yet)\nlocal niwa = require(\"@niwa\")\n\n-- niwa.brew.formula { \"jq\", \"ripgrep\" }\n".to_string();
+    }
     format!(
         "--!strict\n-- Everyday CLI tools. (scanned: {} found)\nlocal niwa = require(\"@niwa\")\n\nniwa.brew.formula {}\n",
         formulae.len(),
@@ -142,6 +145,9 @@ fn cli_luau(formulae: &[String]) -> String {
 }
 
 fn apps_luau(casks: &[String]) -> String {
+    if casks.is_empty() {
+        return "--!strict\n-- GUI apps and fonts. Casks cover both. (scanned: none yet)\nlocal niwa = require(\"@niwa\")\n\n-- niwa.brew.cask { \"kitty\" }\n".to_string();
+    }
     format!(
         "--!strict\n-- GUI apps and fonts. Casks cover both. (scanned: {} found)\nlocal niwa = require(\"@niwa\")\n\nniwa.brew.cask {}\n",
         casks.len(),
