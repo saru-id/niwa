@@ -137,3 +137,14 @@ enforces the license and source policy in `deny.toml`.
 - Maintenance: current, widely used.
 - Weight: small (fastrand, rustix).
 - License: MIT OR Apache-2.0.
+
+### proptest
+
+- Does: the property simulations. Generated machines assert that
+  apply converges, converged applies change nothing, and undo
+  restores what stood before.
+- Why not our own: shrinking is the value — a failing case arrives
+  minimal, not forty resources deep — and shrinking is the hard part.
+- Maintenance: the proptest-rs team, current, widely used.
+- Weight: dev-only (rand and friends).
+- License: MIT OR Apache-2.0.

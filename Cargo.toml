@@ -23,6 +23,7 @@ toml = "1.1.4"
 [dev-dependencies]
 insta = "1.48.0"
 mlua = { version = "0.12.0", features = ["luau"] }
+proptest = "1.11.0"
 tempfile = "3"
 
 [lints.rust]
