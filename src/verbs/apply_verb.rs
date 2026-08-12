@@ -70,7 +70,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     // Pass one: predict.
     let journal = Journal::load(&paths.state)?;
-    let plan_engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    let plan_engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
     super::run_pass(&paths, Some(Rc::clone(&plan_engine)))?;
     let mut intent = super::plan_of(plan_engine);
 
@@ -117,6 +117,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         },
         paths.clone(),
         journal,
+        out.clone(),
     ));
     let prefetches = arm_progress(&engine, &paths, &intent, pending);
 
@@ -279,7 +280,7 @@ fn sandbox_rehearsal(out: &Out, real: &Paths) -> Result<ExitCode, Error> {
 
 fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
     let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
     super::run_pass(paths, Some(Rc::clone(&engine)))?;
     let intent = super::plan_of(engine);
 
@@ -334,7 +335,13 @@ fn arm_progress(
             )
         })
         .count();
-    engine.expect(pending, open_checklist);
+    // In CI the cadence honors NIWA_PROGRESS_EVERY seconds; thirty is
+    // the design's one-plain-line-per-half-minute rule.
+    let every = std::env::var("NIWA_PROGRESS_EVERY")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(30);
+    engine.expect(pending, open_checklist, every);
     spawn_prefetches(paths, intent)
 }
 
@@ -412,7 +419,7 @@ fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: u
 
 fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>) -> ExitCode {
     let second = Journal::load(&paths.state).and_then(|journal| {
-        let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+        let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
         super::run_pass(paths, Some(Rc::clone(&engine)))?;
         Ok(super::plan_of(engine))
     });

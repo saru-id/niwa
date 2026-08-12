@@ -72,7 +72,10 @@ impl Mark {
     }
 }
 
-/// Where output lands, decided once at startup.
+/// Where output lands, decided once at startup. Cloning shares the
+/// decision: the engine's progress line and the verbs' screens must
+/// agree on one terminal.
+#[derive(Clone)]
 #[allow(
     clippy::struct_excessive_bools,
     reason = "each is an independent terminal capability, detected once"

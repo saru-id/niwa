@@ -29,7 +29,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
 
     let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
     let analysis = super::run_pass(&paths, Some(Rc::clone(&engine)))?;
     let plan = super::plan_of(engine);
     let pending = plan.pending();

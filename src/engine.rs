@@ -98,7 +98,7 @@ struct Progress {
 }
 
 impl Engine {
-    pub fn new(mode: Mode, paths: Paths, mut journal: Journal) -> Self {
+    pub fn new(mode: Mode, paths: Paths, mut journal: Journal, screen: crate::out::Out) -> Self {
         let apply_id = match mode {
             Mode::Execute { .. } => Some(journal.begin_apply()),
             Mode::Plan => None,
@@ -119,18 +119,15 @@ impl Engine {
             restarted: RefCell::new(Vec::new()),
             privileged_skipped: RefCell::new(Vec::new()),
             progress: RefCell::new(None),
-            screen: crate::out::Out::detect(0, false),
+            screen,
         }
     }
 
     /// Arm the long-run progress display: how much work the plan
-    /// predicted, and how many checklist items stay open. In CI the
-    /// cadence honors `NIWA_PROGRESS_EVERY` seconds (default thirty).
-    pub fn expect(&self, total: usize, open_checklist: usize) {
-        let every = std::env::var("NIWA_PROGRESS_EVERY")
-            .ok()
-            .and_then(|value| value.parse().ok())
-            .unwrap_or(30);
+    /// predicted, how many checklist items stay open, and how often
+    /// a piped run emits its plain line. The verb layer owns the
+    /// cadence; the engine is told, never asks the environment.
+    pub fn expect(&self, total: usize, open_checklist: usize, every: u64) {
         *self.progress.borrow_mut() = Some(Progress {
             total,
             open_checklist,

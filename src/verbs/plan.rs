@@ -14,7 +14,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
-    match build() {
+    match build(out) {
         Ok((plan, results_read)) => {
             if json {
                 return render_json(out, &plan);
@@ -38,10 +38,10 @@ pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
     }
 }
 
-fn build() -> Result<(Plan, bool), Error> {
+fn build(out: &Out) -> Result<(Plan, bool), Error> {
     let paths = Paths::resolve()?;
     let journal = Journal::load(&paths.state)?;
-    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal, out.clone()));
     let analysis = super::run_pass(&paths, Some(Rc::clone(&engine)))?;
     Ok((super::plan_of(engine), analysis.results_read))
 }
