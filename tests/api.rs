@@ -115,7 +115,7 @@ fn a_directory_source_fans_out_per_file() {
     );
     assert_eq!(
         checks_clean(home.path()),
-        "2 resources · config is valid\nluau-analyze is not installed · deeper type checks were skipped\n"
+        "2 resources · config is valid\nluau-analyze is not installed · deeper type checks were skipped\nfile:~/.local/bin/one writes where code runs from (init.luau:2) · noted once\nfile:~/.local/bin/two writes where code runs from (init.luau:2) · noted once\n"
     );
 }
 

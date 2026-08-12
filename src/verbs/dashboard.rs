@@ -26,6 +26,22 @@ pub fn run(out: &Out) -> ExitCode {
 fn dashboard(out: &Out) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
 
+    // Plain `niwa` on a machine with no config sets the machine up —
+    // as a decision, never a surprise: the offer is one question.
+    if !paths.config.join("init.luau").is_file() && std::io::stdin().is_terminal() {
+        out.result(
+            Mark::Waiting,
+            "no config yet · scan this machine into a starter config?",
+        );
+        eprint!("run niwa init now? [y/N] ");
+        let mut answer = String::new();
+        if std::io::stdin().read_line(&mut answer).is_ok()
+            && matches!(answer.trim(), "y" | "Y" | "yes")
+        {
+            return Ok(super::init::run(out));
+        }
+    }
+
     let (plan, analysis) = super::plan_pass(out, &paths)?;
     let pending = plan.pending();
 

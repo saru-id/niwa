@@ -55,6 +55,7 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
     }
 
     lint_unreferenced(&paths, out, &analysis);
+    lint_code_locations(&paths, out, &analysis)?;
 
     // The watcher pings for exactly three things: a config error you
     // just saved (handled in `run`), drift you just caused (below),
@@ -135,7 +136,49 @@ fn ask_upstream(
     Ok(false)
 }
 
-/// A module no one requires and a source no declaration reads are
+/// A file landing where code runs from (`LaunchAgents`, a bin
+/// directory) deserves one deliberate look. Flagged once per
+/// declaration: the acknowledgement is remembered like a declined
+/// proposal, so the note never nags.
+fn lint_code_locations(
+    paths: &Paths,
+    out: &Out,
+    analysis: &crate::model::analysis::Analysis,
+) -> Result<(), Error> {
+    let mut journal = Journal::load(&paths.state)?;
+    let mut remembered = false;
+    for declaration in &analysis.effective {
+        if !matches!(
+            declaration.identity.kind,
+            crate::model::Kind::File | crate::model::Kind::Link
+        ) {
+            continue;
+        }
+        let target = &declaration.identity.key;
+        let sensitive = target.contains("Library/LaunchAgents")
+            || target.contains("/bin/")
+            || target.ends_with("/bin");
+        if !sensitive {
+            continue;
+        }
+        let key = format!("lint:code-location:{}", declaration.identity);
+        if journal.is_declined(&key) {
+            continue;
+        }
+        out.note(&format!(
+            "{} writes where code runs from ({}) · noted once",
+            declaration.identity, declaration.provenance
+        ));
+        journal.decline(key);
+        remembered = true;
+    }
+    if remembered {
+        journal.save(&paths.state)?;
+    }
+    Ok(())
+}
+
+/// A module no one requires and a source no declaration reads are/// A module no one requires and a source no declaration reads are
 /// rot in waiting; the lint names them quietly.
 fn lint_unreferenced(paths: &Paths, out: &Out, analysis: &crate::model::analysis::Analysis) {
     if let Ok(entries) = std::fs::read_dir(paths.config.join("modules")) {
