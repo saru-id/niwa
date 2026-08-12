@@ -26,6 +26,10 @@ pub struct Journal {
     /// One entry per apply that changed something, oldest first.
     #[serde(default)]
     applies: Vec<ApplyEntry>,
+    /// The config commit stamped onto acknowledgements this run;
+    /// never persisted itself.
+    #[serde(skip)]
+    context_commit: Option<String>,
     /// Proposals answered "never": the permanent no, per machine.
     /// The one thing in the system that is neither declared, actual,
     /// nor acknowledged — the model's single appendix.
@@ -74,6 +78,25 @@ pub struct Acknowledgement {
     pub spec: Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bytes: Option<String>,
+    /// When this acknowledgement was written.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub applied: Option<String>,
+    /// The config commit that was checked out at the time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<String>,
+}
+
+impl Acknowledgement {
+    /// A fresh acknowledgement; `acknowledge` stamps the when and the
+    /// commit as it lands in the journal.
+    pub const fn new(spec: Value, bytes: Option<String>) -> Self {
+        Self {
+            spec,
+            bytes,
+            applied: None,
+            config: None,
+        }
+    }
 }
 
 impl Default for Journal {
@@ -83,6 +106,7 @@ impl Default for Journal {
             acknowledged: BTreeMap::new(),
             applies: Vec::new(),
             declined: BTreeSet::new(),
+            context_commit: None,
         }
     }
 }
@@ -137,8 +161,29 @@ impl Journal {
         self.acknowledged.get(identity)
     }
 
-    pub fn acknowledge(&mut self, identity: String, acknowledgement: Acknowledgement) {
+    pub fn acknowledge(&mut self, identity: String, mut acknowledgement: Acknowledgement) {
+        acknowledgement.applied = Some(
+            jiff::Timestamp::now()
+                .round(jiff::Unit::Second)
+                .map_or_else(|_| jiff::Timestamp::now().to_string(), |t| t.to_string()),
+        );
+        acknowledgement.config.clone_from(&self.context_commit);
         self.acknowledged.insert(identity, acknowledgement);
+    }
+
+    /// Stamp this run's config commit onto everything it acknowledges.
+    pub fn set_context_commit(&mut self, commit: Option<String>) {
+        self.context_commit = commit;
+    }
+
+    /// The steps every apply ever recorded for one identity, oldest
+    /// first, for `explain`'s history line.
+    pub fn history_of(&self, identity: &str) -> Vec<&Step> {
+        self.applies
+            .iter()
+            .flat_map(|entry| entry.steps.iter())
+            .filter(|step| step.identity == identity)
+            .collect()
     }
 
     pub fn drop_acknowledgement(&mut self, identity: &str) {
@@ -227,10 +272,7 @@ mod tests {
         let mut journal = Journal::default();
         journal.acknowledge(
             "file:~/.zshrc".to_string(),
-            Acknowledgement {
-                spec: Value::Str("x".to_string()),
-                bytes: Some(digest(b"hello")),
-            },
+            Acknowledgement::new(Value::Str("x".to_string()), Some(digest(b"hello"))),
         );
         journal.save(dir.path()).unwrap();
         let loaded = Journal::load(dir.path()).unwrap();

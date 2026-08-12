@@ -14,6 +14,18 @@ export HOME="$SANDBOX/home"
 mkdir -p "$HOME"
 unset XDG_CONFIG_HOME XDG_STATE_HOME XDG_DATA_HOME 2>/dev/null || true
 
+# Default stubs for every tool that could reach the real machine. A
+# drill that forgets to stub one of these must hit a harmless no-op,
+# never the real thing. Drills prepend their own bin to override.
+STUBS="$SANDBOX/stubs"
+mkdir -p "$STUBS"
+for tool in killall launchctl osascript ioreg; do
+    printf '#!/bin/sh\necho "%s $*" >>"%s/system.log"\nexit 0\n' \
+        "$tool" "$SANDBOX" >"$STUBS/$tool"
+    chmod 755 "$STUBS/$tool"
+done
+export PATH="$STUBS:/usr/bin:/bin"
+
 cleanup() { rm -rf "$SANDBOX"; }
 trap cleanup EXIT
 

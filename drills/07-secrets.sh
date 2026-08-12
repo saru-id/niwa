@@ -25,7 +25,7 @@ case "\$*" in
 esac
 EOF
 chmod 755 "$BIN/security"
-export PATH="$BIN:/usr/bin:/bin"
+export PATH="$BIN:$STUBS:/usr/bin:/bin"
 
 config
 cat >"$HOME/.config/niwa/init.luau" <<'EOF'

@@ -158,10 +158,7 @@ fn apply_service(
 
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: Some(digest(&bytes)),
-        },
+        Acknowledgement::new(declaration.spec.clone(), Some(digest(&bytes))),
     );
     Ok((Outcome::Done, Some(Effect::ServiceSet { previous })))
 }
@@ -186,10 +183,7 @@ fn apply_brew_service(
     }
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: None,
-        },
+        Acknowledgement::new(declaration.spec.clone(), None),
     );
     Ok((Outcome::Done, Some(Effect::BrewServiceStarted)))
 }
@@ -383,10 +377,7 @@ fn apply_file(
 
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: Some(digest(&declared)),
-        },
+        Acknowledgement::new(declaration.spec.clone(), Some(digest(&declared))),
     );
     Ok((Outcome::Done, Some(Effect::FileWritten { previous })))
 }
@@ -441,10 +432,7 @@ fn apply_link(
 
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: None,
-        },
+        Acknowledgement::new(declaration.spec.clone(), None),
     );
     Ok((Outcome::Done, Some(Effect::LinkMade { previous })))
 }
@@ -489,10 +477,7 @@ fn apply_defaults(
 
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: None,
-        },
+        Acknowledgement::new(declaration.spec.clone(), None),
     );
     Ok((Outcome::Done, Some(Effect::DefaultsSet { previous })))
 }
@@ -509,10 +494,7 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
     };
     journal.acknowledge(
         declaration.identity.to_string(),
-        Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes,
-        },
+        Acknowledgement::new(declaration.spec.clone(), bytes),
     );
 }
 

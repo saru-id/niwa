@@ -330,10 +330,7 @@ pub fn pull_file(
     })?;
     let identity = format!("file:{target}");
     if let Some(ack) = journal.acknowledged(&identity) {
-        let updated = Acknowledgement {
-            spec: ack.spec.clone(),
-            bytes: Some(digest(&live)),
-        };
+        let updated = Acknowledgement::new(ack.spec.clone(), Some(digest(&live)));
         journal.acknowledge(identity, updated);
     }
     Ok(())

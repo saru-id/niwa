@@ -71,4 +71,20 @@ pub enum Verb {
         /// One of: backup, restore
         action: String,
     },
+    /// The model, printed for one resource: declared, actual,
+    /// acknowledged, and its history
+    Explain {
+        /// An identity or a unique fragment of one, for example
+        /// dock.autohide or brew.formula:jq
+        target: String,
+    },
+    /// Every machine's stamp: who applied what, and who is behind
+    Machines,
+    /// Is niwa itself healthy? The journal, the archives, the
+    /// secrets, the lockfile, the watcher
+    Doctor {
+        /// Run the expensive checks too: sealed archives decrypt
+        #[arg(long)]
+        deep: bool,
+    },
 }

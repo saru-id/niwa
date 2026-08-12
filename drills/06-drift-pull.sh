@@ -46,7 +46,7 @@ echo "osascript \$*" >>"$CALLS"
 exit 0
 EOF
 chmod 755 "$BIN/brew" "$BIN/osascript"
-export PATH="$BIN:/usr/bin:/bin"
+export PATH="$BIN:$STUBS:/usr/bin:/bin"
 
 config
 mkdir -p "$HOME/.config/niwa/files" "$HOME/.config/niwa/modules"

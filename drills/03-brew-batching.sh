@@ -41,7 +41,7 @@ done
 exit \$status
 EOF
 chmod 755 "$BIN/brew"
-export PATH="$BIN:/usr/bin:/bin"
+export PATH="$BIN:$STUBS:/usr/bin:/bin"
 
 config
 

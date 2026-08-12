@@ -15,6 +15,9 @@ pub struct Analysis {
     /// order. A host declaration wins over a module's; the last host
     /// declaration wins among hosts.
     pub effective: Vec<Declaration>,
+    /// Every declaration as made, overridden ones included, for
+    /// `explain`'s layer-by-layer story.
+    pub all: Vec<Declaration>,
     pub conflicts: Vec<Conflict>,
 }
 
@@ -84,6 +87,7 @@ pub fn analyze(declarations: &[Declaration]) -> Analysis {
 
     Analysis {
         effective,
+        all: declarations.to_vec(),
         conflicts,
     }
 }

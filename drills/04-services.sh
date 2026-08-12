@@ -45,7 +45,7 @@ fi
 exit 0
 EOF
 chmod 755 "$BIN/launchctl" "$BIN/killall" "$BIN/brew"
-export PATH="$BIN:/usr/bin:/bin"
+export PATH="$BIN:$STUBS:/usr/bin:/bin"
 
 config
 cat >"$HOME/.config/niwa/init.luau" <<'EOF'

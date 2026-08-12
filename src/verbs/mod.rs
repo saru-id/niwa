@@ -4,7 +4,10 @@
 pub mod add;
 pub mod apply_verb;
 pub mod check;
+pub mod doctor;
+pub mod explain;
 pub mod fmt;
+pub mod machines;
 pub mod plan;
 pub mod pull;
 pub mod seal_key;
@@ -72,6 +75,15 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
     }
 
     Ok(analysis)
+}
+
+/// The secrets a config asks for, from one quiet validation pass.
+/// `None` when the config does not load; the caller reports that
+/// through its own channel.
+pub fn secrets_used(paths: &Paths) -> Option<Vec<(String, Option<String>)>> {
+    let runtime = Runtime::new(paths, &Limits::default(), None).ok()?;
+    runtime.run_entry().ok()?;
+    Some(runtime.secrets_used())
 }
 
 /// Turn a finished plan pass into the display plan: one item per

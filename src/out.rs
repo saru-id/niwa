@@ -138,6 +138,16 @@ impl Out {
         }
     }
 
+    /// A bare line: screens whose shape is its own vocabulary (the
+    /// machines list, explain) print through here.
+    pub fn plain(&self, text: &str) {
+        if self.tty {
+            println!(" {text}");
+        } else {
+            println!("{text}");
+        }
+    }
+
     /// A quiet, indented note.
     pub fn note(&self, text: &str) {
         if self.tty {
@@ -162,6 +172,22 @@ impl Out {
         for line in error.detail() {
             eprintln!("  {line}");
         }
+    }
+}
+
+/// Humanize a time in the voice rules' shape: "2h ago", "3w ago".
+/// Absolutes appear at -v, later.
+pub fn ago(timestamp: &str) -> String {
+    let Ok(then) = timestamp.parse::<jiff::Timestamp>() else {
+        return timestamp.to_string();
+    };
+    let seconds = (jiff::Timestamp::now() - then).get_seconds().max(0);
+    match seconds {
+        0..=59 => "just now".to_string(),
+        60..=3_599 => format!("{}m ago", seconds / 60),
+        3_600..=86_399 => format!("{}h ago", seconds / 3600),
+        86_400..=604_799 => format!("{}d ago", seconds / 86_400),
+        _ => format!("{}w ago", seconds / 604_800),
     }
 }
 

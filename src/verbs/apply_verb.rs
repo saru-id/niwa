@@ -62,6 +62,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     if pending == 0 {
         let line = format!("{} · nothing to do", count(intent.items.len(), "resource"));
         out.result(Mark::Ok, &line);
+        stamp_and_warn(out, &paths, intent.items.len());
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -82,7 +83,8 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     }
 
     // Pass two: the same program, effects live.
-    let journal = Journal::load(&paths.state)?;
+    let mut journal = Journal::load(&paths.state)?;
+    journal.set_context_commit(crate::stamp::config_commit(&paths).0);
     let engine = Rc::new(Engine::new(
         Mode::Execute {
             force: options.force,
@@ -123,10 +125,33 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         ));
     }
 
+    stamp_and_warn(out, &paths, intent.items.len());
+
     if options.verify {
         return Ok(verify(out, &paths));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Write the stamp, and say so when this machine's id already stamps
+/// under another name — renaming a Mac must never silently orphan its
+/// host file.
+fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
+    let name = crate::facts::Facts::gather(paths).name;
+    if name.is_empty() {
+        return;
+    }
+    let this_machine = crate::stamp::machine_id(paths);
+    for (stem, stamp) in crate::stamp::read_all(paths) {
+        if stamp.machine_id == this_machine && stem != name {
+            out.note(&format!(
+                "this machine was \"{stem}\", now \"{name}\": rename hosts/{stem}.luau and state/{stem}.toml to match"
+            ));
+        }
+    }
+    if let Err(error) = crate::stamp::write(paths, &name, resources) {
+        out.note(&format!("the stamp was not written: {error}"));
+    }
 }
 
 /// The literal definition of idempotence: re-read everything, demand
@@ -173,10 +198,20 @@ fn tree_is_dirty(paths: &Paths) -> bool {
     if !paths.config.join(".git").exists() {
         return false;
     }
+    // Stamps under state/ dirty the tree after every apply by
+    // design; they never count against an unattended run.
     let config = paths.config.display().to_string();
     bounded_stdout(
         "git",
-        &["-C", &config, "status", "--porcelain"],
+        &[
+            "-C",
+            &config,
+            "status",
+            "--porcelain",
+            "--",
+            ".",
+            ":(exclude)state",
+        ],
         Duration::from_secs(10),
     )
     .is_some_and(|status| !status.is_empty())

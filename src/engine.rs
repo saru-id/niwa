@@ -391,10 +391,7 @@ fn is_optional(declaration: &Declaration) -> bool {
 fn acknowledge(journal: &RefCell<Journal>, declaration: &Declaration) {
     journal.borrow_mut().acknowledge(
         declaration.identity.to_string(),
-        crate::journal::Acknowledgement {
-            spec: declaration.spec.clone(),
-            bytes: None,
-        },
+        crate::journal::Acknowledgement::new(declaration.spec.clone(), None),
     );
 }
 

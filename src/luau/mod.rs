@@ -96,6 +96,11 @@ impl Runtime {
         self.state.borrow().declarations.clone()
     }
 
+    /// Every secret the config asked for, for doctor.
+    pub fn secrets_used(&self) -> Vec<(String, Option<String>)> {
+        self.state.borrow().secrets_used.clone()
+    }
+
     /// Run `init.luau` from the config root, on the clock.
     pub fn run_entry(&self) -> Result<(), Error> {
         let deadline = Instant::now() + self.time;
