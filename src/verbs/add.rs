@@ -81,18 +81,16 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
             only: None,
             declined: std::collections::HashSet::new(),
         },
-        paths.clone(),
+        paths,
         journal,
         out.clone(),
     ));
     engine.settle(&declaration)?;
     engine.finish()?;
 
-    let installed = matches!(kind, Kind::BrewFormula | Kind::BrewCask)
-        .then(|| crate::brew::installed(&paths, &kind, name))
-        .flatten()
-        .is_some()
-        || matches!(kind, Kind::Npm) && crate::npm::installed(name);
+    // The engine already read the receipts back; ask it, not the
+    // providers a second time.
+    let installed = engine.resolve(&declaration.identity)?.present;
 
     if installed {
         out.result(
