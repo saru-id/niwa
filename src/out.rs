@@ -47,6 +47,10 @@ pub enum Mark {
     Failed,
     Restarted,
     Busy,
+    /// An offer to take something away.
+    Removed,
+    /// Waiting on a human's hands, never blocking.
+    Waiting,
 }
 
 impl Mark {
@@ -58,16 +62,18 @@ impl Mark {
             Self::Failed => "✗",
             Self::Restarted => "↻",
             Self::Busy => "▸",
+            Self::Removed => "-",
+            Self::Waiting => "→",
         }
     }
 
     const fn role(self) -> Role {
         match self {
             Self::Ok | Self::Added => Role::Good,
-            Self::Changed => Role::Warn,
+            Self::Changed | Self::Removed => Role::Warn,
             Self::Failed => Role::Bad,
             Self::Restarted => Role::Muted,
-            Self::Busy => Role::Accent,
+            Self::Busy | Self::Waiting => Role::Accent,
         }
     }
 }

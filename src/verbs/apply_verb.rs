@@ -87,6 +87,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     super::plan::render_pending(out, &intent);
 
     checklist_up_front(out, &intent, pending);
+    privileged_block(out, &intent);
 
     let declined = if options.yes {
         std::collections::HashSet::new()
@@ -395,6 +396,36 @@ fn scope_to_only(intent: &mut crate::model::action::Plan, only: Option<&str>) ->
     Ok(())
 }
 
+/// The steps that need administrator rights, named with their
+/// sources before anything asks for a password.
+fn privileged_block(out: &Out, intent: &crate::model::action::Plan) {
+    let privileged: Vec<&crate::model::action::Item> = intent
+        .items
+        .iter()
+        .filter(|item| {
+            matches!(item.action, Action::Create | Action::Change { .. })
+                && item.declaration.privileged
+        })
+        .collect();
+    if privileged.is_empty() {
+        return;
+    }
+    out.plain("");
+    out.result(
+        Mark::Waiting,
+        &format!(
+            "{} need administrator rights",
+            count(privileged.len(), "step")
+        ),
+    );
+    for item in privileged {
+        out.note(&format!(
+            "{} ({})",
+            item.declaration.identity, item.declaration.provenance
+        ));
+    }
+}
+
 /// On a long run the human steps arrive up front, so hands can work
 /// while the machine does: nothing in the checklist ever blocks the
 /// apply.
@@ -413,9 +444,26 @@ fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: u
         out.plain("");
         out.group("yours meanwhile");
         for item in manual {
-            out.result(Mark::Busy, &item.declaration.identity.key);
+            out.result(Mark::Waiting, &checklist_line(&item.declaration));
         }
     }
+}
+
+/// A checklist row speaks its own deep link and pasteable command:
+/// `open` is a door, `command` is shown, never executed.
+fn checklist_line(declaration: &crate::model::Declaration) -> String {
+    let mut line = declaration.identity.key.clone();
+    if let crate::model::Value::Map(fields) = &declaration.spec {
+        if let Some(crate::model::Value::Str(open)) = fields.get("open") {
+            use std::fmt::Write as _;
+            let _ = write!(line, " · open {open}");
+        }
+        if let Some(crate::model::Value::Str(command)) = fields.get("command") {
+            use std::fmt::Write as _;
+            let _ = write!(line, " · paste: {command}");
+        }
+    }
+    line
 }
 
 fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>) -> ExitCode {

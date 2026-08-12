@@ -240,7 +240,7 @@ const fn mark_of(finding: &Finding) -> Mark {
             Mark::Changed
         }
         Finding::SettingsFlip { .. } | Finding::UnmanagedPackage { .. } => Mark::Added,
-        Finding::Orphan { .. } => Mark::Failed,
+        Finding::Orphan { .. } => Mark::Removed,
     }
 }
 

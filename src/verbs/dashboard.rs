@@ -73,25 +73,8 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
     out.plain(&headline);
     out.plain("");
 
-    if pending > 0 {
-        out.result(Mark::Busy, &format!("{pending} would change"));
-    }
-    if proposals > 0 {
-        out.result(
-            Mark::Busy,
-            &format!("{} · niwa pull to review", count(proposals, "proposal")),
-        );
-    }
-    let outdated = outdated_line(out, &paths);
-    if manual > 0 {
-        out.result(
-            Mark::Busy,
-            &format!("{} in the checklist", count(manual, "manual step")),
-        );
-    }
-    if pending == 0 && proposals == 0 && outdated == 0 {
-        out.result(Mark::Ok, "in sync · nothing waiting");
-    }
+    status_lines(out, &paths, &plan, pending, proposals, &open_steps);
+
     // The keys work where a terminal is attached; piped output is the
     // screen alone.
     if !std::io::stdin().is_terminal() {
@@ -127,6 +110,59 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         "h" => super::history::run(out),
         _ => ExitCode::SUCCESS,
     })
+}
+
+/// The dashboard's status lines: what would change, what is
+/// proposed, what is outdated, and what waits on hands — each with
+/// its first concrete name beside the count. Returns the outdated
+/// total for the in-sync verdict.
+fn status_lines(
+    out: &Out,
+    paths: &Paths,
+    plan: &crate::model::action::Plan,
+    pending: usize,
+    proposals: usize,
+    open_steps: &[&crate::model::Declaration],
+) {
+    let manual = open_steps.len();
+    if pending > 0 {
+        let first = plan
+            .items
+            .iter()
+            .find(|item| {
+                matches!(
+                    item.action,
+                    crate::model::action::Action::Create
+                        | crate::model::action::Action::Change { .. }
+                )
+            })
+            .map(|item| item.declaration.identity.to_string())
+            .unwrap_or_default();
+        out.result(Mark::Busy, &format!("{pending} would change · {first}"));
+    }
+    if proposals > 0 {
+        out.result(
+            Mark::Busy,
+            &format!("{} · niwa pull to review", count(proposals, "proposal")),
+        );
+    }
+    let outdated = outdated_line(out, paths);
+    if manual > 0 {
+        let first = open_steps
+            .first()
+            .map(|step| step.identity.key.clone())
+            .unwrap_or_default();
+        out.result(
+            Mark::Waiting,
+            &format!(
+                "{} in the checklist · {first}",
+                count(manual, "manual step")
+            ),
+        );
+    }
+    if pending == 0 && proposals == 0 && outdated == 0 {
+        out.result(Mark::Ok, "in sync · nothing waiting");
+    }
 }
 
 /// The watcher's warm answer: outdated counts wait here for your
