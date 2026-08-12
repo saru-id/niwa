@@ -57,17 +57,36 @@ impl Lockfile {
 
     /// Read the committed lock; absent is empty.
     pub fn load(paths: &Paths) -> Result<Self, Error> {
-        match std::fs::read_to_string(Self::path(paths)) {
+        let lock: Self = match std::fs::read_to_string(Self::path(paths)) {
             Ok(text) => toml::from_str(&text).map_err(|error| Error::Apply {
                 doing: "reading niwa.lock".to_string(),
                 detail: error.to_string(),
-            }),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(error) => Err(Error::Apply {
+            })?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(error) => {
+                return Err(Error::Apply {
+                    doing: "reading niwa.lock".to_string(),
+                    detail: error.to_string(),
+                });
+            }
+        };
+        // A lock written by a newer niwa refuses the same way a newer
+        // journal does: the config may hold forms this build cannot
+        // read, and guessing is worse than the one honest sentence.
+        if let Some(writer) = &lock.niwa
+            && version_triple(writer) > version_triple(env!("CARGO_PKG_VERSION"))
+        {
+            return Err(Error::Apply {
                 doing: "reading niwa.lock".to_string(),
-                detail: error.to_string(),
-            }),
+                detail: format!(
+                    "the lockfile was written by niwa {writer}, this is {} · update niwa first",
+                    env!("CARGO_PKG_VERSION")
+                ),
+            });
         }
+        Ok(lock)
     }
 
     /// Write the lock with the header comment the example carries.
@@ -92,6 +111,17 @@ impl Lockfile {
             },
         )
     }
+}
+
+/// A semver triple for ordering; anything unparsable reads as zero,
+/// so a hand-edited version never blocks a load.
+fn version_triple(text: &str) -> (u64, u64, u64) {
+    let mut parts = text.split('.').map(|part| part.parse().unwrap_or(0));
+    (
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+    )
 }
 
 #[cfg(test)]

@@ -546,6 +546,20 @@ fn an_optional_failure_still_reports_failed() {
     );
 }
 
+#[test]
+fn a_lockfile_from_a_newer_niwa_says_update_first() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    write(home.path(), "niwa.lock", "niwa = \"99.0.0\"\n");
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("update niwa first"),
+        "the way out must be named: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through
