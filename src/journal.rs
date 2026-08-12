@@ -258,8 +258,16 @@ impl Journal {
         self.acknowledged.keys().cloned().collect()
     }
 
-    pub fn pop_apply(&mut self) -> Option<ApplyEntry> {
-        self.applies.pop()
+    /// Remove the newest apply's newest step — the one just
+    /// reversed. A drained entry goes with its last step, so undo
+    /// can never forget work it has not taken back.
+    pub fn pop_step(&mut self) {
+        if let Some(entry) = self.applies.last_mut() {
+            entry.steps.pop();
+            if entry.steps.is_empty() {
+                self.applies.pop();
+            }
+        }
     }
 }
 

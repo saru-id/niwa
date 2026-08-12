@@ -12,7 +12,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::error::Error;
-use crate::journal::{Acknowledgement, ApplyEntry, Effect, Journal, Step, digest};
+use crate::journal::{Acknowledgement, Effect, Journal, Step, digest};
 use crate::model::action::Action;
 use crate::model::{Declaration, Kind, Value};
 use crate::paths::Paths;
@@ -625,12 +625,24 @@ fn apply_error(doing: &str, detail: &dyn std::fmt::Display) -> Error {
 /// Reverse one apply entry, newest step first. Each restoration
 /// archives what it displaces: undo is a write like any other, and
 /// nothing is ever the only copy.
-pub fn reverse(entry: &ApplyEntry, paths: &Paths, journal: &mut Journal) -> Result<usize, Error> {
+pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error> {
     let archive_root = archive_dir(paths);
     let mut reversed = 0;
-    for step in entry.steps.iter().rev() {
-        reverse_step(step, paths, &archive_root)?;
+    let Some(target) = journal.last_apply().map(|entry| entry.id) else {
+        return Ok(0);
+    };
+    // Newest effect first, and each reversed step leaves the journal
+    // before the next begins: a failure or a kill keeps the
+    // un-reversed remainder exactly where undo will find it. The
+    // loop ends at this entry's boundary — undo reaches one apply.
+    while let Some(step) = journal
+        .last_apply()
+        .filter(|entry| entry.id == target)
+        .and_then(|entry| entry.steps.last().cloned())
+    {
+        reverse_step(&step, paths, &archive_root)?;
         journal.drop_acknowledgement(&step.identity);
+        journal.pop_step();
         journal.save(&paths.state)?;
         reversed += 1;
     }

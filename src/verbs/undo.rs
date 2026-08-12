@@ -4,7 +4,7 @@
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
 
-use crate::apply::{Lock, reverse};
+use crate::apply::{Lock, reverse_last};
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::out::{Mark, Out, count};
@@ -66,13 +66,7 @@ fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {
         }
     }
 
-    let Some(entry) = journal.pop_apply() else {
-        out.result(Mark::Ok, "nothing to undo");
-        return Ok(ExitCode::SUCCESS);
-    };
-    journal.save(&paths.state)?;
-    let reversed = reverse(&entry, &paths, &mut journal)?;
-    journal.save(&paths.state)?;
+    let reversed = reverse_last(&paths, &mut journal)?;
 
     out.result(Mark::Ok, &format!("{} reversed", count(reversed, "change")));
     Ok(ExitCode::SUCCESS)

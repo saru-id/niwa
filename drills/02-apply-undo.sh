@@ -73,4 +73,25 @@ check 14 "the apply still succeeds (exit 0)" test "$STATUS" -eq 0
 check 15 "the stale archive was pruned, directory and all" \
     sh -c "! test -e '$STALE'"
 
+# --- a failed reverse keeps the remainder undoable ------------------
+# Two steps land; the older one's archive is destroyed. Undo reverses
+# the newer step, fails on the older, and the journal must still hold
+# the un-reversed step — never forget work it has not taken back.
+echo "hand-made" >"$HOME/.undo-keeper"
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.file("~/.undo-keeper", { content = "niwa's version" })
+niwa.file("~/.undo-newer", { content = "second step" })
+LUAU
+niwa apply --yes --force
+check 16 "the two-step apply lands (exit 0)" test "$STATUS" -eq 0
+rm -rf "$HOME/.local/state/niwa/archive/file:~_.undo-keeper"
+niwa undo --yes
+check 17 "undo fails on the destroyed archive (exit 1)" test "$STATUS" -eq 1
+check 18 "the newer step was reversed before the failure" \
+    sh -c "! test -e '$HOME/.undo-newer'"
+niwa undo --yes
+check 19 "the un-reversed step is still known" \
+    grep -q "undo would reverse 1 change" "$SANDBOX/stdout"
+
 echo "drill: apply and undo · all checks passed"
