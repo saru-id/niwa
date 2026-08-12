@@ -52,6 +52,18 @@ impl Paths {
             data,
         })
     }
+
+    /// The sandbox rehearsal's world: the real config, and everything
+    /// else under a scratch root that never existed before this run.
+    pub fn sandboxed(&self, scratch: &Path) -> Self {
+        Self {
+            home: scratch.join("home"),
+            config: self.config.clone(),
+            state: scratch.join("state"),
+            brew_prefix: scratch.join("brew"),
+            data: scratch.join("share"),
+        }
+    }
 }
 
 /// An XDG variable is honored when set to an absolute path; anything

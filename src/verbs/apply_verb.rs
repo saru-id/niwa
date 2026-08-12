@@ -31,6 +31,7 @@ pub struct Options {
     pub verify: bool,
     pub no_privileged: bool,
     pub only: Option<String>,
+    pub sandbox: bool,
 }
 
 pub fn run(out: &Out, options: &Options) -> ExitCode {
@@ -45,6 +46,10 @@ pub fn run(out: &Out, options: &Options) -> ExitCode {
 
 fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
+
+    if options.sandbox {
+        return sandbox_rehearsal(out, &paths);
+    }
 
     // Unattended, a dirty tree means someone forgot to commit, and an
     // apply nobody watched would poison the stamp's honesty.
@@ -184,6 +189,63 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
 /// The literal definition of idempotence: re-read everything, demand
 /// silence, and name the resource and source line of anything that
 /// still reports a change.
+/// `--sandbox`: does this config actually work from nothing? Files
+/// and links land in a throwaway home; packages settle against an
+/// empty prefix and are counted, never installed. The real machine
+/// is not touched, which is the whole point.
+fn sandbox_rehearsal(out: &Out, real: &Paths) -> Result<ExitCode, Error> {
+    let scratch = std::env::temp_dir().join(format!("niwa-sandbox-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&scratch);
+    let paths = real.sandboxed(&scratch);
+    for dir in [&paths.home, &paths.state, &paths.brew_prefix, &paths.data] {
+        std::fs::create_dir_all(dir).map_err(|error| Error::Apply {
+            doing: "building the sandbox".to_string(),
+            detail: error.to_string(),
+        })?;
+    }
+    let verdict = rehearse(out, &paths);
+    let _ = std::fs::remove_dir_all(&scratch);
+    verdict
+}
+
+fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
+    let journal = Journal::load(&paths.state)?;
+    let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
+    super::run_pass(paths, Some(Rc::clone(&engine)))?;
+    let intent = super::plan_of(engine);
+
+    let mut journal = Journal::load(&paths.state)?;
+    let lock = crate::lockfile::Lockfile::load(paths)?;
+    let mut files = 0usize;
+    let mut packages = 0usize;
+    for item in &intent.items {
+        if !matches!(item.action, Action::Create | Action::Change { .. }) {
+            continue;
+        }
+        match &item.declaration.identity.kind {
+            crate::model::Kind::File | crate::model::Kind::Link => {
+                crate::apply::perform(&item.declaration, paths, &mut journal, &lock, false)?;
+                files += 1;
+            }
+            crate::model::Kind::BrewFormula
+            | crate::model::Kind::BrewCask
+            | crate::model::Kind::Npm
+            | crate::model::Kind::Mise
+            | crate::model::Kind::GithubRelease => packages += 1,
+            _ => {}
+        }
+    }
+    out.result(
+        Mark::Ok,
+        &format!(
+            "works from nothing · {} landed · {} would install",
+            count(files, "file"),
+            count(packages, "package")
+        ),
+    );
+    Ok(ExitCode::SUCCESS)
+}
+
 /// `--only` scopes the run to one unit; a name nothing answers to is
 /// a refusal, not a silent no-op.
 fn scope_to_only(intent: &mut crate::plan::Plan, only: Option<&str>) -> Result<(), Error> {

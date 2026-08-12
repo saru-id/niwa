@@ -58,6 +58,10 @@ pub enum Verb {
         /// Run one module by name and leave the rest as they stand
         #[arg(long)]
         only: Option<String>,
+        /// Rehearse from nothing: a throwaway home and fake prefixes.
+        /// Files land there; packages are counted, never installed
+        #[arg(long)]
+        sandbox: bool,
     },
     /// Reverse the most recent apply
     Undo {

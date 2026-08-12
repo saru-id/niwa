@@ -218,6 +218,44 @@ fn apply_only_runs_one_module_and_leaves_the_rest() {
 }
 
 #[test]
+fn apply_sandbox_rehearses_from_nothing_without_touching_home() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.file(\"~/.rehearsed\", { content = \"from nothing\" })\n\
+         niwa.brew.formula { \"jq\", \"ripgrep\" }\n",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--sandbox"]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = stdout(&output);
+    assert!(
+        text.contains("works from nothing"),
+        "verdict missing: {text}"
+    );
+    assert!(text.contains("1 file landed") && text.contains("2 packages would install"));
+    assert!(
+        !home.path().join(".rehearsed").exists(),
+        "the rehearsal must not touch the real home"
+    );
+
+    // A repo that cannot work from nothing fails the rehearsal.
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.x\", { source = \"@self/files/gone\" })\n",
+    );
+    let broken = niwa(home.path(), &[], &["apply", "--sandbox"]);
+    assert_eq!(broken.status.code(), Some(1));
+}
+
+#[test]
 fn a_ticked_step_stays_ticked_until_the_world_moves() {
     let home = tempfile::tempdir().unwrap();
     write(
