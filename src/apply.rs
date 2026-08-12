@@ -25,6 +25,9 @@ pub enum Outcome {
     Done,
     /// The target holds bytes niwa never wrote; apply does not guess.
     Protected,
+    /// An `optional` resource failed: reported in its result, never
+    /// fatal — the design's whole reason for the flag.
+    Failed,
     /// No provider can act on this kind yet.
     Unchecked,
 }
@@ -134,7 +137,7 @@ fn apply_exec(
         && let Err((code, stderr)) = crate::exec::run(declaration)
     {
         if declaration.is_optional() {
-            return Ok((Outcome::Unchecked, None));
+            return Ok((Outcome::Failed, None));
         }
         return Err(Error::ResourceFailed {
             identity: declaration.identity.to_string(),

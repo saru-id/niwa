@@ -518,6 +518,34 @@ fn a_failure_inside_try_is_contained() {
     assert!(!home.path().join(".after-bare").exists());
 }
 
+#[test]
+fn an_optional_failure_still_reports_failed() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         local r = niwa.run(\"/usr/bin/false\", {\n\
+             unless = niwa.exists(\"~/.never\"),\n\
+             optional = true,\n\
+         })\n\
+         if r.failed then\n\
+             niwa.file(\"~/.saw-the-failure\", { content = \"honest\" })\n\
+         end\n",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "optional means the run continues: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        home.path().join(".saw-the-failure").is_file(),
+        "the failed flag is the whole point of optional"
+    );
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through

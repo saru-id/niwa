@@ -530,7 +530,7 @@ impl Engine {
                 .protected
                 .borrow_mut()
                 .push(declaration.identity.to_string()),
-            Outcome::InSync | Outcome::Unchecked => {}
+            Outcome::InSync | Outcome::Unchecked | Outcome::Failed => {}
         }
         Ok(match outcome {
             Outcome::Done => Truth {
@@ -543,6 +543,12 @@ impl Engine {
                 changed: false,
                 present: true,
                 failed: false,
+                version: None,
+            },
+            Outcome::Failed => Truth {
+                changed: false,
+                present: false,
+                failed: true,
                 version: None,
             },
         })
