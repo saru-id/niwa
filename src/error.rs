@@ -29,6 +29,9 @@ pub enum Error {
     #[error("the journal cannot be read")]
     JournalUnreadable { detail: String },
 
+    #[error("the journal cannot be written")]
+    JournalUnwritable { detail: String },
+
     #[error("another apply is already running")]
     ApplyLocked { path: PathBuf },
 
@@ -199,9 +202,14 @@ impl Error {
                 lines.extend(stderr.lines().map(str::to_string));
                 lines
             }
-            Self::JournalUnreadable { detail } => {
-                vec![detail.clone(), "run `niwa doctor` once it exists; the journal file lives under ~/.local/state/niwa".to_string()]
-            }
+            Self::JournalUnreadable { detail } => vec![
+                detail.clone(),
+                "run `niwa doctor`; the journal file lives under ~/.local/state/niwa".to_string(),
+            ],
+            Self::JournalUnwritable { detail } => vec![
+                detail.clone(),
+                "check the disk space and the permissions on ~/.local/state/niwa".to_string(),
+            ],
         }
     }
 }

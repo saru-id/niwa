@@ -48,7 +48,10 @@ impl Digest {
     /// A digest older than a week is due again.
     pub fn is_stale(&self) -> bool {
         self.when.parse::<jiff::Timestamp>().map_or(true, |when| {
-            (jiff::Timestamp::now() - when).get_seconds() > 7 * 24 * 60 * 60
+            let age = (jiff::Timestamp::now() - when).get_seconds();
+            // A future stamp is clock skew, not freshness: without
+            // this, a skewed write silences the weekly survey forever.
+            !(0..=7 * 24 * 60 * 60).contains(&age)
         })
     }
 }
@@ -199,4 +202,23 @@ pub fn refresh(paths: &Paths, declarations: &[Declaration], lock: &Lockfile) -> 
     };
     digest.save(paths);
     digest
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_future_dated_digest_is_stale_not_frozen() {
+        let skewed = Digest {
+            when: "2099-01-01T00:00:00Z".to_string(),
+            ..Digest::default()
+        };
+        assert!(skewed.is_stale());
+        let fresh = Digest {
+            when: jiff::Timestamp::now().to_string(),
+            ..Digest::default()
+        };
+        assert!(!fresh.is_stale());
+    }
 }

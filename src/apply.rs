@@ -447,10 +447,23 @@ pub fn prune_archives(paths: &Paths, journal: &Journal) {
 }
 
 fn sanitize(identity: &str) -> String {
-    identity
+    // `_` escapes itself so `a/b` and `a_b` cannot share a home, and
+    // anything past 120 bytes becomes a digest-suffixed stub: a
+    // directory name must stay under the filesystem's 255-byte cap.
+    let mapped: String = identity
         .chars()
-        .map(|c| if c == '/' { '_' } else { c })
-        .collect()
+        .flat_map(|c| match c {
+            '/' => vec!['_', 's'],
+            '_' => vec!['_', '_'],
+            other => vec![other],
+        })
+        .collect();
+    if mapped.len() <= 120 {
+        mapped
+    } else {
+        let head: String = mapped.chars().take(64).collect();
+        format!("{head}-{}", &digest(identity.as_bytes())[..16])
+    }
 }
 
 fn apply_file(
@@ -635,8 +648,17 @@ fn apply_defaults(
 fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut Journal) {
     let bytes = match &declaration.identity.kind {
         Kind::File => {
+            // Re-read once and re-prove the match: an edit landing
+            // between compare's read and this one must stay the
+            // person's bytes, never become niwa's to overwrite.
             let target = expand_target(paths, &declaration.identity.key);
-            std::fs::read(target).ok().map(|bytes| digest(&bytes))
+            let live = std::fs::read(target).ok();
+            match (&live, declared_file_bytes(paths, declaration)) {
+                (Some(live), Some(declared)) if *live == declared => {}
+                (_, None) => {}
+                _ => return,
+            }
+            live.map(|bytes| digest(&bytes))
         }
         // A converged re-ack keeps what the install recorded — the
         // release digest compare reads back must survive row two.
@@ -648,6 +670,22 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
         declaration.identity.to_string(),
         Acknowledgement::new(declaration.spec.clone(), bytes),
     );
+}
+
+/// The bytes a file declaration means, when they are knowable
+/// without an apply: inline content, or an `@self/` source. Rendered
+/// content resolves at apply time and answers `None`.
+fn declared_file_bytes(paths: &Paths, declaration: &Declaration) -> Option<Vec<u8>> {
+    let Value::Map(fields) = &declaration.spec else {
+        return None;
+    };
+    match (fields.get("source"), fields.get("content")) {
+        (Some(Value::Str(source)), _) => source
+            .strip_prefix("@self/")
+            .and_then(|rest| std::fs::read(paths.config.join(rest)).ok()),
+        (_, Some(Value::Str(content))) => Some(content.clone().into_bytes()),
+        _ => None,
+    }
 }
 
 fn write_atomic(target: &Path, bytes: &[u8]) -> Result<(), Error> {

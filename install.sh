@@ -11,7 +11,8 @@
 
 set -eu
 
-BASE="${NIWA_RELEASE_BASE:-https://niwa.rs/release}"
+main() {
+    BASE="${NIWA_RELEASE_BASE:-https://niwa.rs/release}"
 VERSION="${NIWA_VERSION:-0.1.0}"
 ARCH="$(uname -m)"
 NAME="niwa-$VERSION-macos-$ARCH.tar.gz"
@@ -26,7 +27,14 @@ fail() { printf 'install: %s\n' "$*" >&2; exit 1; }
 if ! xcode-select -p >/dev/null 2>&1; then
     say "the Command Line Tools are needed first; macOS will ask"
     xcode-select --install >/dev/null 2>&1 || true
-    until xcode-select -p >/dev/null 2>&1; do sleep 10; done
+    # One hour covers any real install; a canceled dialog must not
+    # poll forever.
+    waited=0
+    until xcode-select -p >/dev/null 2>&1; do
+        sleep 10
+        waited=$((waited + 10))
+        [ "$waited" -ge 3600 ] && fail "the Command Line Tools did not finish installing; run the installer again once they are in"
+    done
 fi
 
 WORK="$(mktemp -d)"
@@ -77,3 +85,8 @@ if [ -n "$CONFIG_REPO" ]; then
 else
     say "next: open a new shell and run \`niwa init\`"
 fi
+}
+
+# The whole script parses before one line runs: a connection that
+# drops mid-download executes nothing, instead of a prefix.
+main "$@"

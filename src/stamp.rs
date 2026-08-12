@@ -99,6 +99,18 @@ pub fn config_commit(paths: &Paths) -> (Option<String>, bool) {
 
 /// Write this machine's stamp into the repo after an apply.
 pub fn write(paths: &Paths, name: &str, resources: usize) -> Result<PathBuf, Error> {
+    // The name becomes a file stem: one segment, no separators. A
+    // hostname a person made strange falls back to the machine id
+    // rather than writing outside state/.
+    let fallback;
+    let name = if name.is_empty() || name.contains(['/', ':']) || name.contains("..") {
+        let id = machine_id(paths);
+        fallback = id.chars().take(12).collect::<String>();
+        fallback.as_str()
+    } else {
+        name
+    };
+
     let (config, dirty) = config_commit(paths);
     let stamp = Stamp {
         machine_id: machine_id(paths),

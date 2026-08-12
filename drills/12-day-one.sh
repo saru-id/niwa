@@ -142,6 +142,13 @@ check 11d "an existing config is left alone" \
     sh -c "test $STATUS -eq 0 && grep -q 'leaving it' '$SANDBOX/stdout'"
 rm -rf "$HOME/.config/niwa"
 
+# --- a truncated stream executes nothing ----------------------------
+FRESH="$SANDBOX/fresh-home"
+mkdir -p "$FRESH"
+STATUS=0
+head -c 500 "$INSTALLER" | HOME="$FRESH" sh >/dev/null 2>&1 || STATUS=$?
+check 11e "a cut-off installer stream installs nothing"     sh -c "! test -e '$FRESH/.local/bin/niwa' && ! test -e '$FRESH/.zshrc'"
+
 # --- from nothing to a governed machine -----------------------------
 export HOMEBREW_PREFIX="$SANDBOX/brew"
 mkdir -p "$HOMEBREW_PREFIX/Cellar"

@@ -155,7 +155,7 @@ impl Journal {
 
     /// Write the journal atomically: temp file, then rename.
     pub fn save(&self, state: &Path) -> Result<(), Error> {
-        std::fs::create_dir_all(state).map_err(|error| Error::JournalUnreadable {
+        std::fs::create_dir_all(state).map_err(|error| Error::JournalUnwritable {
             detail: error.to_string(),
         })?;
         let path = state.join(FILE);
@@ -165,7 +165,7 @@ impl Journal {
         // Synced before the rename: the journal is the one ledger a
         // power loss must not empty.
         crate::util::write_atomic(&path, &raw, None, true).map_err(|error| {
-            Error::JournalUnreadable {
+            Error::JournalUnwritable {
                 detail: error.to_string(),
             }
         })

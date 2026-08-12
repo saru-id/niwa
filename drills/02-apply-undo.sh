@@ -97,7 +97,7 @@ niwa.file("~/.undo-newer", { content = "second step" })
 LUAU
 niwa apply --yes --force
 check 16 "the two-step apply lands (exit 0)" test "$STATUS" -eq 0
-rm -rf "$HOME/.local/state/niwa/archive/file:~_.undo-keeper"
+rm -rf "$HOME/.local/state/niwa/archive/file:~_s.undo-keeper"
 niwa undo --yes
 check 17 "undo fails on the destroyed archive (exit 1)" test "$STATUS" -eq 1
 check 18 "the newer step was reversed before the failure" \

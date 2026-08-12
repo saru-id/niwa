@@ -71,7 +71,7 @@ check 11 "apply --force re-renders the file" grep -q "password hunter2" "$HOME/.
 check 12 "the displaced bytes were archived sealed, not in the clear" \
     sh -c "! grep -rq my-hand-edit '$HOME/.local/state/niwa/archive'"
 check 13 "the archive really is an age file" \
-    sh -c "grep -rlq age-encryption '$HOME/.local/state/niwa/archive/file:~_.netrc'"
+    sh -c "grep -rlq age-encryption '$HOME/.local/state/niwa/archive/file:~_s.netrc'"
 
 niwa undo --yes
 check 14 "undo decrypts the sealed archive and restores the hand edit" \
