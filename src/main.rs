@@ -8,15 +8,18 @@ mod error;
 mod facts;
 mod gate;
 mod journal;
+mod lockfile;
 mod luau;
 mod luaufmt;
 mod mise;
 mod model;
+mod modules;
 mod npm;
 mod out;
 mod paths;
 mod plan;
 mod proposals;
+mod release;
 mod secrets;
 mod services;
 mod stamp;
@@ -55,5 +58,6 @@ fn main() -> ExitCode {
         cli::Verb::Explain { target } => verbs::explain::run(&out, &target),
         cli::Verb::Machines => verbs::machines::run(&out),
         cli::Verb::Doctor { deep } => verbs::doctor::run(&out, deep),
+        cli::Verb::Update { name } => verbs::update::run(&out, name.as_deref()),
     }
 }

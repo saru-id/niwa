@@ -45,6 +45,31 @@ pub fn run_entry(lua: &Lua) -> mlua::Result<()> {
     load(lua, &resolver, "init").map(|_| ())
 }
 
+/// Load a file from outside the config root — a cached shared module
+/// — through the same chunk-naming discipline. Loaded once per name.
+pub fn load_external(lua: &Lua, file: &std::path::Path, name: &str) -> mlua::Result<()> {
+    let resolver = lua
+        .app_data_ref::<Rc<Resolver>>()
+        .ok_or_else(|| mlua::Error::RuntimeError("the resolver is not installed".to_string()))?;
+    if resolver.cache.borrow().contains_key(name) {
+        return Ok(());
+    }
+    let source = std::fs::read_to_string(file).map_err(|error| {
+        mlua::Error::RuntimeError(format!("cannot read {}: {error}", file.display()))
+    })?;
+    let value = lua
+        .load(&source)
+        .set_name(format!("@{name}"))
+        .call::<Value>(())?;
+    let value = match value {
+        Value::Nil => Value::Boolean(true),
+        value => value,
+    };
+    let key = lua.create_registry_value(&value)?;
+    resolver.cache.borrow_mut().insert(name.to_string(), key);
+    Ok(())
+}
+
 /// `niwa.host()`: load `hosts/<name>.luau` if it exists, silently do
 /// nothing when it does not. The design keeps this dynamic lookup in
 /// niwa's own resolver so the static cases stay analysable.

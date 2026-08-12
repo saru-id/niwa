@@ -90,6 +90,13 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
                 Action::Create
             }
         }
+        Kind::GithubRelease => {
+            if crate::release::installed(paths, &release_bin(declaration)) {
+                Action::InSync
+            } else {
+                Action::Create
+            }
+        }
         _ => Action::Unchecked,
     }
 }
@@ -232,6 +239,23 @@ fn compare_defaults(declaration: &Declaration, paths: &Paths) -> Action {
             detail: format!("{} → {}", render_value(&actual), render_value(declared)),
         },
     }
+}
+
+/// The binary a release declaration installs: its `bin` field, or
+/// the repo's own name.
+pub fn release_bin(declaration: &Declaration) -> String {
+    if let Value::Map(fields) = &declaration.spec
+        && let Some(Value::Str(bin)) = fields.get("bin")
+    {
+        return bin.clone();
+    }
+    declaration
+        .identity
+        .key
+        .rsplit('/')
+        .next()
+        .unwrap_or(&declaration.identity.key)
+        .to_string()
 }
 
 /// Where a preference domain lives on disk. niwa reads plists

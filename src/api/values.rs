@@ -304,6 +304,28 @@ fn declare_use(lua: &Lua, ctx: &Ctx, source: &str) -> mlua::Result<Table> {
         },
     )?;
 
+    // The module itself: loaded from the content-addressed cache the
+    // lockfile names, sandboxed exactly like the rest of the config.
+    // A plan never fetches; an unresolved module is an error naming
+    // the fix, and check stays quiet so a fresh clone still checks.
+    if let Some(engine) = &ctx.engine {
+        let lock = &engine.lock;
+        let key = format!("github:{repo}");
+        let Some(pin) = lock.uses.get(&key) else {
+            return Err(mlua::Error::RuntimeError(format!(
+                "{prov}: the module {source} is not resolved · run `niwa update`"
+            )));
+        };
+        let cache = crate::modules::cache_dir(&engine.paths, &pin.sha256);
+        let entry = cache.join("init.luau");
+        if !entry.is_file() {
+            return Err(mlua::Error::RuntimeError(format!(
+                "{prov}: the module {source} is not cached on this machine · run `niwa update`"
+            )));
+        }
+        crate::luau::load_external(lua, &entry, &format!("use:{repo}/init.luau"))?;
+    }
+
     let handle = lua.create_table()?;
     freeze(lua, &handle)?;
     Ok(handle)

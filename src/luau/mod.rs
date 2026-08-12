@@ -23,7 +23,7 @@ use crate::facts::Facts;
 use crate::model::Declaration;
 use crate::paths::Paths;
 
-pub use resolver::load_host;
+pub use resolver::{load_external, load_host};
 
 pub struct Limits {
     /// Wall-clock budget for one whole config run.

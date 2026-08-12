@@ -100,6 +100,10 @@ fn recover(error: &mlua::Error) -> Option<Error> {
                     name: name.clone(),
                     looked: looked.clone(),
                 }),
+                Error::Apply { doing, detail } => Some(Error::Apply {
+                    doing: doing.clone(),
+                    detail: detail.clone(),
+                }),
                 _ => None,
             }
         }

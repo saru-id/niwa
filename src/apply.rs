@@ -66,6 +66,7 @@ pub fn perform(
     declaration: &Declaration,
     paths: &Paths,
     journal: &mut Journal,
+    lock: &crate::lockfile::Lockfile,
     force: bool,
 ) -> Result<(Outcome, Option<Effect>), Error> {
     let archive_root = archive_dir(paths);
@@ -77,10 +78,39 @@ pub fn perform(
             Ok((Outcome::InSync, None))
         }
         Action::Unchecked => Ok((Outcome::Unchecked, None)),
-        Action::Create | Action::Change { .. } => {
-            apply_one(declaration, paths, journal, &archive_root, force)
-        }
+        Action::Create | Action::Change { .. } => match &declaration.identity.kind {
+            Kind::GithubRelease => apply_release(declaration, paths, journal, lock),
+            _ => apply_one(declaration, paths, journal, &archive_root, force),
+        },
     }
+}
+
+/// Install a pinned release binary. Unpinned is an error naming the
+/// fix, never a silent "latest".
+fn apply_release(
+    declaration: &Declaration,
+    paths: &Paths,
+    journal: &mut Journal,
+    lock: &crate::lockfile::Lockfile,
+) -> Result<(Outcome, Option<Effect>), Error> {
+    let repo = &declaration.identity.key;
+    let Some(pin) = lock.github_release.get(repo) else {
+        return Err(Error::Apply {
+            doing: format!("installing {repo}"),
+            detail: format!("{repo} is not pinned in niwa.lock · run `niwa update`"),
+        });
+    };
+    let bin = crate::plan::release_bin(declaration);
+    crate::release::install(paths, repo, &bin, pin)?;
+    journal.acknowledge(
+        declaration.identity.to_string(),
+        Acknowledgement::new(declaration.spec.clone(), None),
+    );
+    let path = crate::release::bin_dir(paths)
+        .join(&bin)
+        .display()
+        .to_string();
+    Ok((Outcome::Done, Some(Effect::BinaryInstalled { path })))
 }
 
 /// Where this run's displaced bytes go. One directory per apply,
@@ -561,6 +591,8 @@ fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path) -> Result<(), E
             reverse_service(step, paths, archive_root, previous.as_deref())
         }
         Effect::BrewServiceStarted => reverse_brew_service(step),
+        Effect::BinaryInstalled { path } => std::fs::remove_file(path)
+            .map_err(|error| apply_error("removing the installed binary", &error)),
     }
 }
 

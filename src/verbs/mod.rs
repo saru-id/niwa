@@ -12,6 +12,7 @@ pub mod plan;
 pub mod pull;
 pub mod seal_key;
 pub mod undo;
+pub mod update;
 
 use std::rc::Rc;
 

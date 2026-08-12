@@ -69,6 +69,8 @@ pub enum Effect {
     ServiceSet { previous: Option<String> },
     /// A Homebrew service was started by this run; undo stops it.
     BrewServiceStarted,
+    /// A release binary was installed at this path; undo removes it.
+    BinaryInstalled { path: String },
 }
 
 /// What one apply left behind for one identity: the spec it made true

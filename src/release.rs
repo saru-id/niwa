@@ -1,0 +1,228 @@
+//! GitHub releases: resolved by tag into the lockfile, installed by
+//! checksum, never by trust.
+//!
+//! `update` asks the API for the latest release, downloads the
+//! matching asset once to hash it, and records version plus sha256.
+//! Install downloads again, refuses anything whose digest is not the
+//! recorded one, and puts the binary into `~/.local/bin`. curl and
+//! tar are invoked on deadlines; drills stand their own in.
+
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+use crate::error::Error;
+use crate::journal::digest;
+use crate::lockfile::ReleasePin;
+use crate::paths::Paths;
+use crate::util::proc::{bounded_output, bounded_stdout};
+
+const API_DEADLINE: Duration = Duration::from_mins(1);
+const DOWNLOAD_DEADLINE: Duration = Duration::from_mins(10);
+
+/// Where release binaries land.
+pub fn bin_dir(paths: &Paths) -> PathBuf {
+    paths.home.join(".local/bin")
+}
+
+/// Is the declared binary present?
+pub fn installed(paths: &Paths, bin: &str) -> bool {
+    bin_dir(paths).join(bin).is_file()
+}
+
+/// Ask the API for the latest release and hash its matching asset:
+/// the resolution `niwa update` records.
+pub fn resolve(repo: &str) -> Result<ReleasePin, Error> {
+    let (version, asset_url) = latest_asset(repo)?;
+    let temp = tempdir_file(repo);
+    download(&asset_url, &temp)?;
+    let bytes = std::fs::read(&temp).map_err(|error| release_error(repo, &error))?;
+    let _ = std::fs::remove_file(&temp);
+    Ok(ReleasePin {
+        version,
+        sha256: digest(&bytes),
+    })
+}
+
+/// Download, verify against the pin, and install the named binary.
+pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result<(), Error> {
+    let (version, asset_url) = latest_asset(repo)?;
+    if version != pin.version {
+        return Err(Error::Apply {
+            doing: format!("installing {repo}"),
+            detail: format!(
+                "upstream now serves {version}, the lock pins {} · run `niwa update {repo}` to move deliberately",
+                pin.version
+            ),
+        });
+    }
+    let temp = tempdir_file(repo);
+    download(&asset_url, &temp)?;
+    let bytes = std::fs::read(&temp).map_err(|error| release_error(repo, &error))?;
+    if digest(&bytes) != pin.sha256 {
+        let _ = std::fs::remove_file(&temp);
+        return Err(Error::Apply {
+            doing: format!("installing {repo}"),
+            detail: "the downloaded asset does not match the locked sha256; refusing it"
+                .to_string(),
+        });
+    }
+
+    let target_dir = bin_dir(paths);
+    std::fs::create_dir_all(&target_dir).map_err(|error| release_error(repo, &error))?;
+    let target = target_dir.join(bin);
+
+    let lower_url = asset_url.to_lowercase();
+    #[allow(
+        clippy::case_sensitive_file_extension_comparisons,
+        reason = "the url is lowercased one line up"
+    )]
+    if lower_url.ends_with(".tar.gz") || lower_url.ends_with(".tgz") {
+        extract_binary(repo, &temp, bin, &target)?;
+    } else {
+        std::fs::copy(&temp, &target).map_err(|error| release_error(repo, &error))?;
+    }
+    let _ = std::fs::remove_file(&temp);
+
+    let mut permissions = std::fs::metadata(&target)
+        .map_err(|error| release_error(repo, &error))?
+        .permissions();
+    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+    std::fs::set_permissions(&target, permissions).map_err(|error| release_error(repo, &error))
+}
+
+/// The latest release's version and the one asset built for this
+/// machine.
+fn latest_asset(repo: &str) -> Result<(String, String), Error> {
+    let url = format!("https://api.github.com/repos/{repo}/releases/latest");
+    let body =
+        bounded_stdout("curl", &["-fsSL", &url], API_DEADLINE).ok_or_else(|| Error::Apply {
+            doing: format!("resolving {repo}"),
+            detail: "the release API did not answer".to_string(),
+        })?;
+    let release: serde_json::Value =
+        serde_json::from_str(&body).map_err(|error| release_error(repo, &error))?;
+    let version = release
+        .get("tag_name")
+        .and_then(|tag| tag.as_str())
+        .map(|tag| tag.trim_start_matches('v').to_string())
+        .ok_or_else(|| Error::Apply {
+            doing: format!("resolving {repo}"),
+            detail: "the release carries no tag".to_string(),
+        })?;
+
+    let assets = release
+        .get("assets")
+        .and_then(|assets| assets.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let mut names = Vec::new();
+    for asset in &assets {
+        let name = asset
+            .get("name")
+            .and_then(|name| name.as_str())
+            .unwrap_or("");
+        names.push(name.to_string());
+        if fits_this_machine(name)
+            && let Some(url) = asset
+                .get("browser_download_url")
+                .and_then(|url| url.as_str())
+        {
+            return Ok((version, url.to_string()));
+        }
+    }
+    Err(Error::Apply {
+        doing: format!("resolving {repo}"),
+        detail: format!(
+            "no asset reads as macOS on this architecture; upstream offers: {}",
+            names.join(", ")
+        ),
+    })
+}
+
+/// Does an asset name read as this platform?
+fn fits_this_machine(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    let os = lower.contains("darwin") || lower.contains("macos") || lower.contains("apple");
+    let arch = if cfg!(target_arch = "aarch64") {
+        lower.contains("arm64") || lower.contains("aarch64")
+    } else {
+        lower.contains("x86_64") || lower.contains("amd64")
+    };
+    os && arch
+}
+
+fn download(url: &str, to: &Path) -> Result<(), Error> {
+    let to_text = to.display().to_string();
+    let finished = bounded_output(
+        "curl",
+        &["-fsSL", "--output", &to_text, url],
+        DOWNLOAD_DEADLINE,
+    );
+    match finished {
+        Some(finished) if finished.code == Some(0) => Ok(()),
+        Some(finished) => Err(Error::Apply {
+            doing: format!("downloading {url}"),
+            detail: finished.stderr_tail,
+        }),
+        None => Err(Error::Apply {
+            doing: format!("downloading {url}"),
+            detail: "curl did not finish inside the deadline, or is not installed".to_string(),
+        }),
+    }
+}
+
+/// Pull one named binary out of a tarball.
+fn extract_binary(repo: &str, archive: &Path, bin: &str, target: &Path) -> Result<(), Error> {
+    let unpack = archive.with_extension("unpack");
+    std::fs::create_dir_all(&unpack).map_err(|error| release_error(repo, &error))?;
+    let archive_text = archive.display().to_string();
+    let unpack_text = unpack.display().to_string();
+    let finished = bounded_output(
+        "tar",
+        &["-xzf", &archive_text, "-C", &unpack_text],
+        DOWNLOAD_DEADLINE,
+    );
+    if finished.is_none_or(|finished| finished.code != Some(0)) {
+        return Err(Error::Apply {
+            doing: format!("unpacking {repo}"),
+            detail: "tar could not unpack the asset".to_string(),
+        });
+    }
+    let found = find_file(&unpack, bin).ok_or_else(|| Error::Apply {
+        doing: format!("unpacking {repo}"),
+        detail: format!("the asset holds no file named {bin}"),
+    })?;
+    std::fs::copy(&found, target).map_err(|error| release_error(repo, &error))?;
+    let _ = std::fs::remove_dir_all(&unpack);
+    Ok(())
+}
+
+fn find_file(dir: &Path, name: &str) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(found) = find_file(&path, name) {
+                return Some(found);
+            }
+        } else if path.file_name().is_some_and(|file| file == name) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn tempdir_file(repo: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "niwa-release-{}-{}",
+        repo.replace('/', "-"),
+        std::process::id()
+    ))
+}
+
+fn release_error(repo: &str, error: &dyn std::fmt::Display) -> Error {
+    Error::Apply {
+        doing: format!("installing {repo}"),
+        detail: error.to_string(),
+    }
+}

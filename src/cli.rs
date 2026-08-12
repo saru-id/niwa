@@ -87,4 +87,9 @@ pub enum Verb {
         #[arg(long)]
         deep: bool,
     },
+    /// Re-resolve the lockfile and show the diff before writing it
+    Update {
+        /// Only pins whose name contains this
+        name: Option<String>,
+    },
 }

@@ -17,6 +17,7 @@ use crate::apply::{Outcome, perform};
 use crate::brew;
 use crate::error::Error;
 use crate::journal::Journal;
+use crate::lockfile::Lockfile;
 use crate::model::{Declaration, Identity, Kind};
 use crate::paths::Paths;
 use crate::plan::{Action, compare};
@@ -47,6 +48,7 @@ struct Pending {
 pub struct Engine {
     pub mode: Mode,
     pub paths: Paths,
+    pub lock: Lockfile,
     pub journal: RefCell<Journal>,
     /// The open apply entry, in execute mode.
     apply_id: Option<u64>,
@@ -71,9 +73,11 @@ impl Engine {
             Mode::Execute { .. } => Some(journal.begin_apply()),
             Mode::Plan => None,
         };
+        let lock = Lockfile::load(&paths).unwrap_or_default();
         Self {
             mode,
             paths,
+            lock,
             journal: RefCell::new(journal),
             apply_id,
             batch: RefCell::new(Vec::new()),
@@ -183,7 +187,7 @@ impl Engine {
                 Kind::Mise => {
                     let requests: Vec<String> = group
                         .iter()
-                        .map(|entry| crate::mise::request(&entry.declaration))
+                        .map(|entry| crate::mise::request(&entry.declaration, &self.lock))
                         .collect();
                     crate::mise::install(&requests, Duration::from_mins(30))
                 }
@@ -257,7 +261,7 @@ impl Engine {
 
     fn perform_now(&self, declaration: &Declaration, force: bool) -> Result<Truth, Error> {
         let mut journal = self.journal.borrow_mut();
-        let (outcome, effect) = perform(declaration, &self.paths, &mut journal, force)?;
+        let (outcome, effect) = perform(declaration, &self.paths, &mut journal, &self.lock, force)?;
         if let (Some(id), Some(effect)) = (self.apply_id, effect) {
             journal.record_step(
                 id,

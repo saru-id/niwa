@@ -29,9 +29,14 @@ pub fn installed(paths: &Paths, tool: &str) -> Option<String> {
     versions.pop()
 }
 
-/// The `tool@version` argument one declaration asks for.
-pub fn request(declaration: &Declaration) -> String {
+/// The `tool@version` argument one declaration asks for. A locked
+/// version wins over the spec: machine two gets your version, not
+/// whatever the spec resolves to today.
+pub fn request(declaration: &Declaration, lock: &crate::lockfile::Lockfile) -> String {
     let tool = &declaration.identity.key;
+    if let Some(pin) = lock.mise.get(tool) {
+        return format!("{tool}@{}", pin.version);
+    }
     match &declaration.spec {
         Value::Map(fields) => match fields.get("version") {
             Some(Value::Str(version)) => format!("{tool}@{version}"),
@@ -39,6 +44,13 @@ pub fn request(declaration: &Declaration) -> String {
         },
         _ => tool.clone(),
     }
+}
+
+/// What a version spec resolves to right now, for `niwa update`.
+pub fn latest(tool: &str, spec: Option<&str>) -> Option<String> {
+    let request = spec.map_or_else(|| tool.to_string(), |spec| format!("{tool}@{spec}"));
+    crate::util::proc::bounded_stdout("mise", &["latest", &request], Duration::from_mins(1))
+        .filter(|version| !version.is_empty())
 }
 
 /// Install a batch in one `mise use --global` invocation.
