@@ -98,7 +98,8 @@ fn declare_run(
         }
     }
 
-    if !guarded && !ctx.state.borrow().in_once {
+    let branch_guarded = ctx.state.borrow().results_read;
+    if !guarded && !ctx.state.borrow().in_once && !branch_guarded {
         return Err(spec.fail(
             "a command needs a guard: add `unless`, `only_if`, or `creates` so the run can be skipped when it is already done",
         ));
@@ -137,13 +138,25 @@ fn declare_once(lua: &Lua, ctx: &Ctx, name: &str, body: &Function) -> mlua::Resu
         privileged: false,
     };
 
-    // The body runs with the guard requirement lifted; the journal
-    // marker decides whether it runs at apply time.
-    let previous = ctx.state.borrow().in_once;
-    ctx.state.borrow_mut().in_once = true;
-    let result = body.call::<mlua::Value>(());
-    ctx.state.borrow_mut().in_once = previous;
-    result?;
+    // Exactly once means exactly once: a marker the journal already
+    // holds skips the whole body, in the plan pass and the execute
+    // pass alike. Check mode still runs it, to validate its specs.
+    let already_done = ctx.engine.as_ref().is_some_and(|engine| {
+        engine
+            .journal
+            .borrow()
+            .acknowledged(&marker.identity.to_string())
+            .is_some()
+    });
+    if !already_done {
+        // The body runs with the guard requirement lifted; the
+        // marker is the guard.
+        let previous = ctx.state.borrow().in_once;
+        ctx.state.borrow_mut().in_once = true;
+        let result = body.call::<mlua::Value>(());
+        ctx.state.borrow_mut().in_once = previous;
+        result?;
+    }
     settle(lua, ctx, &marker)
 }
 

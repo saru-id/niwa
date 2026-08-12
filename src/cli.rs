@@ -41,6 +41,9 @@ pub enum Verb {
         /// reports a change
         #[arg(long)]
         verify: bool,
+        /// Skip the steps that need administrator rights
+        #[arg(long = "no-privileged")]
+        no_privileged: bool,
     },
     /// Reverse the most recent apply
     Undo {

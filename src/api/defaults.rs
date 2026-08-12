@@ -79,7 +79,7 @@ fn declare_defaults(
             truths.push(truth);
         }
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 /// One `defaults` key declaration. Everything that lowers to a
@@ -184,7 +184,7 @@ fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
             truths.push(truth);
         }
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 /// The finder sugar. `default_view` maps the readable names onto the
@@ -245,5 +245,5 @@ fn declare_finder(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table>
     {
         truths.push(truth);
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }

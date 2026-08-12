@@ -29,6 +29,7 @@ pub struct Options {
     pub dirty: bool,
     pub force: bool,
     pub verify: bool,
+    pub no_privileged: bool,
 }
 
 pub fn run(out: &Out, options: &Options) -> ExitCode {
@@ -88,6 +89,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     let engine = Rc::new(Engine::new(
         Mode::Execute {
             force: options.force,
+            skip_privileged: options.no_privileged,
         },
         paths.clone(),
         journal,
@@ -127,8 +129,16 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
 
     stamp_and_warn(out, &paths, intent.items.len());
 
+    let skipped = engine.privileged_skipped();
+    if !skipped.is_empty() {
+        out.note(&format!(
+            "{} need administrator rights and were left as they are",
+            count(skipped.len(), "step")
+        ));
+    }
+
     if options.verify {
-        return Ok(verify(out, &paths));
+        return Ok(verify(out, &paths, options.no_privileged));
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -157,7 +167,7 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
 /// The literal definition of idempotence: re-read everything, demand
 /// silence, and name the resource and source line of anything that
 /// still reports a change.
-fn verify(out: &Out, paths: &Paths) -> ExitCode {
+fn verify(out: &Out, paths: &Paths, ignore_privileged: bool) -> ExitCode {
     let second = Journal::load(&paths.state).and_then(|journal| {
         let engine = Rc::new(Engine::new(Mode::Plan, paths.clone(), journal));
         super::run_pass(paths, Some(Rc::clone(&engine)))?;
@@ -174,6 +184,7 @@ fn verify(out: &Out, paths: &Paths) -> ExitCode {
         .items
         .iter()
         .filter(|item| matches!(item.action, Action::Create | Action::Change { .. }))
+        .filter(|item| !(ignore_privileged && item.declaration.privileged))
         .map(|item| {
             format!(
                 "{} ({})",

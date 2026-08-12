@@ -75,7 +75,10 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
     };
     let journal = Journal::load(&paths.state)?;
     let engine = Rc::new(Engine::new(
-        Mode::Execute { force: false },
+        Mode::Execute {
+            force: false,
+            skip_privileged: false,
+        },
         paths.clone(),
         journal,
     ));

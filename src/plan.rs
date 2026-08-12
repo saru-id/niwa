@@ -97,6 +97,8 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
                 Action::Create
             }
         }
+        Kind::Run => crate::exec::compare_run(declaration, paths),
+        Kind::Once => crate::exec::compare_once(declaration, journal),
         _ => Action::Unchecked,
     }
 }

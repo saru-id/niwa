@@ -80,9 +80,44 @@ pub fn perform(
         Action::Unchecked => Ok((Outcome::Unchecked, None)),
         Action::Create | Action::Change { .. } => match &declaration.identity.kind {
             Kind::GithubRelease => apply_release(declaration, paths, journal, lock),
+            Kind::Run | Kind::Once => apply_exec(declaration, journal),
             _ => apply_one(declaration, paths, journal, &archive_root, force),
         },
     }
+}
+
+/// Run a guarded command, or a once block's marker. Both are
+/// irreversible, and the journal says exactly that.
+fn apply_exec(
+    declaration: &Declaration,
+    journal: &mut Journal,
+) -> Result<(Outcome, Option<Effect>), Error> {
+    if matches!(declaration.identity.kind, Kind::Run)
+        && let Err((code, stderr)) = crate::exec::run(declaration)
+    {
+        if crate::exec::is_optional(declaration) {
+            return Ok((Outcome::Unchecked, None));
+        }
+        return Err(Error::ResourceFailed {
+            identity: declaration.identity.to_string(),
+            provenance: declaration.provenance.to_string(),
+            command: declaration.identity.key.clone(),
+            code,
+            stderr,
+        });
+    }
+    // A once marker acknowledges without running anything itself; the
+    // block's body already executed its own resources in order.
+    journal.acknowledge(
+        declaration.identity.to_string(),
+        Acknowledgement::new(declaration.spec.clone(), None),
+    );
+    Ok((
+        Outcome::Done,
+        Some(Effect::Irreversible {
+            what: declaration.identity.key.clone(),
+        }),
+    ))
 }
 
 /// Install a pinned release binary. Unpinned is an error naming the
@@ -593,6 +628,9 @@ fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path) -> Result<(), E
         Effect::BrewServiceStarted => reverse_brew_service(step),
         Effect::BinaryInstalled { path } => std::fs::remove_file(path)
             .map_err(|error| apply_error("removing the installed binary", &error)),
+        // Irreversible steps are reversed by nobody; the undo verb
+        // names them before this point.
+        Effect::Irreversible { .. } => Ok(()),
     }
 }
 

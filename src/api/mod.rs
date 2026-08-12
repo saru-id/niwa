@@ -41,6 +41,9 @@ pub struct RunState {
     pub command_cache: HashMap<String, bool>,
     /// Every `niwa.secret` the run asked for, for `doctor`.
     pub secrets_used: Vec<(String, Option<String>)>,
+    /// Has the config read any result yet? A branch on `.changed` is
+    /// a guard, and this is how `niwa.run` knows one is in force.
+    pub results_read: bool,
 }
 
 /// Shared context for every API function.
@@ -161,24 +164,38 @@ pub fn settle_truth(ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Option
     })
 }
 
-/// The frozen result table for a settled truth.
-pub fn result_table(lua: &Lua, truth: &Truth) -> mlua::Result<Table> {
-    let result = lua.create_table()?;
-    result.set("changed", truth.changed)?;
-    result.set("present", truth.present)?;
-    result.set("failed", truth.failed)?;
-    if let Some(version) = &truth.version {
-        result.set("version", version.as_str())?;
-    }
-    freeze(lua, &result)?;
-    Ok(result)
+/// The frozen result table for a settled truth. Fields answer through
+/// a metatable, so the config reading one is an observable event —
+/// that is how a branch on `.changed` counts as a guard.
+pub fn result_table(lua: &Lua, ctx: &Ctx, truth: &Truth) -> mlua::Result<Table> {
+    let state = Rc::clone(&ctx.state);
+    let truth = truth.clone();
+    let table = lua.create_table()?;
+    let meta = lua.create_table()?;
+    let index = lua.create_function(move |lua, (_, key): (Table, String)| {
+        state.borrow_mut().results_read = true;
+        Ok(match key.as_str() {
+            "changed" => mlua::Value::Boolean(truth.changed),
+            "present" => mlua::Value::Boolean(truth.present),
+            "failed" => mlua::Value::Boolean(truth.failed),
+            "version" => match &truth.version {
+                Some(version) => mlua::Value::String(lua.create_string(version)?),
+                None => mlua::Value::Nil,
+            },
+            _ => mlua::Value::Nil,
+        })
+    })?;
+    meta.set("__index", index)?;
+    table.set_metatable(Some(meta))?;
+    freeze(lua, &table)?;
+    Ok(table)
 }
 
 /// Settle one declaration into one result table, pending or not.
 pub fn settle(lua: &Lua, ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Table> {
     settle_truth(ctx, declaration)?.map_or_else(
         || pending_result(lua, ctx, declaration.identity.clone()),
-        |truth| result_table(lua, &truth),
+        |truth| result_table(lua, ctx, &truth),
     )
 }
 
@@ -202,9 +219,11 @@ fn pending_result(lua: &Lua, ctx: &Ctx, identity: Identity) -> mlua::Result<Tabl
             "a pending result needs an engine".to_string(),
         ));
     };
+    let state = Rc::clone(&ctx.state);
     let table = lua.create_table()?;
     let meta = lua.create_table()?;
     let index = lua.create_function(move |lua, (_, key): (Table, String)| {
+        state.borrow_mut().results_read = true;
         let truth = engine.resolve(&identity).map_err(mlua::Error::external)?;
         Ok(match key.as_str() {
             "changed" => mlua::Value::Boolean(truth.changed),

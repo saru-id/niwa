@@ -215,7 +215,7 @@ fn declare_brew_services(lua: &Lua, ctx: &Ctx, arg: &mlua::Value) -> mlua::Resul
             truths.push(truth);
         }
     }
-    result_table(lua, &aggregate(&truths)).map(mlua::Value::Table)
+    result_table(lua, ctx, &aggregate(&truths)).map(mlua::Value::Table)
 }
 
 /// `niwa.mas.app { ["Things 3"] = 904280696 }`: the App Store id is
@@ -261,7 +261,7 @@ fn declare_mas(lua: &Lua, ctx: &Ctx, apps: &Table) -> mlua::Result<Table> {
     if !any {
         return Err(spec.fail("declare at least one app"));
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 /// `niwa.mise.tool { node = "lts" }`: versions pin in niwa.lock when
@@ -303,7 +303,7 @@ fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
     if !any {
         return Err(spec.fail("declare at least one tool"));
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 fn declare_github_release(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Table> {

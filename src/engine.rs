@@ -26,7 +26,12 @@ pub enum Mode {
     /// Read the machine, predict results, change nothing.
     Plan,
     /// Change the machine; `force` lifts the overwrite protection.
-    Execute { force: bool },
+    Execute {
+        force: bool,
+        /// Skip everything that needs administrator rights: the
+        /// design's answer for unattended and sandboxed runs.
+        skip_privileged: bool,
+    },
 }
 
 /// What a settled resource tells the config: the truth behind the
@@ -65,6 +70,8 @@ pub struct Engine {
     /// order; five writes to one domain restart its process once.
     restarts_pending: RefCell<Vec<String>>,
     restarted: RefCell<Vec<String>>,
+    /// Privileged identities left untouched under --no-privileged.
+    privileged_skipped: RefCell<Vec<String>>,
 }
 
 impl Engine {
@@ -87,6 +94,7 @@ impl Engine {
             protected: RefCell::new(Vec::new()),
             restarts_pending: RefCell::new(Vec::new()),
             restarted: RefCell::new(Vec::new()),
+            privileged_skipped: RefCell::new(Vec::new()),
         }
     }
 
@@ -104,7 +112,23 @@ impl Engine {
                 self.items.borrow_mut().push((declaration.clone(), action));
                 Ok(Some(truth))
             }
-            Mode::Execute { force } => {
+            Mode::Execute {
+                force,
+                skip_privileged,
+            } => {
+                if *skip_privileged && declaration.privileged {
+                    // Left exactly as it is, counted, and named in
+                    // the summary — never attempted without rights.
+                    self.privileged_skipped
+                        .borrow_mut()
+                        .push(declaration.identity.to_string());
+                    return Ok(Some(Truth {
+                        changed: false,
+                        present: true,
+                        failed: false,
+                        version: None,
+                    }));
+                }
                 if batchable(&declaration.identity.kind) {
                     self.batch.borrow_mut().push(Pending {
                         declaration: declaration.clone(),
@@ -355,6 +379,11 @@ impl Engine {
     /// The processes this run actually bounced, in order.
     pub fn restarted(&self) -> Vec<String> {
         self.restarted.borrow().clone()
+    }
+
+    /// What --no-privileged left for a privileged run.
+    pub fn privileged_skipped(&self) -> Vec<String> {
+        self.privileged_skipped.borrow().clone()
     }
 
     /// Close a failed execute pass: keep what landed for undo, but

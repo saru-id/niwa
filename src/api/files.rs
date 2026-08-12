@@ -151,7 +151,7 @@ fn fan_out(
             truths.push(truth);
         }
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 fn collect_files(

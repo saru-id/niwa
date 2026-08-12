@@ -34,14 +34,22 @@ fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {
         .steps
         .iter()
         .rev()
-        .map(|step| step.identity.clone())
+        .map(|step| match &step.effect {
+            crate::journal::Effect::Irreversible { what } => {
+                format!(
+                    "{} · cannot be taken back: `{what}` already ran",
+                    step.identity
+                )
+            }
+            _ => step.identity.clone(),
+        })
         .collect();
     out.result(
         Mark::Changed,
         &format!("undo would reverse {}", count(steps.len(), "change")),
     );
-    for identity in &steps {
-        out.note(identity);
+    for line in &steps {
+        out.note(line);
     }
 
     if !yes {

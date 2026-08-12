@@ -77,7 +77,7 @@ fn declare_hosts(lua: &Lua, ctx: &Ctx, entries: &Table) -> mlua::Result<Table> {
     if !any {
         return Err(spec.fail("declare at least one entry"));
     }
-    result_table(lua, &aggregate(&truths))
+    result_table(lua, ctx, &aggregate(&truths))
 }
 
 /// `/etc/shells` entry plus `chsh`: two privileged steps that always

@@ -71,6 +71,9 @@ pub enum Effect {
     BrewServiceStarted,
     /// A release binary was installed at this path; undo removes it.
     BinaryInstalled { path: String },
+    /// A command ran. There is no taking it back, and undo says so by
+    /// name instead of quietly skipping it.
+    Irreversible { what: String },
 }
 
 /// What one apply left behind for one identity: the spec it made true

@@ -5,6 +5,7 @@ mod cli;
 mod drift;
 mod engine;
 mod error;
+mod exec;
 mod facts;
 mod gate;
 mod journal;
@@ -41,6 +42,7 @@ fn main() -> ExitCode {
             dirty,
             force,
             verify,
+            no_privileged,
         } => verbs::apply_verb::run(
             &out,
             &verbs::apply_verb::Options {
@@ -48,6 +50,7 @@ fn main() -> ExitCode {
                 dirty,
                 force,
                 verify,
+                no_privileged,
             },
         ),
         cli::Verb::Undo { yes } => verbs::undo::run(&out, yes),
