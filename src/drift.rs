@@ -288,6 +288,7 @@ fn settings_flips(
         }
     }
 
+    let settings: std::collections::HashSet<&str> = SETTINGS_DOMAINS.iter().copied().collect();
     for domain in &domains {
         let store = crate::defaults::domain_path(paths, domain);
         let Ok(root) = plist::Value::from_file(&store) else {
@@ -296,7 +297,15 @@ fn settings_flips(
         let Some(dict) = root.as_dictionary() else {
             continue;
         };
+        // In the System Settings domains every key is interesting.
+        // In a domain only the config touches, only the governed
+        // keys are: an app churning its own plist while your one key
+        // sits untouched must be silence, never a firehose.
+        let whole_domain = settings.contains(domain.as_str());
         for (key, raw) in dict {
+            if !whole_domain && !governed.contains(&format!("{domain}:{key}")) {
+                continue;
+            }
             let live = crate::defaults::plist_to_value(raw);
             match baseline.known(domain, key) {
                 None => baseline.learn(domain, key, live),

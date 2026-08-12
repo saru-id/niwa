@@ -167,4 +167,16 @@ check 24 "fmt succeeds (exit 0)" test "$STATUS" -eq 0
 check 25 "fmt normalized the indentation" \
     grep -q '^  autohide = true,$' "$HOME/.config/niwa/modules/messy.luau"
 
+# --- one governed key is not a whole-domain subscription ------------
+cat >>"$HOME/.config/niwa/modules/cli.luau" <<'LUAU'
+niwa.defaults("com.example.churner", { theme = "dark" })
+LUAU
+niwa apply --yes
+/usr/bin/plutil -replace cachetoken -string "a$(date +%s)"     "$HOME/Library/Preferences/com.example.churner.plist" 2>/dev/null || true
+niwa pull --all
+check 24 "an ungoverned key churning stays silence"     sh -c "! grep -q cachetoken '$SANDBOX/stdout'"
+/usr/bin/plutil -replace theme -string "light"     "$HOME/Library/Preferences/com.example.churner.plist"
+niwa pull --all
+check 25 "the governed key moving still proposes"     grep -q "theme" "$SANDBOX/stdout"
+
 echo "drill: drift and pull · all checks passed"
