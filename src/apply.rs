@@ -328,7 +328,7 @@ fn archive(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Erro
     // One archived copy per distinct content: the digest is the name,
     // so undo can find it and repeats cost nothing.
     let path = dir.join(digest(bytes));
-    std::fs::write(&path, bytes)
+    crate::util::write_atomic(&path, bytes, None, false)
         .map_err(|error| apply_error("archiving the previous bytes", &error))
 }
 
@@ -386,7 +386,7 @@ fn archive_sealed(
     std::fs::create_dir_all(&dir)
         .map_err(|error| apply_error("archiving the previous bytes", &error))?;
     let sealed = crate::secrets::seal(paths, bytes)?;
-    std::fs::write(dir.join(digest(bytes)), sealed)
+    crate::util::write_atomic(&dir.join(digest(bytes)), &sealed, None, false)
         .map_err(|error| apply_error("archiving the previous bytes", &error))
 }
 
@@ -508,17 +508,15 @@ fn apply_file(
         std::fs::create_dir_all(parent)
             .map_err(|error| apply_error("creating the target directory", &error))?;
     }
-    write_atomic(&target, &declared)?;
     if let Some(Value::Int(mode)) = fields.get("mode") {
-        use std::os::unix::fs::PermissionsExt as _;
         #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
             reason = "validation bounds the mode to 0..=0o7777"
         )]
-        let permissions = std::fs::Permissions::from_mode(*mode as u32);
-        std::fs::set_permissions(&target, permissions)
-            .map_err(|error| apply_error("setting the file mode", &error))?;
+        write_atomic_mode(&target, &declared, *mode as u32)?;
+    } else {
+        write_atomic(&target, &declared)?;
     }
 
     journal.acknowledge(
@@ -617,9 +615,11 @@ fn apply_defaults(
         std::fs::create_dir_all(parent)
             .map_err(|error| apply_error("creating the preferences directory", &error))?;
     }
+    let mut rendered = Vec::new();
     plist::Value::Dictionary(root)
-        .to_file_binary(&store)
-        .map_err(|error| apply_error("writing the preference file", &error))?;
+        .to_writer_binary(&mut rendered)
+        .map_err(|error| apply_error("rendering the preference file", &error))?;
+    write_atomic(&store, &rendered)?;
 
     journal.acknowledge(
         declaration.identity.to_string(),
@@ -645,9 +645,15 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
 }
 
 fn write_atomic(target: &Path, bytes: &[u8]) -> Result<(), Error> {
-    let temp = target.with_extension("niwa-tmp");
-    std::fs::write(&temp, bytes)
-        .and_then(|()| std::fs::rename(&temp, target))
+    crate::util::write_atomic(target, bytes, None, false)
+        .map_err(|error| apply_error(&format!("writing {}", target.display()), &error))
+}
+
+/// A mode-carrying write: the permissions land on the temp before
+/// the rename, so a `mode = "600"` file is never readable wider,
+/// not even between two instructions.
+fn write_atomic_mode(target: &Path, bytes: &[u8], mode: u32) -> Result<(), Error> {
+    crate::util::write_atomic(target, bytes, Some(mode), false)
         .map_err(|error| apply_error(&format!("writing {}", target.display()), &error))
 }
 
@@ -841,9 +847,11 @@ fn reverse_defaults(
             root.remove(key);
         }
     }
+    let mut rendered = Vec::new();
     plist::Value::Dictionary(root)
-        .to_file_binary(&store)
-        .map_err(|error| apply_error("restoring the preference file", &error))
+        .to_writer_binary(&mut rendered)
+        .map_err(|error| apply_error("rendering the preference file", &error))?;
+    write_atomic(&store, &rendered)
 }
 
 fn read_archived(

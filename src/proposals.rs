@@ -66,9 +66,11 @@ pub fn append(paths: &Paths, relative: &PathBuf, statement: &str) -> Result<(), 
                 detail: error.to_string(),
             }
         })?;
-        std::fs::write(&path, header).map_err(|error| Error::Apply {
-            doing: "creating the inbox".to_string(),
-            detail: error.to_string(),
+        crate::util::write_atomic(&path, header.as_bytes(), None, false).map_err(|error| {
+            Error::Apply {
+                doing: "creating the inbox".to_string(),
+                detail: error.to_string(),
+            }
         })?;
         require_inbox(paths)?;
     }
@@ -82,7 +84,7 @@ pub fn append(paths: &Paths, relative: &PathBuf, statement: &str) -> Result<(), 
     text.push('\n');
     text.push_str(statement);
     text.push('\n');
-    std::fs::write(&path, text).map_err(|error| Error::Apply {
+    crate::util::write_atomic(&path, text.as_bytes(), None, false).map_err(|error| Error::Apply {
         doing: format!("writing {}", relative.display()),
         detail: error.to_string(),
     })
@@ -117,9 +119,11 @@ fn require_inbox(paths: &Paths) -> Result<(), Error> {
             updated
         },
     );
-    std::fs::write(&init, updated).map_err(|error| Error::Apply {
-        doing: "writing init.luau".to_string(),
-        detail: error.to_string(),
+    crate::util::write_atomic(&init, updated.as_bytes(), None, false).map_err(|error| {
+        Error::Apply {
+            doing: "writing init.luau".to_string(),
+            detail: error.to_string(),
+        }
     })
 }
 
@@ -228,7 +232,7 @@ pub fn edit_in_place(
             updated[index] = edited;
             let mut joined = updated.join("\n");
             joined.push('\n');
-            std::fs::write(&path, joined).ok()?;
+            crate::util::write_atomic(&path, joined.as_bytes(), None, false).ok()?;
             return Some(());
         }
     }
@@ -319,7 +323,7 @@ pub fn pull_file(
         detail: error.to_string(),
     })?;
     let destination = paths.config.join(rest);
-    std::fs::write(&destination, &live).map_err(|error| Error::Apply {
+    crate::util::write_atomic(&destination, &live, None, false).map_err(|error| Error::Apply {
         doing: format!("writing {}", destination.display()),
         detail: error.to_string(),
     })?;
@@ -362,12 +366,19 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
                 .and_then(plist::Value::into_dictionary)
                 .unwrap_or_default();
             root.remove(preference);
+            let mut rendered = Vec::new();
             plist::Value::Dictionary(root)
-                .to_file_binary(&store)
+                .to_writer_binary(&mut rendered)
                 .map_err(|error| Error::Apply {
-                    doing: "writing the preference file".to_string(),
+                    doing: "rendering the preference file".to_string(),
                     detail: error.to_string(),
                 })?;
+            crate::util::write_atomic(&store, &rendered, None, false).map_err(|error| {
+                Error::Apply {
+                    doing: "writing the preference file".to_string(),
+                    detail: error.to_string(),
+                }
+            })?;
         }
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
             crate::apply::uninstall_package(&parsed)?;

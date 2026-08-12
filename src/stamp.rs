@@ -125,9 +125,11 @@ pub fn write(paths: &Paths, name: &str, resources: usize) -> Result<PathBuf, Err
         doing: "rendering the stamp".to_string(),
         detail: error.to_string(),
     })?;
-    std::fs::write(&file, text).map_err(|error| Error::Apply {
-        doing: "writing the stamp".to_string(),
-        detail: error.to_string(),
+    crate::util::write_atomic(&file, text.as_bytes(), None, false).map_err(|error| {
+        Error::Apply {
+            doing: "writing the stamp".to_string(),
+            detail: error.to_string(),
+        }
     })?;
     Ok(file)
 }

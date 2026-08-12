@@ -36,7 +36,12 @@ impl Digest {
     pub fn save(&self, paths: &Paths) {
         let _ = std::fs::create_dir_all(&paths.state);
         if let Ok(text) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(paths.state.join("digest.json"), text);
+            let _ = crate::util::write_atomic(
+                &paths.state.join("digest.json"),
+                text.as_bytes(),
+                None,
+                false,
+            );
         }
     }
 

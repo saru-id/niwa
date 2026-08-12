@@ -134,13 +134,9 @@ impl Baseline {
     }
 
     pub fn save(&self, state: &Path) {
-        if std::fs::create_dir_all(state).is_err() {
-            return;
-        }
+        let _ = std::fs::create_dir_all(state);
         if let Ok(raw) = serde_json::to_vec_pretty(self) {
-            let temp = state.join(format!("{BASELINE_FILE}.tmp"));
-            let _ = std::fs::write(&temp, raw)
-                .and_then(|()| std::fs::rename(&temp, state.join(BASELINE_FILE)));
+            let _ = crate::util::write_atomic(&state.join(BASELINE_FILE), &raw, None, false);
         }
     }
 

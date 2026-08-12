@@ -159,15 +159,16 @@ impl Journal {
             detail: error.to_string(),
         })?;
         let path = state.join(FILE);
-        let temp = state.join(format!("{FILE}.tmp"));
         let raw = serde_json::to_vec_pretty(self).map_err(|error| Error::JournalUnreadable {
             detail: error.to_string(),
         })?;
-        std::fs::write(&temp, raw)
-            .and_then(|()| std::fs::rename(&temp, &path))
-            .map_err(|error| Error::JournalUnreadable {
+        // Synced before the rename: the journal is the one ledger a
+        // power loss must not empty.
+        crate::util::write_atomic(&path, &raw, None, true).map_err(|error| {
+            Error::JournalUnreadable {
                 detail: error.to_string(),
-            })
+            }
+        })
     }
 
     pub fn acknowledged(&self, identity: &str) -> Option<&Acknowledgement> {

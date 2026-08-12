@@ -85,10 +85,12 @@ impl Lockfile {
         let text = format!(
             "# Written by niwa, committed on purpose: machine two resolves to the\n# same versions this machine did. Edit by running `niwa update <name>`.\n{body}"
         );
-        std::fs::write(Self::path(paths), text).map_err(|error| Error::Apply {
-            doing: "writing niwa.lock".to_string(),
-            detail: error.to_string(),
-        })
+        crate::util::write_atomic(&Self::path(paths), text.as_bytes(), None, true).map_err(
+            |error| Error::Apply {
+                doing: "writing niwa.lock".to_string(),
+                detail: error.to_string(),
+            },
+        )
     }
 }
 

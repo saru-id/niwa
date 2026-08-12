@@ -29,6 +29,50 @@ pub fn digest(bytes: &[u8]) -> String {
     out
 }
 
+/// Write bytes so the target is never torn: a unique temp beside it,
+/// the mode set before the rename, and the rename as the atom. Two
+/// concurrent writers cannot rename each other's half-written temp,
+/// because each temp carries its writer's pid. `sync` forces the
+/// bytes to disk first — for ledgers that must survive power loss.
+pub fn write_atomic(
+    target: &std::path::Path,
+    bytes: &[u8],
+    mode: Option<u32>,
+    sync: bool,
+) -> std::io::Result<()> {
+    let parent = target
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty());
+    let name = target
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let temp_name = format!(".{name}.niwa-{}", std::process::id());
+    let temp = parent.map_or_else(
+        || std::path::PathBuf::from(&temp_name),
+        |p| p.join(&temp_name),
+    );
+    let result = (|| {
+        {
+            use std::io::Write as _;
+            let mut file = std::fs::File::create(&temp)?;
+            file.write_all(bytes)?;
+            if sync {
+                file.sync_all()?;
+            }
+        }
+        if let Some(mode) = mode {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(mode))?;
+        }
+        std::fs::rename(&temp, target)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp);
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,6 +91,27 @@ mod tests {
         for junk in ["", "10", "s", "10d", "-5s", "1.5h"] {
             assert_eq!(parse_duration(junk), None, "{junk}");
         }
+    }
+
+    #[test]
+    fn atomic_writes_land_whole_with_their_mode() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("app.json");
+        write_atomic(&target, b"first", None, false).unwrap();
+        write_atomic(&target, b"second", Some(0o600), true).unwrap();
+        assert_eq!(std::fs::read(&target).unwrap(), b"second");
+        assert_eq!(
+            std::fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // No temp litter survives, success or failure.
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().contains("niwa-"))
+            .collect();
+        assert!(leftovers.is_empty());
     }
 
     #[test]

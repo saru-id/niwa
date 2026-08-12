@@ -60,7 +60,7 @@ pub fn install(paths: &Paths) -> Result<(), Error> {
             doing: "rendering the watcher's plist".to_string(),
             detail: error.to_string(),
         })?;
-    std::fs::write(&target, bytes).map_err(|error| Error::Apply {
+    crate::util::write_atomic(&target, &bytes, None, false).map_err(|error| Error::Apply {
         doing: "writing the watcher's plist".to_string(),
         detail: error.to_string(),
     })?;
