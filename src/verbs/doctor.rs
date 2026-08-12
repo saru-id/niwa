@@ -133,22 +133,16 @@ fn archives_check(out: &Out, paths: &Paths, deep: bool) -> bool {
 
 /// Everything version-resolved must have its pin.
 fn lockfile_check(out: &Out, paths: &Paths, analysis: &crate::model::analysis::Analysis) -> bool {
-    let lock: Option<toml::Value> = std::fs::read_to_string(paths.config.join("niwa.lock"))
-        .ok()
-        .and_then(|text| toml::from_str(&text).ok());
+    let lock = crate::lockfile::Lockfile::load(paths).unwrap_or_default();
     let mut unpinned = Vec::new();
     for declaration in &analysis.effective {
-        let section = match &declaration.identity.kind {
-            Kind::Mise => "mise",
-            Kind::GithubRelease => "github_release",
-            Kind::Use => "use",
+        let key = &declaration.identity.key;
+        let pinned = match &declaration.identity.kind {
+            Kind::Mise => lock.mise.contains_key(key),
+            Kind::GithubRelease => lock.github_release.contains_key(key),
+            Kind::Use => lock.uses.contains_key(key),
             _ => continue,
         };
-        let pinned = lock
-            .as_ref()
-            .and_then(|lock| lock.get(section))
-            .and_then(|section| section.get(&declaration.identity.key))
-            .is_some();
         if !pinned {
             unpinned.push(declaration.identity.to_string());
         }

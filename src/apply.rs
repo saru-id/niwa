@@ -135,7 +135,7 @@ fn apply_release(
             detail: format!("{repo} is not pinned in niwa.lock · run `niwa update`"),
         });
     };
-    let bin = crate::plan::release_bin(declaration);
+    let bin = crate::release::bin_of(declaration);
     crate::release::install(paths, repo, &bin, pin)?;
     journal.acknowledge(
         declaration.identity.to_string(),
@@ -150,7 +150,7 @@ fn apply_release(
 
 /// Where this run's displaced bytes go. One directory per apply,
 /// named by a monotonic counter persisted beside the journal.
-fn archive_dir(paths: &Paths) -> PathBuf {
+pub fn archive_dir(paths: &Paths) -> PathBuf {
     paths.state.join("archive")
 }
 

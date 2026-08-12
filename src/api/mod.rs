@@ -148,7 +148,7 @@ pub fn unit_of(provenance: &Provenance) -> Unit {
 }
 
 /// Check mode's answer: nothing changed, the resource reads present.
-pub const STUB: Truth = Truth {
+const STUB: Truth = Truth {
     changed: false,
     present: true,
     failed: false,

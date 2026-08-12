@@ -335,7 +335,7 @@ pub fn pull_file(
 /// drop the acknowledgement. Files are archived first — nothing is
 /// ever the only copy.
 pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Result<(), Error> {
-    let archive_root = paths.state.join("archive");
+    let archive_root = crate::apply::archive_dir(paths);
     let (kind, key) = identity.split_once(':').unwrap_or((identity, ""));
     match kind {
         "file" | "link" => {

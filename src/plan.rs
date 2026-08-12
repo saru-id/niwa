@@ -56,7 +56,7 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
             }
         }
         Kind::GithubRelease => {
-            if crate::release::installed(paths, &release_bin(declaration)) {
+            if crate::release::installed(paths, &crate::release::bin_of(declaration)) {
                 Action::InSync
             } else {
                 Action::Create
@@ -174,23 +174,6 @@ fn compare_link(declaration: &Declaration, paths: &Paths) -> Action {
         },
         Err(_) => Action::Create,
     }
-}
-
-/// The binary a release declaration installs: its `bin` field, or
-/// the repo's own name.
-pub fn release_bin(declaration: &Declaration) -> String {
-    if let Value::Map(fields) = &declaration.spec
-        && let Some(Value::Str(bin)) = fields.get("bin")
-    {
-        return bin.clone();
-    }
-    declaration
-        .identity
-        .key
-        .rsplit('/')
-        .next()
-        .unwrap_or(&declaration.identity.key)
-        .to_string()
 }
 
 /// One-line rendering for plan transitions: `false → true`, `40 → 48`.

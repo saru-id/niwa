@@ -10,7 +10,7 @@ use crate::paths::Paths;
 
 pub const LABEL: &str = "rs.niwa.watcher";
 
-pub fn plist_path(paths: &Paths) -> PathBuf {
+fn plist_path(paths: &Paths) -> PathBuf {
     crate::services::agent_plist(paths, LABEL)
 }
 

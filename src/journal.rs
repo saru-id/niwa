@@ -14,7 +14,7 @@ use crate::model::Value;
 
 /// The current journal schema. Changes ship with their migration in
 /// the same release.
-pub const SCHEMA: u32 = 1;
+const SCHEMA: u32 = 1;
 
 const FILE: &str = "journal.json";
 

@@ -13,6 +13,7 @@ use std::time::Duration;
 use crate::error::Error;
 use crate::journal::digest;
 use crate::lockfile::ReleasePin;
+use crate::model::{Declaration, Value};
 use crate::paths::Paths;
 use crate::util::proc::{bounded_output, bounded_stdout};
 
@@ -93,6 +94,23 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
         .permissions();
     std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
     std::fs::set_permissions(&target, permissions).map_err(|error| release_error(repo, &error))
+}
+
+/// The binary a release declaration installs: its `bin` field, or
+/// the repo's own name.
+pub fn bin_of(declaration: &Declaration) -> String {
+    if let Value::Map(fields) = &declaration.spec
+        && let Some(Value::Str(bin)) = fields.get("bin")
+    {
+        return bin.clone();
+    }
+    declaration
+        .identity
+        .key
+        .rsplit('/')
+        .next()
+        .unwrap_or(&declaration.identity.key)
+        .to_string()
 }
 
 /// Where a prefetched asset waits, named by its locked digest: a
