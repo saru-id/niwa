@@ -31,12 +31,30 @@ pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
         })?,
     )?;
 
+    let try_ctx = ctx.clone();
     niwa.set(
         "try",
         lua.create_function(move |_, body: Function| {
-            // At plan time nothing fails, so `try` is a plain call.
-            // Failure semantics arrive with the execution engine.
-            body.call::<mlua::Value>(())
+            // The block opt-out: a resource failing inside `try` is
+            // contained and the run continues, in both engine passes.
+            // Config bugs (bad specs, syntax) still halt — only
+            // effect failures are optional. Check mode has no
+            // failures to contain and validates the body plainly.
+            match body.call::<mlua::Value>(()) {
+                Ok(value) => Ok(value),
+                Err(error) => {
+                    let contained = try_ctx.engine.is_some()
+                        && matches!(
+                            crate::error::Error::from(error.clone()),
+                            crate::error::Error::ResourceFailed { .. }
+                        );
+                    if contained {
+                        Ok(mlua::Value::Nil)
+                    } else {
+                        Err(error)
+                    }
+                }
+            }
         })?,
     )?;
 

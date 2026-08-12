@@ -484,6 +484,40 @@ fn a_torn_lockfile_refuses_instead_of_installing_latest() {
     );
 }
 
+#[test]
+fn a_failure_inside_try_is_contained() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.try(function()\n\
+             niwa.run(\"/usr/bin/false\", { unless = niwa.exists(\"~/.never\") })\n\
+         end)\n\
+         niwa.file(\"~/.after-try\", { content = \"still here\" })\n",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "try must contain the failure: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(home.path().join(".after-try").is_file());
+
+    // Without try, the same failure halts the run.
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.run(\"/usr/bin/false\", { unless = niwa.exists(\"~/.never\") })\n\
+         niwa.file(\"~/.after-bare\", { content = \"unreached\" })\n",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(!home.path().join(".after-bare").exists());
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through
