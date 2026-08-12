@@ -45,6 +45,16 @@ pub fn install(paths: &Paths) -> Result<(), Error> {
         "ThrottleInterval".to_string(),
         plist::Value::Integer(5.into()),
     );
+    // The timer the design names beside the watch paths: a weekly
+    // firing carries the rot survey and doctor's cheap subset, so a
+    // quiet machine still gets its digest.
+    let mut weekly = plist::Dictionary::new();
+    weekly.insert("Weekday".to_string(), plist::Value::Integer(1.into()));
+    weekly.insert("Hour".to_string(), plist::Value::Integer(9.into()));
+    dict.insert(
+        "StartCalendarInterval".to_string(),
+        plist::Value::Dictionary(weekly),
+    );
 
     let target = plist_path(paths);
     if let Some(parent) = target.parent() {

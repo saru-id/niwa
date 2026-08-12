@@ -177,3 +177,21 @@ fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     files
 }
+
+/// The cheap half of doctor, for the watcher's weekly digest: how
+/// many of the quick checks fail, with nothing printed. The
+/// expensive checks stay behind `--deep` and a person's decision.
+pub fn quiet_problems(paths: &Paths) -> usize {
+    let mut problems = 0;
+    if Journal::load(&paths.state).is_err() {
+        problems += 1;
+    }
+    let archive_root = paths.state.join("archive");
+    if archive_root.is_dir() {
+        problems += walk(&archive_root)
+            .iter()
+            .filter(|file| std::fs::read(file).is_err())
+            .count();
+    }
+    problems
+}

@@ -95,6 +95,15 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
                     count(digest.missing.len(), "declared thing")
                 ));
             }
+            // Doctor's cheap subset rides the same weekly firing;
+            // a broken net is the rot most worth a decision.
+            let broken = super::doctor::quiet_problems(&paths);
+            if broken > 0 {
+                post_notification(&format!(
+                    "{} fail · run niwa doctor",
+                    count(broken, "doctor check")
+                ));
+            }
         }
     }
     Ok(ExitCode::SUCCESS)
