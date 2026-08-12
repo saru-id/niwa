@@ -68,4 +68,21 @@ niwa undo --yes
 check 7 "undo unwinds through both providers" \
     sh -c "grep -q 'npm uninstall -g' '$CALLS' && grep -q 'mise unuse --global' '$CALLS'"
 
+# --- effects land in program order across providers -----------------
+# The config says mise's node first, then an npm global that needs
+# it. Coalescing is per provider; order between providers is the
+# config's order, never a fixed flush list.
+: >"$CALLS"
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.mise.tool { deno = "latest" }
+niwa.npm.global { "needs-node" }
+LUAU
+niwa apply --yes
+check 8 "the cross-provider apply lands (exit 0)" test "$STATUS" -eq 0
+MISE_LINE=$(grep -n "^mise use" "$CALLS" | head -1 | cut -d: -f1)
+NPM_LINE=$(grep -n "^npm install" "$CALLS" | head -1 | cut -d: -f1)
+check 9 "mise ran before the npm global that needs it" sh -c "
+    test -n '$MISE_LINE' && test -n '$NPM_LINE' && test '$MISE_LINE' -lt '$NPM_LINE'"
+
 echo "drill: npm and mise · all checks passed"

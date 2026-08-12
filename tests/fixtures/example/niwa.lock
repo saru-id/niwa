@@ -1,6 +1,6 @@
 # Written by niwa, committed on purpose: machine two resolves to the
 # same versions this machine did. Edit by running `niwa update <name>`.
-niwa = "1.0.0"
+niwa = "0.1.0"
 
 [github_release."jesseduffield/lazygit"]
 version = "0.44.1"

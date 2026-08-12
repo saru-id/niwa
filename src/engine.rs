@@ -225,6 +225,15 @@ impl Engine {
                     }));
                 }
                 if batchable(&declaration.identity.kind) {
+                    // Coalescing is per provider: a different kind
+                    // arriving cuts the batch first, so effects land
+                    // in the config's own order across providers.
+                    let cut = self.batch.borrow().last().is_some_and(|pending| {
+                        pending.declaration.identity.kind != declaration.identity.kind
+                    });
+                    if cut {
+                        self.flush()?;
+                    }
                     self.batch.borrow_mut().push(Pending {
                         declaration: declaration.clone(),
                         optional: declaration.is_optional(),
