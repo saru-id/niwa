@@ -194,6 +194,16 @@ pub struct Declaration {
     pub privileged: bool,
 }
 
+impl Declaration {
+    /// `optional = true`: a failure is reported, never fatal.
+    pub fn is_optional(&self) -> bool {
+        matches!(
+            &self.spec,
+            Value::Map(fields) if matches!(fields.get("optional"), Some(Value::Bool(true)))
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

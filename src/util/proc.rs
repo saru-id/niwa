@@ -27,6 +27,13 @@ fn resolve(program: &str) -> Option<PathBuf> {
     resolve_in(program, std::env::var_os("PATH").as_deref())
 }
 
+/// Is this name an executable on `PATH`? The same walk `resolve`
+/// uses to spawn — one resolver, so a query and a spawn can never
+/// disagree about what exists.
+pub fn which(program: &str) -> bool {
+    resolve(program).is_some_and(|path| path.is_file())
+}
+
 fn resolve_in(program: &str, path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
     if program.contains('/') {
         return Some(PathBuf::from(program));

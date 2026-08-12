@@ -80,11 +80,3 @@ pub fn run(declaration: &Declaration) -> Result<(), (Option<i32>, String)> {
         )),
     }
 }
-
-/// Is a run declaration marked optional?
-pub fn is_optional(declaration: &Declaration) -> bool {
-    matches!(
-        &declaration.spec,
-        Value::Map(fields) if matches!(fields.get("optional"), Some(Value::Bool(true)))
-    )
-}

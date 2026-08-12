@@ -3,7 +3,6 @@
 //! appears in a plan.
 
 use std::collections::BTreeMap;
-use std::os::unix::fs::PermissionsExt as _;
 
 use mlua::{Lua, Table};
 
@@ -103,13 +102,7 @@ fn query_command(ctx: &Ctx, name: &str) -> bool {
     if let Some(known) = ctx.state.borrow().command_cache.get(name) {
         return *known;
     }
-    let answer = std::env::var_os("PATH").is_some_and(|path| {
-        std::env::split_paths(&path).any(|dir| {
-            let candidate = dir.join(name);
-            std::fs::metadata(&candidate)
-                .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-        })
-    });
+    let answer = crate::util::proc::which(name);
     ctx.state
         .borrow_mut()
         .command_cache

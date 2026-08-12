@@ -219,7 +219,7 @@ impl Engine {
                 if batchable(&declaration.identity.kind) {
                     self.batch.borrow_mut().push(Pending {
                         declaration: declaration.clone(),
-                        optional: is_optional(declaration),
+                        optional: declaration.is_optional(),
                     });
                     return Ok(None);
                 }
@@ -234,6 +234,17 @@ impl Engine {
                 Ok(Some(truth))
             }
         }
+    }
+
+    /// The lockfile's pin wins over the spec; the provider is told
+    /// the version, never handed the lockfile.
+    fn mise_request(&self, declaration: &Declaration) -> String {
+        let pinned = self
+            .lock
+            .mise
+            .get(&declaration.identity.key)
+            .map(|pin| pin.version.as_str());
+        crate::mise::request(declaration, pinned)
     }
 
     /// The truth for an identity whose result was deferred. Flushes
@@ -400,7 +411,7 @@ impl Engine {
                 Kind::Mise => {
                     let requests: Vec<String> = group
                         .iter()
-                        .map(|entry| crate::mise::request(&entry.declaration, &self.lock))
+                        .map(|entry| self.mise_request(&entry.declaration))
                         .collect();
                     crate::mise::install(&requests, Duration::from_mins(30))
                 }
@@ -594,16 +605,6 @@ const fn batchable(kind: &Kind) -> bool {
         kind,
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise
     )
-}
-
-fn is_optional(declaration: &Declaration) -> bool {
-    match &declaration.spec {
-        crate::model::Value::Map(fields) => matches!(
-            fields.get("optional"),
-            Some(crate::model::Value::Bool(true))
-        ),
-        _ => false,
-    }
 }
 
 fn acknowledge(journal: &RefCell<Journal>, declaration: &Declaration) {

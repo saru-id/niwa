@@ -31,10 +31,10 @@ pub fn installed(paths: &Paths, tool: &str) -> Option<String> {
 /// The `tool@version` argument one declaration asks for. A locked
 /// version wins over the spec: machine two gets your version, not
 /// whatever the spec resolves to today.
-pub fn request(declaration: &Declaration, lock: &crate::lockfile::Lockfile) -> String {
+pub fn request(declaration: &Declaration, pinned: Option<&str>) -> String {
     let tool = &declaration.identity.key;
-    if let Some(pin) = lock.mise.get(tool) {
-        return format!("{tool}@{}", pin.version);
+    if let Some(version) = pinned {
+        return format!("{tool}@{version}");
     }
     match &declaration.spec {
         Value::Map(fields) => match fields.get("version") {

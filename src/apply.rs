@@ -95,7 +95,7 @@ fn apply_exec(
     if matches!(declaration.identity.kind, Kind::Run)
         && let Err((code, stderr)) = crate::exec::run(declaration)
     {
-        if crate::exec::is_optional(declaration) {
+        if declaration.is_optional() {
             return Ok((Outcome::Unchecked, None));
         }
         return Err(Error::ResourceFailed {
