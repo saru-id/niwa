@@ -112,7 +112,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
             &super::apply_verb::Options {
                 yes: false,
                 dirty: false,
-                force: false,
+                force: crate::model::action::ForceScope::None,
                 verify: false,
                 no_privileged: false,
                 only: None,

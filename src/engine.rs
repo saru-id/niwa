@@ -28,7 +28,7 @@ pub enum Mode {
     Plan,
     /// Change the machine; `force` lifts the overwrite protection.
     Execute {
-        force: bool,
+        force: crate::model::action::ForceScope,
         /// Skip everything that needs administrator rights: the
         /// design's answer for unattended and sandboxed runs.
         skip_privileged: bool,
@@ -246,7 +246,7 @@ impl Engine {
                 // Program order: anything else lands only after the
                 // pending packages do.
                 self.flush()?;
-                let force = *force;
+                let force = force.covers(&declaration.identity.key);
                 let truth = self.perform_now(declaration, force)?;
                 if truth.changed {
                     self.tick(1);

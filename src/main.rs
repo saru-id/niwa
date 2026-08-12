@@ -56,7 +56,11 @@ fn main() -> ExitCode {
             &verbs::apply_verb::Options {
                 yes,
                 dirty,
-                force,
+                force: match force {
+                    None => crate::model::action::ForceScope::None,
+                    Some(targets) if targets.is_empty() => crate::model::action::ForceScope::All,
+                    Some(targets) => crate::model::action::ForceScope::Targets(targets),
+                },
                 verify,
                 no_privileged,
                 only,

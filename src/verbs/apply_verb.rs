@@ -27,7 +27,7 @@ use crate::util::proc::bounded_stdout;
 pub struct Options {
     pub yes: bool,
     pub dirty: bool,
-    pub force: bool,
+    pub force: crate::model::action::ForceScope,
     pub verify: bool,
     pub no_privileged: bool,
     pub only: Option<String>,
@@ -112,7 +112,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     journal.set_context_commit(crate::stamp::config_commit(&paths).0);
     let engine = Rc::new(Engine::new(
         Mode::Execute {
-            force: options.force,
+            force: options.force.clone(),
             skip_privileged: options.no_privileged,
             only: options.only.clone(),
             declined,
@@ -142,7 +142,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return Ok(ExitCode::FAILURE);
     }
 
-    summarize(out, &engine, &intent, started.elapsed());
+    summarize(out, &paths, &engine, &intent, started.elapsed());
 
     close_run(out, &paths, intent.items.len());
 
@@ -214,6 +214,7 @@ fn walk(
 /// stayed protected because a person's edits live there.
 fn summarize(
     out: &Out,
+    paths: &Paths,
     engine: &Engine,
     intent: &crate::model::action::Plan,
     elapsed: std::time::Duration,
@@ -236,8 +237,17 @@ fn summarize(
     }
     for identity in &protected {
         out.note(&format!(
-            "{identity} holds edits niwa never wrote: pull them home, or apply --force"
+            "{identity} holds edits niwa never wrote: pull them home, or apply --force {}",
+            identity.strip_prefix("file:").unwrap_or(identity)
         ));
+        // The diff apply refused to guess about, shown instead.
+        if let Some(item) = intent
+            .items
+            .iter()
+            .find(|item| &item.declaration.identity.to_string() == identity)
+        {
+            super::plan::render_item_diff(out, paths, item);
+        }
     }
 }
 

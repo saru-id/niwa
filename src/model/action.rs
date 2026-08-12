@@ -40,3 +40,22 @@ impl Plan {
             .count()
     }
 }
+
+/// What `--force` covers: nothing, everything, or the named targets
+/// alone — the design's per-file overwrite consent.
+#[derive(Clone)]
+pub enum ForceScope {
+    None,
+    All,
+    Targets(Vec<String>),
+}
+
+impl ForceScope {
+    pub fn covers(&self, key: &str) -> bool {
+        match self {
+            Self::None => false,
+            Self::All => true,
+            Self::Targets(targets) => targets.iter().any(|target| target == key),
+        }
+    }
+}

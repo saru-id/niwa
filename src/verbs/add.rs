@@ -76,7 +76,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
     let journal = Journal::load(&paths.state)?;
     let engine = Rc::new(Engine::new(
         Mode::Execute {
-            force: false,
+            force: crate::model::action::ForceScope::None,
             skip_privileged: false,
             only: None,
             declined: std::collections::HashSet::new(),

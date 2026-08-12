@@ -52,9 +52,10 @@ pub enum Verb {
         /// With --yes: allow a config tree with uncommitted changes
         #[arg(long)]
         dirty: bool,
-        /// Overwrite files that hold edits niwa never wrote
-        #[arg(long)]
-        force: bool,
+        /// Overwrite files that hold edits niwa never wrote: bare
+        /// covers the run, or name targets to lift one at a time
+        #[arg(long, num_args = 0.., value_name = "TARGET")]
+        force: Option<Vec<String>>,
         /// Re-check everything after the run; fail if anything still
         /// reports a change
         #[arg(long)]

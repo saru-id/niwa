@@ -604,6 +604,47 @@ fn hostile_labels_and_domains_are_refused() {
     assert_eq!(output.status.code(), Some(0));
 }
 
+#[test]
+fn force_takes_targets_and_protection_shows_the_diff() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.file(\"~/.prot-a\", { content = \"niwa a\\n\" })\n\
+         niwa.file(\"~/.prot-b\", { content = \"niwa b\\n\" })\n",
+    );
+    std::fs::write(home.path().join(".prot-a"), "hand a\n").unwrap();
+    std::fs::write(home.path().join(".prot-b"), "hand b\n").unwrap();
+
+    // Unforced: both protected, and the diff is shown, not guessed.
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(0));
+    let text = stdout(&output);
+    assert!(text.contains("2 protected"), "{text}");
+    assert!(
+        text.contains("- hand a") && text.contains("+ niwa a"),
+        "the protected file's diff must show: {text}"
+    );
+
+    // Per-file force lifts protection for the named target only.
+    let output = niwa(
+        home.path(),
+        &[],
+        &["apply", "--yes", "--dirty", "--force", "~/.prot-a"],
+    );
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        std::fs::read_to_string(home.path().join(".prot-a")).unwrap(),
+        "niwa a\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(home.path().join(".prot-b")).unwrap(),
+        "hand b\n",
+        "the unnamed file keeps its hand edits"
+    );
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through
