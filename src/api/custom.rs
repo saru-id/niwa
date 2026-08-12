@@ -13,7 +13,6 @@ use std::time::Duration;
 
 use mlua::{Function, Lua, Table};
 
-use crate::engine::Mode;
 use crate::model::{Declaration, Identity, Kind};
 
 use super::spec::SpecCtx;
@@ -161,18 +160,17 @@ fn declare_custom(
         .check
         .call((exec_handle(lua)?, resource_spec.clone()))?;
 
-    let truth = match &engine.mode {
-        Mode::Plan => engine.custom_planned(&declaration, in_sync, &described),
-        Mode::Execute { .. } => {
-            if !in_sync {
-                handlers
-                    .apply
-                    .call::<()>((exec_handle(lua)?, resource_spec.clone()))?;
-            }
-            engine
-                .custom_applied(&declaration, &described, !in_sync)
-                .map_err(mlua::Error::external)?
+    let truth = if engine.is_planning() {
+        engine.custom_planned(&declaration, in_sync, &described)
+    } else {
+        if !in_sync {
+            handlers
+                .apply
+                .call::<()>((exec_handle(lua)?, resource_spec.clone()))?;
         }
+        engine
+            .custom_applied(&declaration, &described, !in_sync)
+            .map_err(mlua::Error::external)?
     };
     ctx.record(declaration);
     result_table(lua, ctx, &truth)

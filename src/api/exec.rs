@@ -150,13 +150,10 @@ fn declare_once(lua: &Lua, ctx: &Ctx, name: &str, body: &Function) -> mlua::Resu
     // Exactly once means exactly once: a marker the journal already
     // holds skips the whole body, in the plan pass and the execute
     // pass alike. Check mode still runs it, to validate its specs.
-    let already_done = ctx.engine.as_ref().is_some_and(|engine| {
-        engine
-            .journal
-            .borrow()
-            .acknowledged(&marker.identity.to_string())
-            .is_some()
-    });
+    let already_done = ctx
+        .engine
+        .as_ref()
+        .is_some_and(|engine| engine.is_acknowledged(&marker.identity.to_string()));
     if !already_done {
         // The body runs with the guard requirement lifted; the
         // marker is the guard.

@@ -57,10 +57,10 @@ struct Pending {
 }
 
 pub struct Engine {
-    pub mode: Mode,
-    pub paths: Paths,
-    pub lock: Lockfile,
-    pub journal: RefCell<Journal>,
+    mode: Mode,
+    paths: Paths,
+    lock: Lockfile,
+    journal: RefCell<Journal>,
     /// The open apply entry, in execute mode.
     apply_id: Option<u64>,
     batch: RefCell<Vec<Pending>>,
@@ -234,6 +234,21 @@ impl Engine {
                 Ok(Some(truth))
             }
         }
+    }
+
+    /// Is this pass predicting rather than acting?
+    pub const fn is_planning(&self) -> bool {
+        matches!(self.mode, Mode::Plan)
+    }
+
+    /// Does the journal already acknowledge this identity?
+    pub fn is_acknowledged(&self, identity: &str) -> bool {
+        self.journal.borrow().acknowledged(identity).is_some()
+    }
+
+    /// The lockfile's pin for a shared module, when one is recorded.
+    pub fn module_pin(&self, key: &str) -> Option<crate::lockfile::UsePin> {
+        self.lock.uses.get(key).cloned()
     }
 
     /// The lockfile's pin wins over the spec; the provider is told
