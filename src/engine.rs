@@ -555,18 +555,12 @@ impl Engine {
     /// A defaults write asks for its process restart; the queue keeps
     /// one entry per target, so five writes bounce the Dock once.
     fn queue_restart(&self, declaration: &Declaration) {
-        if !matches!(declaration.identity.kind, Kind::Defaults) {
-            return;
-        }
-        let crate::model::Value::Map(fields) = &declaration.spec else {
-            return;
-        };
-        let Some(crate::model::Value::Str(target)) = fields.get("restart") else {
+        let Some(target) = crate::defaults::restart_target(declaration) else {
             return;
         };
         let mut pending = self.restarts_pending.borrow_mut();
-        if !pending.iter().any(|queued| queued == target) {
-            pending.push(target.clone());
+        if !pending.contains(&target) {
+            pending.push(target);
         }
     }
 

@@ -168,12 +168,12 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
         "defaults" => key.split_once(':').map_or_else(
             || "unknown".to_string(),
             |(domain, preference)| {
-                plist::Value::from_file(crate::plan::domain_path(paths, domain))
+                plist::Value::from_file(crate::defaults::domain_path(paths, domain))
                     .ok()
                     .and_then(|root| {
                         root.as_dictionary()
                             .and_then(|dict| dict.get(preference))
-                            .map(crate::plan::plist_to_value)
+                            .map(crate::defaults::plist_to_value)
                     })
                     .map_or_else(
                         || "absent".to_string(),

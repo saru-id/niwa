@@ -2,6 +2,7 @@ mod api;
 mod apply;
 mod brew;
 mod cli;
+mod defaults;
 mod drift;
 mod engine;
 mod error;

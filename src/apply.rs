@@ -561,7 +561,7 @@ fn apply_defaults(
         return Ok((Outcome::Unchecked, None));
     };
 
-    let store = crate::plan::domain_path(paths, domain);
+    let store = crate::defaults::domain_path(paths, domain);
     let mut root = plist::Value::from_file(&store)
         .ok()
         .and_then(plist::Value::into_dictionary)
@@ -573,8 +573,8 @@ fn apply_defaults(
         archive(archive_root, &declaration.identity.to_string(), &previous)?;
     }
 
-    let previous = root.get(key).map(crate::plan::plist_to_value);
-    root.insert(key.to_string(), value_to_plist(declared));
+    let previous = root.get(key).map(crate::defaults::plist_to_value);
+    root.insert(key.to_string(), crate::defaults::value_to_plist(declared));
     if let Some(parent) = store.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|error| apply_error("creating the preferences directory", &error))?;
@@ -619,22 +619,6 @@ fn apply_error(doing: &str, detail: &dyn std::fmt::Display) -> Error {
     Error::Apply {
         doing: doing.to_string(),
         detail: detail.to_string(),
-    }
-}
-
-/// Turn a canonical value back into a plist value for writing.
-pub fn value_to_plist(value: &Value) -> plist::Value {
-    match value {
-        Value::Bool(b) => plist::Value::Boolean(*b),
-        Value::Int(i) => plist::Value::Integer((*i).into()),
-        Value::Float(f) => plist::Value::Real(*f),
-        Value::Str(s) => plist::Value::String(s.clone()),
-        Value::List(items) => plist::Value::Array(items.iter().map(value_to_plist).collect()),
-        Value::Map(map) => plist::Value::Dictionary(
-            map.iter()
-                .map(|(key, value)| (key.clone(), value_to_plist(value)))
-                .collect(),
-        ),
     }
 }
 
@@ -786,7 +770,7 @@ fn reverse_defaults(
     let Some((domain, key)) = rest.split_once(':') else {
         return Ok(());
     };
-    let store = crate::plan::domain_path(paths, domain);
+    let store = crate::defaults::domain_path(paths, domain);
     if let Ok(bytes) = std::fs::read(&store) {
         archive(archive_root, &step.identity, &bytes)?;
     }
@@ -796,7 +780,7 @@ fn reverse_defaults(
         .unwrap_or_default();
     match previous {
         Some(value) => {
-            root.insert(key.to_string(), value_to_plist(value));
+            root.insert(key.to_string(), crate::defaults::value_to_plist(value));
         }
         None => {
             root.remove(key);

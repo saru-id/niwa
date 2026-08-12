@@ -19,7 +19,7 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
     match &declaration.identity.kind {
         Kind::File => compare_file(declaration, paths, journal),
         Kind::Link => compare_link(declaration, paths),
-        Kind::Defaults => compare_defaults(declaration, paths),
+        Kind::Defaults => crate::defaults::compare(declaration, paths),
         Kind::BrewFormula | Kind::BrewCask => {
             match crate::brew::installed(
                 paths,
@@ -176,36 +176,6 @@ fn compare_link(declaration: &Declaration, paths: &Paths) -> Action {
     }
 }
 
-fn compare_defaults(declaration: &Declaration, paths: &Paths) -> Action {
-    let Some(fields) = spec_fields(declaration) else {
-        return Action::Unchecked;
-    };
-    let Some(declared) = fields.get("value") else {
-        return Action::Unchecked;
-    };
-    let Some((domain, key)) = declaration.identity.key.split_once(':') else {
-        return Action::Unchecked;
-    };
-
-    let store = domain_path(paths, domain);
-    let Ok(root) = plist::Value::from_file(&store) else {
-        // No preference file yet: the key does not exist.
-        return Action::Create;
-    };
-    let actual = root
-        .as_dictionary()
-        .and_then(|dict| dict.get(key))
-        .map(plist_to_value);
-
-    match actual {
-        None => Action::Create,
-        Some(actual) if &actual == declared => Action::InSync,
-        Some(actual) => Action::Change {
-            detail: format!("{} → {}", render_value(&actual), render_value(declared)),
-        },
-    }
-}
-
 /// The binary a release declaration installs: its `bin` field, or
 /// the repo's own name.
 pub fn release_bin(declaration: &Declaration) -> String {
@@ -221,56 +191,6 @@ pub fn release_bin(declaration: &Declaration) -> String {
         .next()
         .unwrap_or(&declaration.identity.key)
         .to_string()
-}
-
-/// Where a preference domain lives on disk. niwa reads plists
-/// directly; it never shells out to the `defaults` tool.
-pub fn domain_path(paths: &Paths, domain: &str) -> PathBuf {
-    domain.strip_prefix('/').map_or_else(
-        || {
-            if domain == "NSGlobalDomain" {
-                paths
-                    .home
-                    .join("Library/Preferences/.GlobalPreferences.plist")
-            } else {
-                paths
-                    .home
-                    .join(format!("Library/Preferences/{domain}.plist"))
-            }
-        },
-        |rest| PathBuf::from(format!("/{rest}.plist")),
-    )
-}
-
-/// Canonicalize a plist value into the model's shape. Dates and raw
-/// data cannot be declared from a config, so they render as opaque
-/// strings and always read as a difference.
-pub fn plist_to_value(value: &plist::Value) -> Value {
-    match value {
-        plist::Value::Boolean(b) => Value::Bool(*b),
-        plist::Value::Integer(i) => i
-            .as_signed()
-            .map_or_else(|| Value::Str(i.to_string()), Value::Int),
-        plist::Value::Real(r) => {
-            if r.fract() == 0.0 && r.abs() < 9_007_199_254_740_992.0 {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    reason = "the fract check proves the cast is exact"
-                )]
-                Value::Int(*r as i64)
-            } else {
-                Value::Float(*r)
-            }
-        }
-        plist::Value::String(s) => Value::Str(s.clone()),
-        plist::Value::Array(items) => Value::List(items.iter().map(plist_to_value).collect()),
-        plist::Value::Dictionary(dict) => Value::Map(
-            dict.iter()
-                .map(|(key, value)| (key.clone(), plist_to_value(value)))
-                .collect(),
-        ),
-        other => Value::Str(format!("{other:?}")),
-    }
 }
 
 /// One-line rendering for plan transitions: `false → true`, `40 → 48`.

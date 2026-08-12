@@ -249,11 +249,11 @@ fn governed_drift(
                 let Some(declared) = fields.get("value") else {
                     continue;
                 };
-                let store = crate::plan::domain_path(paths, domain);
+                let store = crate::defaults::domain_path(paths, domain);
                 let live = plist::Value::from_file(&store).ok().and_then(|root| {
                     root.as_dictionary()
                         .and_then(|dict| dict.get(key))
-                        .map(crate::plan::plist_to_value)
+                        .map(crate::defaults::plist_to_value)
                 });
                 if let Some(live) = live
                     && &live != declared
@@ -299,7 +299,7 @@ fn settings_flips(
     }
 
     for domain in &domains {
-        let store = crate::plan::domain_path(paths, domain);
+        let store = crate::defaults::domain_path(paths, domain);
         let Ok(root) = plist::Value::from_file(&store) else {
             continue;
         };
@@ -307,7 +307,7 @@ fn settings_flips(
             continue;
         };
         for (key, raw) in dict {
-            let live = crate::plan::plist_to_value(raw);
+            let live = crate::defaults::plist_to_value(raw);
             match baseline.known(domain, key) {
                 None => baseline.learn(domain, key, live),
                 Some(known) if known == &live => {}
@@ -394,7 +394,7 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
     match kind {
         "file" | "link" => expand(paths, key).symlink_metadata().is_ok(),
         "defaults" => key.split_once(':').is_some_and(|(domain, key)| {
-            plist::Value::from_file(crate::plan::domain_path(paths, domain))
+            plist::Value::from_file(crate::defaults::domain_path(paths, domain))
                 .ok()
                 .and_then(|root| root.as_dictionary().map(|dict| dict.contains_key(key)))
                 .unwrap_or(false)

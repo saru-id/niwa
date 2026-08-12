@@ -352,7 +352,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             let Some((domain, preference)) = key.split_once(':') else {
                 return Ok(());
             };
-            let store = crate::plan::domain_path(paths, domain);
+            let store = crate::defaults::domain_path(paths, domain);
             if let Ok(bytes) = std::fs::read(&store) {
                 crate::apply::archive_bytes(&archive_root, identity, &bytes)?;
             }
