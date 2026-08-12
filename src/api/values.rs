@@ -27,7 +27,7 @@ pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx, facts: &Facts) -> mlua::Resu
     freeze(lua, &machine)?;
     niwa.set("machine", machine)?;
 
-    niwa.set("home", ctx.home.to_string_lossy())?;
+    niwa.set("home", ctx.paths.home.to_string_lossy())?;
 
     let exists_ctx = ctx.clone();
     niwa.set(

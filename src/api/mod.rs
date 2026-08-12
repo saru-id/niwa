@@ -50,10 +50,8 @@ pub struct RunState {
 #[derive(Clone)]
 pub struct Ctx {
     pub state: Rc<RefCell<RunState>>,
-    /// The config repo root, for `@self/` sources.
-    pub root: PathBuf,
-    /// The user's home, for `~/` targets.
-    pub home: PathBuf,
+    /// Where this run reads and writes; one shape for the whole VM.
+    pub paths: crate::paths::Paths,
     /// The engine behind this pass. `None` is check mode: validate
     /// and record, touch nothing, predict nothing.
     pub engine: Option<Rc<Engine>>,
@@ -73,7 +71,7 @@ impl Ctx {
         if rest.is_empty() || rest.split('/').any(|part| part.is_empty() || part == "..") {
             return None;
         }
-        Some(self.root.join(rest))
+        Some(self.paths.config.join(rest))
     }
 
     /// Expand `~/` against the home directory; absolute paths pass
@@ -81,7 +79,7 @@ impl Ctx {
     pub fn target_path(&self, target: &str) -> Option<PathBuf> {
         target
             .strip_prefix("~/")
-            .map(|rest| self.home.join(rest))
+            .map(|rest| self.paths.home.join(rest))
             .or_else(|| target.starts_with('/').then(|| PathBuf::from(target)))
     }
 }

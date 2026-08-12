@@ -45,8 +45,7 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
     let state = Rc::new(RefCell::new(RunState::default()));
     let ctx = Ctx {
         state: Rc::clone(&state),
-        root: paths.config.clone(),
-        home: paths.home.clone(),
+        paths: paths.clone(),
         engine,
     };
     let facts = crate::facts::Facts::gather(paths);
@@ -107,8 +106,7 @@ pub fn secrets_used(paths: &Paths) -> Option<Vec<(String, Option<String>)>> {
     let state = Rc::new(RefCell::new(RunState::default()));
     let ctx = Ctx {
         state: Rc::clone(&state),
-        root: paths.config.clone(),
-        home: paths.home.clone(),
+        paths: paths.clone(),
         engine: None,
     };
     let facts = crate::facts::Facts::gather(paths);
