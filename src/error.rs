@@ -20,6 +20,14 @@ pub enum Error {
 
     #[error("the config points at files that do not exist")]
     MissingSources(Vec<(String, crate::model::Provenance)>),
+
+    #[error(
+        "the journal was written by a newer niwa (schema {found}, this niwa reads up to {supported})"
+    )]
+    JournalNewer { found: u32, supported: u32 },
+
+    #[error("the journal cannot be read")]
+    JournalUnreadable { detail: String },
 }
 
 impl From<mlua::Error> for Error {
@@ -65,6 +73,12 @@ impl Error {
                 .iter()
                 .map(|(source, provenance)| format!("{provenance}: `{source}` does not exist"))
                 .collect(),
+            Self::JournalNewer { .. } => {
+                vec!["update niwa, then run this again".to_string()]
+            }
+            Self::JournalUnreadable { detail } => {
+                vec![detail.clone(), "run `niwa doctor` once it exists; the journal file lives under ~/.local/state/niwa".to_string()]
+            }
         }
     }
 }

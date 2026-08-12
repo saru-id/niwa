@@ -1,0 +1,7 @@
+---
+source: tests/snapshots.rs
+expression: run.stderr
+---
+no config found
+  looked in ~/.config/niwa
+  create ~/.config/niwa/init.luau, or clone your config repo there

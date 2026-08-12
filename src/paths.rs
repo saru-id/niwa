@@ -13,6 +13,9 @@ pub struct Paths {
     pub home: PathBuf,
     /// The config repo: `~/.config/niwa`.
     pub config: PathBuf,
+    /// Per-machine state that is never committed: the journal, and
+    /// later the undo archives. `~/.local/state/niwa`.
+    pub state: PathBuf,
 }
 
 impl Paths {
@@ -22,7 +25,12 @@ impl Paths {
             .filter(|p| p.is_absolute())
             .ok_or(Error::NoHome)?;
         let config = xdg_dir(&home, "XDG_CONFIG_HOME", ".config").join("niwa");
-        Ok(Self { home, config })
+        let state = xdg_dir(&home, "XDG_STATE_HOME", ".local/state").join("niwa");
+        Ok(Self {
+            home,
+            config,
+            state,
+        })
     }
 }
 

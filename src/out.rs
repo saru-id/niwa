@@ -19,14 +19,18 @@ use crate::error::Error;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     Good,
+    Warn,
     Bad,
+    Muted,
 }
 
 impl Role {
     const fn ansi(self) -> &'static str {
         match self {
             Self::Good => "32",
+            Self::Warn => "33",
             Self::Bad => "31",
+            Self::Muted => "2",
         }
     }
 }
@@ -36,6 +40,8 @@ impl Role {
 #[derive(Clone, Copy)]
 pub enum Mark {
     Ok,
+    Added,
+    Changed,
     Failed,
 }
 
@@ -43,13 +49,16 @@ impl Mark {
     const fn glyph(self) -> &'static str {
         match self {
             Self::Ok => "✓",
+            Self::Added => "+",
+            Self::Changed => "~",
             Self::Failed => "✗",
         }
     }
 
     const fn role(self) -> Role {
         match self {
-            Self::Ok => Role::Good,
+            Self::Ok | Self::Added => Role::Good,
+            Self::Changed => Role::Warn,
             Self::Failed => Role::Bad,
         }
     }
@@ -92,6 +101,44 @@ impl Out {
         if self.tty {
             let glyph = self.paint(mark.role(), mark.glyph());
             println!("{glyph} {text}");
+        } else {
+            println!("{text}");
+        }
+    }
+
+    /// A group header: the module's name and a rule, so the eye can
+    /// scan a run by its structure.
+    pub fn group(&self, name: &str) {
+        if self.tty {
+            let rule_width = 36usize.saturating_sub(name.chars().count() + 2);
+            println!(" {name} {}", "─".repeat(rule_width));
+        } else {
+            println!("[{name}]");
+        }
+    }
+
+    /// Aligned item rows: mark, a left column padded to the widest
+    /// entry, and a detail column.
+    pub fn list(&self, rows: &[(Mark, String, String)]) {
+        let width = rows
+            .iter()
+            .map(|(_, left, _)| left.chars().count())
+            .max()
+            .unwrap_or(0);
+        for (mark, left, right) in rows {
+            let text = if right.is_empty() {
+                left.clone()
+            } else {
+                format!("{left:<width$}   {right}")
+            };
+            self.result(*mark, text.trim_end());
+        }
+    }
+
+    /// A quiet, indented note.
+    pub fn note(&self, text: &str) {
+        if self.tty {
+            println!("  {}", self.paint(Role::Muted, text));
         } else {
             println!("{text}");
         }

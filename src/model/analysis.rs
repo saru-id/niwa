@@ -11,8 +11,10 @@ use super::{Declaration, Identity, Provenance};
 
 #[derive(Debug)]
 pub struct Analysis {
-    /// Distinct identities, in first-declared order.
-    pub resources: usize,
+    /// One effective declaration per identity, in first-declared
+    /// order. A host declaration wins over a module's; the last host
+    /// declaration wins among hosts.
+    pub effective: Vec<Declaration>,
     pub conflicts: Vec<Conflict>,
 }
 
@@ -66,8 +68,22 @@ pub fn analyze(declarations: &[Declaration]) -> Analysis {
         }
     }
 
+    let effective = order
+        .iter()
+        .map(|identity| {
+            let group = &groups[*identity];
+            group
+                .iter()
+                .rfind(|d| d.unit.is_host())
+                .or_else(|| group.first())
+                .copied()
+                .cloned()
+        })
+        .collect::<Option<Vec<_>>>()
+        .unwrap_or_default();
+
     Analysis {
-        resources: order.len(),
+        effective,
         conflicts,
     }
 }
@@ -101,7 +117,7 @@ mod tests {
             declaration("d:k", 1, Unit::Module("b".to_string()), 2),
         ];
         let analysis = analyze(&declarations);
-        assert_eq!(analysis.resources, 1);
+        assert_eq!(analysis.effective.len(), 1);
         assert!(analysis.conflicts.is_empty());
     }
 
@@ -126,7 +142,7 @@ mod tests {
             declaration("d:k", 2, Unit::Host("laptop".to_string()), 3),
         ];
         let analysis = analyze(&declarations);
-        assert_eq!(analysis.resources, 1);
+        assert_eq!(analysis.effective.len(), 1);
         assert!(analysis.conflicts.is_empty());
     }
 

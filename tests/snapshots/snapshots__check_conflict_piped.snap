@@ -1,0 +1,9 @@
+---
+source: tests/snapshots.rs
+expression: run.stderr
+---
+declarations conflict
+  defaults:com.apple.dock:autohide is declared twice with different values:
+    modules/a.luau:2
+    modules/b.luau:2
+  keep one, or move the override into a host file

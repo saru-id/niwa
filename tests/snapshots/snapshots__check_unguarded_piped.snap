@@ -1,0 +1,6 @@
+---
+source: tests/snapshots.rs
+expression: head
+---
+the config failed to load
+  runtime error: init.luau:2: niwa.run: a command needs a guard: add `unless`, `only_if`, or `creates` so the run can be skipped when it is already done

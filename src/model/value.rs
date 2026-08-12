@@ -5,10 +5,12 @@
 
 use std::collections::BTreeMap;
 
+use serde::{Deserialize, Serialize};
+
 /// The recursive value type: booleans, numbers, strings, lists, and
 /// string-keyed maps. Whole numbers canonicalize to integers so that
 /// `48` and `48.0` are one value.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Bool(bool),
     Int(i64),

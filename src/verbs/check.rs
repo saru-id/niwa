@@ -7,9 +7,6 @@
 use std::process::ExitCode;
 
 use crate::error::Error;
-use crate::luau::{Limits, Runtime};
-use crate::model::analysis::analyze;
-use crate::model::{Kind, Value};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
@@ -29,41 +26,6 @@ pub fn run(out: &Out) -> ExitCode {
 
 fn check() -> Result<usize, Error> {
     let paths = Paths::resolve()?;
-    if !paths.config.join("init.luau").is_file() {
-        return Err(Error::ConfigMissing { dir: paths.config });
-    }
-    let runtime = Runtime::new(&paths.config, &paths.home, &Limits::default())?;
-    runtime.run_entry()?;
-
-    let declarations = runtime.declarations();
-    let analysis = analyze(&declarations);
-    if !analysis.conflicts.is_empty() {
-        return Err(Error::Conflicts(analysis.conflicts));
-    }
-
-    let mut missing = Vec::new();
-    for declaration in &declarations {
-        let field = match declaration.identity.kind {
-            Kind::File => "source",
-            Kind::Link => "to",
-            _ => continue,
-        };
-        let Value::Map(fields) = &declaration.spec else {
-            continue;
-        };
-        let Some(Value::Str(source)) = fields.get(field) else {
-            continue;
-        };
-        let resolved = source
-            .strip_prefix("@self/")
-            .map(|rest| paths.config.join(rest));
-        if !resolved.is_some_and(|path| path.exists()) {
-            missing.push((source.clone(), declaration.provenance.clone()));
-        }
-    }
-    if !missing.is_empty() {
-        return Err(Error::MissingSources(missing));
-    }
-
-    Ok(analysis.resources)
+    let analysis = super::load_config(&paths)?;
+    Ok(analysis.effective.len())
 }

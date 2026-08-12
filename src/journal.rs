@@ -1,0 +1,170 @@
+//! The journal: what the last apply did, per machine, never committed.
+//!
+//! Acknowledgements live here — the third of the model's three states.
+//! The file is schema versioned, and a journal from a newer niwa is
+//! refused with the way out spelled, never guessed at.
+
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
+use crate::error::Error;
+use crate::model::Value;
+
+/// The current journal schema. Changes ship with their migration in
+/// the same release.
+pub const SCHEMA: u32 = 1;
+
+const FILE: &str = "journal.json";
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Journal {
+    schema: u32,
+    /// Acknowledgements by identity string.
+    acknowledged: BTreeMap<String, Acknowledgement>,
+}
+
+/// What one apply left behind for one identity: the spec it made true
+/// and, for byte-backed resources, the digest of the bytes it wrote.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Acknowledgement {
+    pub spec: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<String>,
+}
+
+impl Default for Journal {
+    fn default() -> Self {
+        Self {
+            schema: SCHEMA,
+            acknowledged: BTreeMap::new(),
+        }
+    }
+}
+
+impl Journal {
+    /// Load the journal from the state directory. No file is an empty
+    /// journal; a newer schema is an error naming the fix.
+    pub fn load(state: &Path) -> Result<Self, Error> {
+        let path = state.join(FILE);
+        let raw = match std::fs::read(&path) {
+            Ok(raw) => raw,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(error) => {
+                return Err(Error::JournalUnreadable {
+                    detail: error.to_string(),
+                });
+            }
+        };
+        let journal: Self =
+            serde_json::from_slice(&raw).map_err(|error| Error::JournalUnreadable {
+                detail: error.to_string(),
+            })?;
+        if journal.schema > SCHEMA {
+            return Err(Error::JournalNewer {
+                found: journal.schema,
+                supported: SCHEMA,
+            });
+        }
+        Ok(journal)
+    }
+
+    /// Write the journal atomically: temp file, then rename.
+    #[allow(
+        dead_code,
+        reason = "the execution engine writes the journal; it lands with apply"
+    )]
+    pub fn save(&self, state: &Path) -> Result<(), Error> {
+        std::fs::create_dir_all(state).map_err(|error| Error::JournalUnreadable {
+            detail: error.to_string(),
+        })?;
+        let path = state.join(FILE);
+        let temp = state.join(format!("{FILE}.tmp"));
+        let raw = serde_json::to_vec_pretty(self).map_err(|error| Error::JournalUnreadable {
+            detail: error.to_string(),
+        })?;
+        std::fs::write(&temp, raw)
+            .and_then(|()| std::fs::rename(&temp, &path))
+            .map_err(|error| Error::JournalUnreadable {
+                detail: error.to_string(),
+            })
+    }
+
+    pub fn acknowledged(&self, identity: &str) -> Option<&Acknowledgement> {
+        self.acknowledged.get(identity)
+    }
+
+    #[allow(
+        dead_code,
+        reason = "the execution engine writes the journal; it lands with apply"
+    )]
+    pub fn acknowledge(&mut self, identity: String, acknowledgement: Acknowledgement) {
+        self.acknowledged.insert(identity, acknowledgement);
+    }
+}
+
+/// The digest format acknowledgements use for bytes: sha256, hex.
+pub fn digest(bytes: &[u8]) -> String {
+    use sha2::Digest as _;
+    use std::fmt::Write as _;
+    let hash = sha2::Sha256::digest(bytes);
+    let mut out = String::with_capacity(64);
+    for byte in hash {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_missing_journal_is_an_empty_journal() {
+        let dir = tempfile::tempdir().unwrap();
+        let journal = Journal::load(dir.path()).unwrap();
+        assert!(journal.acknowledged("file:~/.zshrc").is_none());
+    }
+
+    #[test]
+    fn acknowledgements_survive_a_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut journal = Journal::default();
+        journal.acknowledge(
+            "file:~/.zshrc".to_string(),
+            Acknowledgement {
+                spec: Value::Str("x".to_string()),
+                bytes: Some(digest(b"hello")),
+            },
+        );
+        journal.save(dir.path()).unwrap();
+        let loaded = Journal::load(dir.path()).unwrap();
+        let ack = loaded.acknowledged("file:~/.zshrc").unwrap();
+        assert_eq!(ack.bytes.as_deref(), Some(digest(b"hello").as_str()));
+    }
+
+    #[test]
+    fn a_journal_from_a_newer_niwa_is_refused_with_the_way_out() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("journal.json"),
+            "{\"schema\": 99, \"acknowledged\": {}}",
+        )
+        .unwrap();
+        let error = Journal::load(dir.path()).unwrap_err();
+        let rendered = format!("{error}\n{}", error.detail().join("\n"));
+        assert!(rendered.contains("newer"), "{rendered}");
+        assert!(rendered.contains("update niwa"), "{rendered}");
+    }
+
+    #[test]
+    fn digests_are_stable_sha256_hex() {
+        assert_eq!(
+            digest(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+}

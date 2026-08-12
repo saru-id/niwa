@@ -18,4 +18,7 @@ pub enum Verb {
     /// Validate the config: it loads, every spec is well formed, and
     /// declarations do not conflict
     Check,
+    /// Show what apply would do. Exit 0 when in sync, 2 when changes
+    /// are pending, 1 on an error
+    Plan,
 }

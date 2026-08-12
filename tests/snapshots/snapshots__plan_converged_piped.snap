@@ -1,0 +1,5 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+3 resources · nothing to do
