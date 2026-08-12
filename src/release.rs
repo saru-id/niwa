@@ -298,8 +298,5 @@ fn tempdir_file(repo: &str) -> PathBuf {
 }
 
 fn release_error(repo: &str, error: &dyn std::fmt::Display) -> Error {
-    Error::Apply {
-        doing: format!("installing {repo}"),
-        detail: error.to_string(),
-    }
+    Error::apply(format!("installing {repo}"), error)
 }

@@ -118,6 +118,17 @@ fn recover(error: &mlua::Error) -> Option<Error> {
 }
 
 impl Error {
+    /// The everyday failure, in one breath: what was being done, and
+    /// the system's own words about what happened.
+    pub fn apply(doing: impl Into<String>, detail: impl std::fmt::Display) -> Self {
+        Self::Apply {
+            doing: doing.into(),
+            detail: detail.to_string(),
+        }
+    }
+}
+
+impl Error {
     /// Follow-up lines for `out::Out::error`: what to do next, and any
     /// context worth a second line. An empty answer means the display
     /// line already says everything.

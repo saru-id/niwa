@@ -58,18 +58,14 @@ impl Lockfile {
     /// Read the committed lock; absent is empty.
     pub fn load(paths: &Paths) -> Result<Self, Error> {
         let lock: Self = match std::fs::read_to_string(Self::path(paths)) {
-            Ok(text) => toml::from_str(&text).map_err(|error| Error::Apply {
-                doing: "reading niwa.lock".to_string(),
-                detail: error.to_string(),
-            })?,
+            Ok(text) => {
+                toml::from_str(&text).map_err(|error| Error::apply("reading niwa.lock", error))?
+            }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 return Ok(Self::default());
             }
             Err(error) => {
-                return Err(Error::Apply {
-                    doing: "reading niwa.lock".to_string(),
-                    detail: error.to_string(),
-                });
+                return Err(Error::apply("reading niwa.lock", error));
             }
         };
         // A lock written by a newer niwa refuses the same way a newer
@@ -97,19 +93,13 @@ impl Lockfile {
             mise: self.mise.clone(),
             uses: self.uses.clone(),
         };
-        let body = toml::to_string_pretty(&stamped).map_err(|error| Error::Apply {
-            doing: "rendering niwa.lock".to_string(),
-            detail: error.to_string(),
-        })?;
+        let body = toml::to_string_pretty(&stamped)
+            .map_err(|error| Error::apply("rendering niwa.lock", error))?;
         let text = format!(
             "# Written by niwa, committed on purpose: machine two resolves to the\n# same versions this machine did. Edit by running `niwa update <name>`.\n{body}"
         );
-        crate::util::write_atomic(&Self::path(paths), text.as_bytes(), None, true).map_err(
-            |error| Error::Apply {
-                doing: "writing niwa.lock".to_string(),
-                detail: error.to_string(),
-            },
-        )
+        crate::util::write_atomic(&Self::path(paths), text.as_bytes(), None, true)
+            .map_err(|error| Error::apply("writing niwa.lock", error))
     }
 }
 

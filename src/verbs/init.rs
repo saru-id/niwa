@@ -111,10 +111,7 @@ fn write(paths: &Paths, relative: &str, content: &str) -> Result<(), Error> {
 }
 
 fn init_error(error: &dyn std::fmt::Display) -> Error {
-    Error::Apply {
-        doing: "initializing the config".to_string(),
-        detail: error.to_string(),
-    }
+    Error::apply("initializing the config", error)
 }
 
 fn init_luau() -> String {

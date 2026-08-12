@@ -21,10 +21,10 @@ pub fn run(out: &Out, markdown: bool) -> ExitCode {
 
 fn export(out: &Out, markdown: bool) -> Result<ExitCode, Error> {
     if !markdown {
-        return Err(Error::Apply {
-            doing: "exporting".to_string(),
-            detail: "pass --markdown; it is the one format that exists".to_string(),
-        });
+        return Err(Error::apply(
+            "exporting",
+            "pass --markdown; it is the one format that exists",
+        ));
     }
     let paths = Paths::resolve()?;
     let analysis = super::run_pass(&paths, None)?;

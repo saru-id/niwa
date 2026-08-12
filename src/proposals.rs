@@ -60,18 +60,10 @@ pub fn append(paths: &Paths, relative: &PathBuf, statement: &str) -> Result<(), 
             });
         }
         let header = "--!strict\n-- Staging: accepted proposals land here when no other module\n-- matches. Move lines out whenever you feel like it, or never.\nlocal niwa = require(\"@niwa\")\n";
-        std::fs::create_dir_all(path.parent().unwrap_or(&paths.config)).map_err(|error| {
-            Error::Apply {
-                doing: "creating the modules directory".to_string(),
-                detail: error.to_string(),
-            }
-        })?;
-        crate::util::write_atomic(&path, header.as_bytes(), None, false).map_err(|error| {
-            Error::Apply {
-                doing: "creating the inbox".to_string(),
-                detail: error.to_string(),
-            }
-        })?;
+        std::fs::create_dir_all(path.parent().unwrap_or(&paths.config))
+            .map_err(|error| Error::apply("creating the modules directory", error))?;
+        crate::util::write_atomic(&path, header.as_bytes(), None, false)
+            .map_err(|error| Error::apply("creating the inbox", error))?;
         require_inbox(paths)?;
     }
     let mut text = std::fs::read_to_string(&path).map_err(|error| Error::Apply {
@@ -95,10 +87,8 @@ pub fn append(paths: &Paths, relative: &PathBuf, statement: &str) -> Result<(), 
 /// last.
 fn require_inbox(paths: &Paths) -> Result<(), Error> {
     let init = paths.config.join("init.luau");
-    let text = std::fs::read_to_string(&init).map_err(|error| Error::Apply {
-        doing: "reading init.luau".to_string(),
-        detail: error.to_string(),
-    })?;
+    let text =
+        std::fs::read_to_string(&init).map_err(|error| Error::apply("reading init.luau", error))?;
     if text.contains("@self/modules/inbox") {
         return Ok(());
     }
@@ -119,12 +109,8 @@ fn require_inbox(paths: &Paths) -> Result<(), Error> {
             updated
         },
     );
-    crate::util::write_atomic(&init, updated.as_bytes(), None, false).map_err(|error| {
-        Error::Apply {
-            doing: "writing init.luau".to_string(),
-            detail: error.to_string(),
-        }
-    })
+    crate::util::write_atomic(&init, updated.as_bytes(), None, false)
+        .map_err(|error| Error::apply("writing init.luau", error))
 }
 
 /// Render a canonical value as Luau source, in the example config's
@@ -369,16 +355,9 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             let mut rendered = Vec::new();
             plist::Value::Dictionary(root)
                 .to_writer_binary(&mut rendered)
-                .map_err(|error| Error::Apply {
-                    doing: "rendering the preference file".to_string(),
-                    detail: error.to_string(),
-                })?;
-            crate::util::write_atomic(&store, &rendered, None, false).map_err(|error| {
-                Error::Apply {
-                    doing: "writing the preference file".to_string(),
-                    detail: error.to_string(),
-                }
-            })?;
+                .map_err(|error| Error::apply("rendering the preference file", error))?;
+            crate::util::write_atomic(&store, &rendered, None, false)
+                .map_err(|error| Error::apply("writing the preference file", error))?;
         }
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
             crate::apply::uninstall_package(&parsed)?;

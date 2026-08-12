@@ -69,16 +69,13 @@ fn read_passphrase(prompt: &str) -> Result<String, Error> {
         let _ = bounded_output("stty", &["echo"], Duration::from_secs(5));
         eprintln!();
     }
-    read.map_err(|error| Error::Apply {
-        doing: "reading the passphrase".to_string(),
-        detail: error.to_string(),
-    })?;
+    read.map_err(|error| Error::apply("reading the passphrase", error))?;
     let passphrase = line.trim_end_matches(['\n', '\r']).to_string();
     if passphrase.is_empty() {
-        return Err(Error::Apply {
-            doing: "reading the passphrase".to_string(),
-            detail: "an empty passphrase seals nothing".to_string(),
-        });
+        return Err(Error::apply(
+            "reading the passphrase",
+            "an empty passphrase seals nothing",
+        ));
     }
     Ok(passphrase)
 }

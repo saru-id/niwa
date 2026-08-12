@@ -37,10 +37,8 @@ fn uninstall(out: &Out, purge: bool) -> Result<ExitCode, Error> {
 
     if purge {
         if paths.state.exists() {
-            std::fs::remove_dir_all(&paths.state).map_err(|error| Error::Apply {
-                doing: "purging the journal".to_string(),
-                detail: error.to_string(),
-            })?;
+            std::fs::remove_dir_all(&paths.state)
+                .map_err(|error| Error::apply("purging the journal", error))?;
         }
         out.result(Mark::Ok, "the journal and its archives are purged");
     } else {
@@ -70,10 +68,8 @@ fn uninstall(out: &Out, purge: bool) -> Result<ExitCode, Error> {
 
     // The binary last: removing the running file is safe on this
     // platform, and everything above already happened.
-    let binary = std::env::current_exe().map_err(|error| Error::Apply {
-        doing: "finding the niwa binary".to_string(),
-        detail: error.to_string(),
-    })?;
+    let binary =
+        std::env::current_exe().map_err(|error| Error::apply("finding the niwa binary", error))?;
     std::fs::remove_file(&binary).map_err(|error| Error::Apply {
         doing: format!("removing {}", binary.display()),
         detail: error.to_string(),

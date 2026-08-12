@@ -127,15 +127,11 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), Error> {
         let source = from.join(&relative);
         let target = to.join(&relative);
         if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| Error::Apply {
-                doing: "caching the module".to_string(),
-                detail: error.to_string(),
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|error| Error::apply("caching the module", error))?;
         }
-        std::fs::copy(&source, &target).map_err(|error| Error::Apply {
-            doing: "caching the module".to_string(),
-            detail: error.to_string(),
-        })?;
+        std::fs::copy(&source, &target)
+            .map_err(|error| Error::apply("caching the module", error))?;
     }
     Ok(())
 }

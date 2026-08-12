@@ -128,10 +128,8 @@ pub fn identity(paths: &Paths) -> Result<age::x25519::Identity, Error> {
         });
     }
     let identity = age::x25519::Identity::generate();
-    std::fs::create_dir_all(&paths.state).map_err(|error| Error::Apply {
-        doing: "creating the state directory".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&paths.state)
+        .map_err(|error| Error::apply("creating the state directory", error))?;
     // Born private: the mode lands on the temp before the rename,
     // so the identity is never readable wider, not even briefly.
     crate::util::write_atomic(
@@ -140,10 +138,7 @@ pub fn identity(paths: &Paths) -> Result<age::x25519::Identity, Error> {
         Some(0o600),
         true,
     )
-    .map_err(|error| Error::Apply {
-        doing: "writing the sealing key".to_string(),
-        detail: error.to_string(),
-    })?;
+    .map_err(|error| Error::apply("writing the sealing key", error))?;
     Ok(identity)
 }
 
@@ -204,15 +199,10 @@ pub fn backup_key(paths: &Paths, passphrase: &str) -> Result<PathBuf, Error> {
     writer.finish().map_err(|error| seal_error(&error))?;
 
     let escrow_dir = paths.config.join("secrets");
-    std::fs::create_dir_all(&escrow_dir).map_err(|error| Error::Apply {
-        doing: "creating secrets/".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&escrow_dir)
+        .map_err(|error| Error::apply("creating secrets/", error))?;
     let escrow = escrow_dir.join("seal-key.age");
-    std::fs::write(&escrow, sealed).map_err(|error| Error::Apply {
-        doing: "writing the escrow".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::write(&escrow, sealed).map_err(|error| Error::apply("writing the escrow", error))?;
     Ok(escrow)
 }
 
@@ -228,29 +218,18 @@ pub fn restore_key(paths: &Paths, passphrase: &str) -> Result<(), Error> {
         age::scrypt::Identity::new(age::secrecy::SecretString::from(passphrase.to_string()));
     let mut reader = decryptor
         .decrypt(std::iter::once(&identity as &dyn age::Identity))
-        .map_err(|_| Error::Apply {
-            doing: "unlocking the escrow".to_string(),
-            detail: "the passphrase does not open it".to_string(),
-        })?;
+        .map_err(|_| Error::apply("unlocking the escrow", "the passphrase does not open it"))?;
     let mut clear = Vec::new();
     reader
         .read_to_end(&mut clear)
         .map_err(|error| seal_error(&error))?;
 
-    std::fs::create_dir_all(&paths.state).map_err(|error| Error::Apply {
-        doing: "creating the state directory".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&paths.state)
+        .map_err(|error| Error::apply("creating the state directory", error))?;
     let path = key_path(paths);
-    std::fs::write(&path, clear).map_err(|error| Error::Apply {
-        doing: "writing the sealing key".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::write(&path, clear).map_err(|error| Error::apply("writing the sealing key", error))?;
     let mut permissions = std::fs::metadata(&path)
-        .map_err(|error| Error::Apply {
-            doing: "reading the sealing key's permissions".to_string(),
-            detail: error.to_string(),
-        })?
+        .map_err(|error| Error::apply("reading the sealing key's permissions", error))?
         .permissions();
     std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o600);
     let _ = std::fs::set_permissions(&path, permissions);
@@ -258,10 +237,7 @@ pub fn restore_key(paths: &Paths, passphrase: &str) -> Result<(), Error> {
 }
 
 fn seal_error(error: &dyn std::fmt::Display) -> Error {
-    Error::Apply {
-        doing: "sealing".to_string(),
-        detail: error.to_string(),
-    }
+    Error::apply("sealing", error)
 }
 
 #[cfg(test)]

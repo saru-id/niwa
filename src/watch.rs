@@ -17,10 +17,8 @@ fn plist_path(paths: &Paths) -> PathBuf {
 /// Write the watcher's plist and load it. `init` calls this; the
 /// installer's first apply reaches it through init.
 pub fn install(paths: &Paths) -> Result<(), Error> {
-    let binary = std::env::current_exe().map_err(|error| Error::Apply {
-        doing: "finding the niwa binary".to_string(),
-        detail: error.to_string(),
-    })?;
+    let binary =
+        std::env::current_exe().map_err(|error| Error::apply("finding the niwa binary", error))?;
 
     let mut dict = plist::Dictionary::new();
     dict.insert("Label".to_string(), plist::Value::String(LABEL.to_string()));
@@ -58,22 +56,15 @@ pub fn install(paths: &Paths) -> Result<(), Error> {
 
     let target = plist_path(paths);
     if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| Error::Apply {
-            doing: "creating the agents directory".to_string(),
-            detail: error.to_string(),
-        })?;
+        std::fs::create_dir_all(parent)
+            .map_err(|error| Error::apply("creating the agents directory", error))?;
     }
     let mut bytes = Vec::new();
     plist::Value::Dictionary(dict)
         .to_writer_xml(&mut bytes)
-        .map_err(|error| Error::Apply {
-            doing: "rendering the watcher's plist".to_string(),
-            detail: error.to_string(),
-        })?;
-    crate::util::write_atomic(&target, &bytes, None, false).map_err(|error| Error::Apply {
-        doing: "writing the watcher's plist".to_string(),
-        detail: error.to_string(),
-    })?;
+        .map_err(|error| Error::apply("rendering the watcher's plist", error))?;
+    crate::util::write_atomic(&target, &bytes, None, false)
+        .map_err(|error| Error::apply("writing the watcher's plist", error))?;
     crate::services::bootstrap(paths, LABEL, false);
     Ok(())
 }

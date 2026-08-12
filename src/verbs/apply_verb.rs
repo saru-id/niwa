@@ -55,10 +55,10 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     // A tree mid-merge is nobody's config: refuse plainly, dirty
     // flag or not, until the person finishes or aborts the merge.
     if paths.config.join(".git/MERGE_HEAD").exists() {
-        return Err(Error::Apply {
-            doing: "applying".to_string(),
-            detail: "the config tree is mid-merge · finish or abort the merge first".to_string(),
-        });
+        return Err(Error::apply(
+            "applying",
+            "the config tree is mid-merge · finish or abort the merge first",
+        ));
     }
 
     // Unattended, a dirty tree means someone forgot to commit, and an
@@ -294,10 +294,8 @@ fn sandbox_rehearsal(out: &Out, real: &Paths) -> Result<ExitCode, Error> {
     let _ = std::fs::remove_dir_all(&scratch);
     let paths = real.sandboxed(&scratch);
     for dir in [&paths.home, &paths.state, &paths.brew_prefix, &paths.data] {
-        std::fs::create_dir_all(dir).map_err(|error| Error::Apply {
-            doing: "building the sandbox".to_string(),
-            detail: error.to_string(),
-        })?;
+        std::fs::create_dir_all(dir)
+            .map_err(|error| Error::apply("building the sandbox", error))?;
     }
     let verdict = rehearse(out, &paths);
     let _ = std::fs::remove_dir_all(&scratch);

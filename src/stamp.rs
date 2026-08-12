@@ -128,21 +128,12 @@ pub fn write(paths: &Paths, name: &str, resources: usize) -> Result<PathBuf, Err
         tags: crate::facts::read_tags(paths),
     };
     let dir = paths.config.join("state");
-    std::fs::create_dir_all(&dir).map_err(|error| Error::Apply {
-        doing: "creating state/".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&dir).map_err(|error| Error::apply("creating state/", error))?;
     let file = dir.join(format!("{name}.toml"));
-    let text = toml::to_string_pretty(&stamp).map_err(|error| Error::Apply {
-        doing: "rendering the stamp".to_string(),
-        detail: error.to_string(),
-    })?;
-    crate::util::write_atomic(&file, text.as_bytes(), None, false).map_err(|error| {
-        Error::Apply {
-            doing: "writing the stamp".to_string(),
-            detail: error.to_string(),
-        }
-    })?;
+    let text = toml::to_string_pretty(&stamp)
+        .map_err(|error| Error::apply("rendering the stamp", error))?;
+    crate::util::write_atomic(&file, text.as_bytes(), None, false)
+        .map_err(|error| Error::apply("writing the stamp", error))?;
     Ok(file)
 }
 

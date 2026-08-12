@@ -125,28 +125,20 @@ fn add_secret(out: &Out, name: &str) -> Result<ExitCode, Error> {
     let mut value = String::new();
     std::io::stdin()
         .read_to_string(&mut value)
-        .map_err(|error| Error::Apply {
-            doing: "reading the value from stdin".to_string(),
-            detail: error.to_string(),
-        })?;
+        .map_err(|error| Error::apply("reading the value from stdin", error))?;
     let value = value.trim_end_matches(['\n', '\r']);
     if value.is_empty() {
-        return Err(Error::Apply {
-            doing: "sealing a secret".to_string(),
-            detail: "stdin held no value to seal".to_string(),
-        });
+        return Err(Error::apply(
+            "sealing a secret",
+            "stdin held no value to seal",
+        ));
     }
     let sealed = crate::secrets::seal(&paths, value.as_bytes())?;
     let dir = paths.config.join("secrets");
-    std::fs::create_dir_all(&dir).map_err(|error| Error::Apply {
-        doing: "creating secrets/".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&dir).map_err(|error| Error::apply("creating secrets/", error))?;
     let file = dir.join(format!("{name}.age"));
-    std::fs::write(&file, sealed).map_err(|error| Error::Apply {
-        doing: "writing the sealed file".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::write(&file, sealed)
+        .map_err(|error| Error::apply("writing the sealed file", error))?;
     out.result(
         Mark::Added,
         &format!("secrets/{name}.age sealed · niwa.secret({name:?}) resolves it"),

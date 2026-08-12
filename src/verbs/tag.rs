@@ -49,18 +49,14 @@ fn tag(out: &Out, name: Option<&str>, remove: bool) -> Result<ExitCode, Error> {
     }
     tags.sort();
 
-    std::fs::create_dir_all(&paths.state).map_err(|error| Error::Apply {
-        doing: "creating the state directory".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::create_dir_all(&paths.state)
+        .map_err(|error| Error::apply("creating the state directory", error))?;
     let mut text = tags.join("\n");
     if !text.is_empty() {
         text.push('\n');
     }
-    std::fs::write(paths.state.join("tags"), text).map_err(|error| Error::Apply {
-        doing: "writing the tags".to_string(),
-        detail: error.to_string(),
-    })?;
+    std::fs::write(paths.state.join("tags"), text)
+        .map_err(|error| Error::apply("writing the tags", error))?;
 
     if remove {
         out.result(Mark::Ok, &format!("{name} removed"));
