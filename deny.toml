@@ -12,6 +12,9 @@ yanked = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
+    # unicode-ident (via clap's derive macros) carries the Unicode
+    # character data license alongside MIT OR Apache-2.0.
+    "Unicode-3.0",
 ]
 
 [bans]
