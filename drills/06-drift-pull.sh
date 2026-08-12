@@ -118,8 +118,16 @@ niwa.brew.formula { "htop" }
 EOF
 
 niwa pull --all
-check 12 "accepting the orphan uninstalls it (exit 0)" test "$STATUS" -eq 0
-check 13 "the orphaned formula is gone" test ! -d "$HOMEBREW_PREFIX/Cellar/fd"
+check 12 "pull --all stages the tree and stops there (exit 0)" \
+    sh -c "test $STATUS -eq 0 && test -d '$HOMEBREW_PREFIX/Cellar/fd'"
+check 12b "the removal is offered, not taken" \
+    grep -q "interactive" "$SANDBOX/stdout"
+
+# The explicit yes: the interactive walk, driven through a real tty.
+{ sleep 1; printf 'a\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/walk.log" \
+    "$NIWA_BIN" pull >/dev/null 2>&1 || true
+check 13 "saying yes in the walk uninstalls the orphan" \
+    test ! -d "$HOMEBREW_PREFIX/Cellar/fd"
 check 14 "the declared formula stayed" test -d "$HOMEBREW_PREFIX/Cellar/htop"
 
 # --- the gate holds a secret back -------------------------------------

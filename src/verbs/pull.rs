@@ -70,6 +70,13 @@ fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
             &describe(&paths, &analysis.effective, finding),
         );
 
+        // Staging writes to the tree and stops there; removal is a
+        // machine mutation and never rides `--all`. An orphan waits
+        // for the interactive yes, and returns until it gets one.
+        if all && matches!(finding, Finding::Orphan { .. }) {
+            out.note("removal waits · run `niwa pull` for the interactive walk");
+            continue;
+        }
         let answer = if all { Answer::Apply } else { ask(out) };
         match answer {
             Answer::Apply | Answer::Edit => {
