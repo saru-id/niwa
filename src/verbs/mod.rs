@@ -22,8 +22,10 @@ pub mod undo;
 pub mod uninstall;
 pub mod update;
 
+use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::api::{Ctx, RunState};
 use crate::engine::Engine;
 use crate::error::Error;
 use crate::luau::{Limits, Runtime};
@@ -40,12 +42,22 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
             dir: paths.config.clone(),
         });
     }
-    let runtime = Runtime::new(paths, &Limits::default(), engine)?;
+    let state = Rc::new(RefCell::new(RunState::default()));
+    let ctx = Ctx {
+        state: Rc::clone(&state),
+        root: paths.config.clone(),
+        home: paths.home.clone(),
+        engine,
+    };
+    let facts = crate::facts::Facts::gather(paths);
+    let runtime = Runtime::new(paths, &Limits::default(), |lua| {
+        crate::api::build(lua, &ctx, &facts)
+    })?;
     runtime.run_entry()?;
 
-    let declarations = runtime.declarations();
+    let declarations = state.borrow().declarations.clone();
     let mut analysis = analyze(&declarations);
-    analysis.results_read = runtime.results_read();
+    analysis.results_read = state.borrow().results_read;
     analysis.loaded = runtime.loaded();
     if !analysis.conflicts.is_empty() {
         return Err(Error::Conflicts(analysis.conflicts));
@@ -92,9 +104,21 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
 /// `None` when the config does not load; the caller reports that
 /// through its own channel.
 pub fn secrets_used(paths: &Paths) -> Option<Vec<(String, Option<String>)>> {
-    let runtime = Runtime::new(paths, &Limits::default(), None).ok()?;
+    let state = Rc::new(RefCell::new(RunState::default()));
+    let ctx = Ctx {
+        state: Rc::clone(&state),
+        root: paths.config.clone(),
+        home: paths.home.clone(),
+        engine: None,
+    };
+    let facts = crate::facts::Facts::gather(paths);
+    let runtime = Runtime::new(paths, &Limits::default(), |lua| {
+        crate::api::build(lua, &ctx, &facts)
+    })
+    .ok()?;
     runtime.run_entry().ok()?;
-    Some(runtime.secrets_used())
+    let used = state.borrow().secrets_used.clone();
+    Some(used)
 }
 
 /// Turn a finished plan pass into the display plan: one item per

@@ -9,18 +9,12 @@
 
 mod resolver;
 
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use mlua::{Lua, VmState};
 
-use crate::api::{Ctx, RunState};
-use crate::engine::Engine;
 use crate::error::Error;
-use crate::facts::Facts;
-use crate::model::Declaration;
 use crate::paths::Paths;
 
 pub use resolver::{load_external, load_host};
@@ -47,17 +41,19 @@ impl Default for Limits {
 pub struct Runtime {
     lua: Lua,
     time: Duration,
-    state: Rc<RefCell<RunState>>,
 }
 
 impl Runtime {
-    /// Build a sandboxed VM rooted at the config directory, with the
-    /// full API surface behind `require("@niwa")`. Without an engine
-    /// the pass validates and records; with one, resources predict or
-    /// act according to its mode.
-    pub fn new(paths: &Paths, limits: &Limits, engine: Option<Rc<Engine>>) -> Result<Self, Error> {
+    /// Build the VM: resolver, sandbox, limits, and whatever API the
+    /// caller installs. The runtime never names the binding layer —
+    /// the caller hands it in, which is what keeps this module at the
+    /// bottom of the crate.
+    pub fn new(
+        paths: &Paths,
+        limits: &Limits,
+        install: impl FnOnce(&Lua) -> mlua::Result<mlua::Table>,
+    ) -> Result<Self, Error> {
         let root: &Path = &paths.config;
-        let home: &Path = &paths.home;
         let lua = Lua::new();
         lua.set_memory_limit(limits.memory).map_err(Error::from)?;
 
@@ -70,15 +66,7 @@ impl Runtime {
             .set("loadstring", mlua::Value::Nil)
             .map_err(Error::from)?;
 
-        let state = Rc::new(RefCell::new(RunState::default()));
-        let ctx = Ctx {
-            state: Rc::clone(&state),
-            root: root.to_path_buf(),
-            home: home.to_path_buf(),
-            engine,
-        };
-        let facts = Facts::gather(paths);
-        let api = crate::api::build(&lua, &ctx, &facts).map_err(Error::from)?;
+        let api = install(&lua).map_err(Error::from)?;
         lua.set_named_registry_value(resolver::NIWA_API, api)
             .map_err(Error::from)?;
 
@@ -87,29 +75,12 @@ impl Runtime {
         Ok(Self {
             lua,
             time: limits.time,
-            state,
         })
-    }
-
-    /// The declarations the run collected, in program order.
-    /// Did the config read any result field? Past the first change,
-    /// such reads are predictions until apply.
-    pub fn results_read(&self) -> bool {
-        self.state.borrow().results_read
     }
 
     /// The config-relative names of every chunk that loaded.
     pub fn loaded(&self) -> Vec<String> {
         resolver::loaded(&self.lua)
-    }
-
-    pub fn declarations(&self) -> Vec<Declaration> {
-        self.state.borrow().declarations.clone()
-    }
-
-    /// Every secret the config asked for, for doctor.
-    pub fn secrets_used(&self) -> Vec<(String, Option<String>)> {
-        self.state.borrow().secrets_used.clone()
     }
 
     /// Run `init.luau` from the config root, on the clock.
@@ -157,7 +128,7 @@ mod tests {
             time: Duration::from_millis(200),
             memory: 64 * 1024 * 1024,
         };
-        let runtime = Runtime::new(&paths_in(dir.path()), &limits, None).unwrap();
+        let runtime = Runtime::new(&paths_in(dir.path()), &limits, Lua::create_table).unwrap();
         let started = Instant::now();
         let error = runtime.run_entry().unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(5));
@@ -176,7 +147,7 @@ mod tests {
             time: Duration::from_secs(30),
             memory: 8 * 1024 * 1024,
         };
-        let runtime = Runtime::new(&paths_in(dir.path()), &limits, None).unwrap();
+        let runtime = Runtime::new(&paths_in(dir.path()), &limits, Lua::create_table).unwrap();
         let error = runtime.run_entry().unwrap_err();
         let Error::Script { message } = error else {
             panic!("expected a script error");
