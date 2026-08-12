@@ -160,6 +160,18 @@ cat >"$BIN/softwareupdate" <<EOF
 echo "softwareupdate \$*" >>"$CALLS"
 exit 0
 EOF
+# Stateful, like the real one: the custom kind's check reads the
+# installed list, its apply moves it.
+cat >"$BIN/rustup" <<EOF
+#!/bin/sh
+echo "rustup \$*" >>"$CALLS"
+STATE="$SANDBOX/rustup-components"
+case "\$1 \$2" in
+"component list") cat "\$STATE" 2>/dev/null ;;
+"component add") echo "\$3" >>"\$STATE" ;;
+esac
+exit 0
+EOF
 
 chmod 755 "$BIN"/*
 export PATH="$BIN:$STUBS:/usr/bin:/bin"
@@ -211,6 +223,8 @@ check 11 "the directory source fanned out per file" \
     sh -c "test -f '$HOME/.local/bin/notes-sync' && test -f '$HOME/.local/bin/repo-backup'"
 check 12 "the pinned release binary landed" test -x "$HOME/.local/bin/lazygit"
 check 13 "the shared module's declaration is real" test -f "$HOME/.from-niwa-rust"
+check 13b "the custom kind's apply ran through its own handler" \
+    grep -q "rust-analyzer" "$SANDBOX/rustup-components"
 check 14 "the changed-gated plugin sync ran" grep -q "nvim --headless" "$CALLS"
 check 15 "the once block ran its key generation" grep -q "ssh-keygen" "$CALLS"
 check 16 "the stamp says airborne" test -f "$HOME/.config/niwa/state/airborne.toml"
@@ -225,5 +239,7 @@ check 19 "the key generation did not run again" \
     sh -c "! grep -q ssh-keygen '$CALLS'"
 check 20 "no file or package moved a second time" \
     sh -c "! grep -Eq 'brew install|npm install|mise use' '$CALLS'"
+check 21 "the custom kind's check now answers in sync" \
+    sh -c "! grep -q 'rustup component add' '$CALLS'"
 
 echo "drill: example acceptance · all checks passed"

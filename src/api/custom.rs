@@ -1,17 +1,23 @@
 //! `niwa.resource`: kinds the config defines itself.
 //!
-//! `check` receives a read-only handle and `apply` receives an acting
-//! one — enforced by construction when the engine lands. `reverse` is
-//! part of the contract: a kind that genuinely cannot be reversed says
-//! so with `reverse = false`, and the journal will mark it
-//! irreversible.
+//! The kind's own Lua handlers do the work: `check` answers whether
+//! the machine agrees, `apply` makes it agree, `describe` names the
+//! resource in the kind's own words. Both handlers receive a handle
+//! whose whole surface is `exec`; the handles share that shape at
+//! this version, and the read/act split grows teeth when the acting
+//! handle gains richer verbs. `reverse` is part of the contract: it
+//! is validated here, and until undo can drive it, every custom
+//! change is journaled irreversible by name.
+
+use std::time::Duration;
 
 use mlua::{Function, Lua, Table};
 
+use crate::engine::Mode;
 use crate::model::{Declaration, Identity, Kind};
 
 use super::spec::SpecCtx;
-use super::{Ctx, provenance, settle, unit_of};
+use super::{Ctx, freeze, provenance, result_table, settle, unit_of};
 
 pub fn register(lua: &Lua, niwa: &Table, ctx: &Ctx) -> mlua::Result<()> {
     let resource_ctx = ctx.clone();
@@ -50,11 +56,11 @@ fn define_kind(lua: &Lua, ctx: &Ctx, kind: &str, def: &Table) -> mlua::Result<Fu
         def,
         &["check", "apply", "reverse", "describe", "privileged"],
     )?;
-    // The handlers are validated now and driven by the engine when it
-    // lands; until then, holding them would be storage nothing reads.
-    let _: Function = handler(&spec, def, "check")?;
-    let _: Function = handler(&spec, def, "apply")?;
-    let _: Function = handler(&spec, def, "describe")?;
+    let handlers = Handlers {
+        check: handler(&spec, def, "check")?,
+        apply: handler(&spec, def, "apply")?,
+        describe: handler(&spec, def, "describe")?,
+    };
     match def.get::<mlua::Value>("reverse")? {
         mlua::Value::Function(_) | mlua::Value::Boolean(false) => {}
         mlua::Value::Nil => {
@@ -78,8 +84,23 @@ fn define_kind(lua: &Lua, ctx: &Ctx, kind: &str, def: &Table) -> mlua::Result<Fu
     let declare_ctx = ctx.clone();
     let kind_name = kind.to_string();
     lua.create_function(move |lua, resource_spec: Table| {
-        declare_custom(lua, &declare_ctx, &kind_name, &resource_spec, privileged)
+        declare_custom(
+            lua,
+            &declare_ctx,
+            &kind_name,
+            &handlers,
+            &resource_spec,
+            privileged,
+        )
     })
+}
+
+/// The three handlers every kind carries. `reverse` is validated at
+/// definition and not held: nothing drives it yet.
+struct Handlers {
+    check: Function,
+    apply: Function,
+    describe: Function,
 }
 
 fn handler(spec: &SpecCtx<'_>, def: &Table, field: &str) -> mlua::Result<Function> {
@@ -97,6 +118,7 @@ fn declare_custom(
     lua: &Lua,
     ctx: &Ctx,
     kind: &str,
+    handlers: &Handlers,
     resource_spec: &Table,
     privileged: bool,
 ) -> mlua::Result<Table> {
@@ -111,15 +133,77 @@ fn declare_custom(
     }
     let canonical = spec.value("spec", &mlua::Value::Table(resource_spec.clone()))?;
 
-    settle(
-        lua,
-        ctx,
-        &Declaration {
-            identity: Identity::new(Kind::Custom(kind.to_string()), name),
-            spec: canonical,
-            provenance: prov.clone(),
-            unit: unit_of(&prov),
-            privileged,
-        },
-    )
+    let declaration = Declaration {
+        identity: Identity::new(Kind::Custom(kind.to_string()), name),
+        spec: canonical,
+        provenance: prov.clone(),
+        unit: unit_of(&prov),
+        privileged,
+    };
+
+    // No engine means the validation pass: record and stub, like
+    // every other kind.
+    let Some(engine) = ctx.engine.clone() else {
+        return settle(lua, ctx, &declaration);
+    };
+
+    if let Some(truth) = engine
+        .custom_gate(&declaration)
+        .map_err(mlua::Error::external)?
+    {
+        ctx.record(declaration);
+        return result_table(lua, ctx, &truth);
+    }
+
+    let described: String = handlers.describe.call(resource_spec.clone())?;
+    // Both passes ask the kind's own check, through the handle.
+    let in_sync: bool = handlers
+        .check
+        .call((exec_handle(lua)?, resource_spec.clone()))?;
+
+    let truth = match &engine.mode {
+        Mode::Plan => engine.custom_planned(&declaration, in_sync, &described),
+        Mode::Execute { .. } => {
+            if !in_sync {
+                handlers
+                    .apply
+                    .call::<()>((exec_handle(lua)?, resource_spec.clone()))?;
+            }
+            engine
+                .custom_applied(&declaration, &described, !in_sync)
+                .map_err(mlua::Error::external)?
+        }
+    };
+    ctx.record(declaration);
+    result_table(lua, ctx, &truth)
+}
+
+/// The handle a kind's handlers receive. Its whole surface is
+/// `exec`: run a command under the deadline, get `{ stdout, code }`
+/// back. `code` is nil when the deadline killed the command.
+fn exec_handle(lua: &Lua) -> mlua::Result<Table> {
+    let handle = lua.create_table()?;
+    handle.set(
+        "exec",
+        lua.create_function(|lua, command: String| {
+            let finished = crate::util::proc::bounded_output(
+                "/bin/sh",
+                &["-c", &command],
+                Duration::from_mins(10),
+            )
+            .ok_or_else(|| {
+                mlua::Error::RuntimeError(format!(
+                    "`{command}` did not start or ran past its deadline"
+                ))
+            })?;
+            let result = lua.create_table()?;
+            result.set("stdout", finished.stdout)?;
+            if let Some(code) = finished.code {
+                result.set("code", code)?;
+            }
+            Ok(result)
+        })?,
+    )?;
+    freeze(lua, &handle)?;
+    Ok(handle)
 }

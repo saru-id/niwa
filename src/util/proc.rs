@@ -44,6 +44,7 @@ fn resolve_in(program: &str, path: Option<&std::ffi::OsStr>) -> Option<PathBuf> 
 /// `None` when the deadline killed it.
 pub struct Finished {
     pub code: Option<i32>,
+    pub stdout: String,
     pub stderr_tail: String,
 }
 
@@ -67,6 +68,7 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
                 let tail: Vec<&str> = stderr.lines().skip(skip).collect();
                 return Some(Finished {
                     code: output.status.code(),
+                    stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                     stderr_tail: tail.join("\n"),
                 });
             }

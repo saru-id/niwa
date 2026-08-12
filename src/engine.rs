@@ -163,6 +163,89 @@ impl Engine {
             }))
     }
 
+    /// A custom kind settles through its own Lua handlers: the API
+    /// layer runs `check` and `apply` and reports back; the engine
+    /// owns privilege, program order, the journal, and the plan
+    /// screen. `None` means proceed to the handlers; a truth means
+    /// the resource settled without running them.
+    pub fn custom_gate(&self, declaration: &Declaration) -> Result<Option<Truth>, Error> {
+        match &self.mode {
+            Mode::Plan => Ok(None),
+            Mode::Execute {
+                skip_privileged, ..
+            } => {
+                if *skip_privileged && declaration.privileged {
+                    self.privileged_skipped
+                        .borrow_mut()
+                        .push(declaration.identity.to_string());
+                    return Ok(Some(Truth {
+                        changed: false,
+                        present: true,
+                        failed: false,
+                        version: None,
+                    }));
+                }
+                // Program order: pending packages land first.
+                self.flush()?;
+                Ok(None)
+            }
+        }
+    }
+
+    /// Plan mode: the kind's own check verdict becomes the plan
+    /// line, described in the kind's own words.
+    pub fn custom_planned(
+        &self,
+        declaration: &Declaration,
+        in_sync: bool,
+        describe: &str,
+    ) -> Truth {
+        let action = if in_sync {
+            Action::InSync
+        } else {
+            Action::Change {
+                detail: describe.to_string(),
+            }
+        };
+        let truth = truth_of(&action);
+        self.items.borrow_mut().push((declaration.clone(), action));
+        truth
+    }
+
+    /// Execute mode: record what the kind's apply did. The journal
+    /// marks the change irreversible by name — driving the Lua
+    /// `reverse` handler from undo lands after 0.1.0.
+    pub fn custom_applied(
+        &self,
+        declaration: &Declaration,
+        describe: &str,
+        changed: bool,
+    ) -> Result<Truth, Error> {
+        if changed {
+            let mut journal = self.journal.borrow_mut();
+            if let Some(id) = self.apply_id {
+                journal.record_step(
+                    id,
+                    crate::journal::Step {
+                        identity: declaration.identity.to_string(),
+                        effect: crate::journal::Effect::Irreversible {
+                            what: describe.to_string(),
+                        },
+                    },
+                );
+            }
+            journal.save(&self.paths.state)?;
+            drop(journal);
+            *self.changed.borrow_mut() += 1;
+        }
+        Ok(Truth {
+            changed,
+            present: true,
+            failed: false,
+            version: None,
+        })
+    }
+
     /// Run the pending package batch as one installer invocation per
     /// kind, then read the receipts back for the truth.
     pub fn flush(&self) -> Result<(), Error> {
