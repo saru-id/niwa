@@ -13,6 +13,7 @@ mlua = { version = "0.12.0", features = ["luau"] }
 thiserror = "2"
 
 [dev-dependencies]
+mlua = { version = "0.12.0", features = ["luau"] }
 tempfile = "3"
 
 [lints.rust]
