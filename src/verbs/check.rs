@@ -231,7 +231,9 @@ fn analyze(paths: &Paths, out: &Out) -> bool {
 /// One notification, through the system's own mouth. A missing
 /// osascript is a silent no-op: notifying is a courtesy, not a duty.
 fn post_notification(text: &str) {
-    let sanitized = text.replace('"', "'");
+    // Quotes and backslashes both leave: a value ending in a
+    // backslash must not escape the AppleScript string it sits in.
+    let sanitized = text.replace(['"', '\\'], "'");
     let script = format!("display notification \"{sanitized}\" with title \"niwa\"");
     let _ = bounded_output("osascript", &["-e", &script], Duration::from_secs(10));
 }

@@ -90,6 +90,18 @@ fn explain(out: &Out, target: &str) -> Result<ExitCode, Error> {
         None => out.plain(&format!("{:<13}never applied here", "acknowledged")),
     }
 
+    // A standing "never" for this identity is part of its story.
+    if journal
+        .declined_keys()
+        .iter()
+        .any(|key| key.contains(&identity))
+    {
+        out.plain(&format!(
+            "{:<13}a proposal for this key was declined",
+            "declined"
+        ));
+    }
+
     let history = journal.history_of(&identity);
     if !history.is_empty() {
         let restore = history.last().and_then(|step| match &step.effect {

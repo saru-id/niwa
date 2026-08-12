@@ -132,18 +132,18 @@ pub fn identity(paths: &Paths) -> Result<age::x25519::Identity, Error> {
         doing: "creating the state directory".to_string(),
         detail: error.to_string(),
     })?;
-    std::fs::write(&path, identity.to_string().expose_secret()).map_err(|error| Error::Apply {
+    // Born private: the mode lands on the temp before the rename,
+    // so the identity is never readable wider, not even briefly.
+    crate::util::write_atomic(
+        &path,
+        identity.to_string().expose_secret().as_bytes(),
+        Some(0o600),
+        true,
+    )
+    .map_err(|error| Error::Apply {
         doing: "writing the sealing key".to_string(),
         detail: error.to_string(),
     })?;
-    let mut permissions = std::fs::metadata(&path)
-        .map_err(|error| Error::Apply {
-            doing: "reading the sealing key's permissions".to_string(),
-            detail: error.to_string(),
-        })?
-        .permissions();
-    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o600);
-    let _ = std::fs::set_permissions(&path, permissions);
     Ok(identity)
 }
 

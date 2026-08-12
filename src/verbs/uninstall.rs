@@ -47,6 +47,27 @@ fn uninstall(out: &Out, purge: bool) -> Result<ExitCode, Error> {
         out.note("the journal and undo archives stay; add --purge to remove them");
     }
 
+    // The PATH line the installer wrote, removed by its marker; the
+    // rest of the rc file is the person's.
+    let rc = std::env::var_os("ZDOTDIR")
+        .map_or_else(|| paths.home.clone(), std::path::PathBuf::from)
+        .join(".zshrc");
+    if let Ok(text) = std::fs::read_to_string(&rc)
+        && text.contains("# added by niwa")
+    {
+        let mut kept = String::new();
+        for line in text
+            .lines()
+            .filter(|line| !line.contains("# added by niwa"))
+        {
+            kept.push_str(line);
+            kept.push('\n');
+        }
+        if crate::util::write_atomic(&rc, kept.as_bytes(), None, false).is_ok() {
+            out.result(Mark::Ok, "the PATH line the installer wrote is removed");
+        }
+    }
+
     // The binary last: removing the running file is safe on this
     // platform, and everything above already happened.
     let binary = std::env::current_exe().map_err(|error| Error::Apply {

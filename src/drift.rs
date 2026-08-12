@@ -362,6 +362,15 @@ fn unmanaged_packages(
             });
         }
     }
+    for name in crate::npm::globals() {
+        let identity = format!("npm:{name}");
+        if !declared.contains(&identity) && journal.acknowledged(&identity).is_none() {
+            findings.push(Finding::UnmanagedPackage {
+                kind: Kind::Npm,
+                name,
+            });
+        }
+    }
 }
 
 /// Acknowledged but no longer declared: still present is an offer,

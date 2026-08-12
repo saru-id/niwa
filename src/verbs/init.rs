@@ -49,6 +49,12 @@ fn init(out: &Out) -> Result<ExitCode, Error> {
     }
 
     write(&paths, "init.luau", &init_luau())?;
+    write(
+        &paths,
+        "niwa.lock",
+        "# Written by niwa, committed on purpose: machine two resolves to the\n\
+         # same versions this machine did. Edit by running `niwa update <name>`.\n",
+    )?;
     write(&paths, ".luaurc", LUAURC)?;
     write(&paths, "modules/cli.luau", &cli_luau(&formulae))?;
     write(&paths, "modules/apps.luau", &apps_luau(&casks))?;

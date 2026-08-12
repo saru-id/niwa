@@ -85,7 +85,7 @@ pub enum Verb {
     },
     /// Install something and write its config line, in one motion
     Add {
-        /// One of: brew, cask, npm
+        /// One of: brew, cask, npm, secret
         provider: String,
         /// The package name
         name: String,

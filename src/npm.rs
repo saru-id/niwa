@@ -25,6 +25,36 @@ pub fn installed(name: &str) -> bool {
     root().is_some_and(|root| root.join(name).join("package.json").is_file())
 }
 
+/// Every package in the global tree, for the unmanaged survey.
+/// Scoped packages report as `@scope/name`; npm's own bookkeeping
+/// entries stay out.
+pub fn globals() -> Vec<String> {
+    let Some(root) = root() else {
+        return Vec::new();
+    };
+    let mut names = Vec::new();
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return names;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') || name == "npm" || name == "corepack" {
+            continue;
+        }
+        if name.starts_with('@') {
+            if let Ok(scoped) = std::fs::read_dir(entry.path()) {
+                for inner in scoped.flatten() {
+                    names.push(format!("{name}/{}", inner.file_name().to_string_lossy()));
+                }
+            }
+        } else if entry.path().join("package.json").is_file() {
+            names.push(name);
+        }
+    }
+    names.sort();
+    names
+}
+
 /// Install a batch in one npm invocation. Returns what was run and
 /// what npm said, for the failure screen.
 pub fn install(names: &[String], deadline: Duration) -> crate::util::proc::Invocation {

@@ -170,7 +170,7 @@ impl Error {
                     .map(|place| format!("looked in {place}"))
                     .collect();
                 lines.push(
-                    "store it with `security add-generic-password -s niwa -a <name> -w`, or seal it into secrets/<name>.age"
+                    "seal it with `niwa add secret <name>`, or store it with `security add-generic-password -s niwa -a <name> -w`"
                         .to_string(),
                 );
                 lines

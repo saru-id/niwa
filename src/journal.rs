@@ -244,6 +244,11 @@ impl Journal {
         &self.applies
     }
 
+    /// The standing refusals, for explain's story line.
+    pub fn declined_keys(&self) -> Vec<&str> {
+        self.declined.iter().map(String::as_str).collect()
+    }
+
     /// Has this exact proposal been refused for good?
     pub fn is_declined(&self, proposal: &str) -> bool {
         self.declined.contains(proposal)

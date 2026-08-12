@@ -604,6 +604,16 @@ impl Engine {
         let Some(target) = crate::defaults::restart_target(declaration) else {
             return;
         };
+        // killall receives this as its one argument: a process name,
+        // never an option or a path.
+        let clean = !target.is_empty()
+            && !target.starts_with('-')
+            && target
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' || c == ' ');
+        if !clean {
+            return;
+        }
         let mut pending = self.restarts_pending.borrow_mut();
         if !pending.contains(&target) {
             pending.push(target);
