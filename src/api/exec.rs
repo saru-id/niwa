@@ -205,7 +205,16 @@ fn declare_service(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result<Table>
     )?;
 
     let label = spec.required_str(options, "label")?;
-    if !label.contains('.') || label.chars().any(char::is_whitespace) {
+    // The label becomes a file name under LaunchAgents and a
+    // launchctl argument: the reverse-DNS charset is the whole
+    // grammar, and anything else could write or load outside it.
+    let clean = !label.is_empty()
+        && label.contains('.')
+        && !label.contains("..")
+        && label
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    if !clean {
         return Err(spec.fail(&format!(
             "field `label` expects a reverse-DNS name like \"dev.you.sync\", got \"{label}\""
         )));

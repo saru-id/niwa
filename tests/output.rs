@@ -560,6 +560,50 @@ fn a_lockfile_from_a_newer_niwa_says_update_first() {
     );
 }
 
+#[test]
+fn hostile_labels_and_domains_are_refused() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.service {\n\
+             label = \"../../../../tmp/evil\",\n\
+             program = { \"/bin/true\" },\n\
+             keepalive = true,\n\
+         }\n",
+    );
+    let output = niwa(home.path(), &[], &["check"]);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "a traversal label must refuse"
+    );
+
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.defaults(\"/tmp/evil\", { anything = true })\n",
+    );
+    let output = niwa(home.path(), &[], &["check"]);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "an absolute domain outside the preference roots must refuse"
+    );
+
+    // The admin half the design names stays declarable.
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\n\
+         niwa.defaults(\"/Library/Preferences/com.apple.alf\", { globalstate = 1 })\n",
+    );
+    let output = niwa(home.path(), &[], &["check"]);
+    assert_eq!(output.status.code(), Some(0));
+}
+
 /// Instrumented builds tell children where to write coverage profiles
 /// through this variable; without it an instrumented child dumps a
 /// `default_*.profraw` into its working directory. Passing it through

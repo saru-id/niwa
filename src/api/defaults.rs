@@ -51,6 +51,16 @@ fn declare_defaults(
     if domain.is_empty() {
         return Err(spec.fail("the domain cannot be empty"));
     }
+    // An absolute domain is the admin half of the machine, and only
+    // that: confined to /Library/Preferences, or a plist write could
+    // land anywhere the user can write.
+    if domain.starts_with('/')
+        && (!domain.starts_with("/Library/Preferences/") || domain.contains(".."))
+    {
+        return Err(spec.fail(&format!(
+            "an absolute domain lives under /Library/Preferences, got \"{domain}\""
+        )));
+    }
     let restart = match options {
         Some(options) => {
             spec.no_unknown_fields(options, &["restart"])?;
