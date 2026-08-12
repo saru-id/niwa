@@ -175,6 +175,41 @@ fn a_long_first_run_prints_the_checklist_up_front() {
 }
 
 #[test]
+fn a_ticked_step_stays_ticked_until_the_world_moves() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.manual({ \"insert the yubikey\" })\n",
+    );
+    let state = home.path().join(".local/state/niwa");
+    std::fs::create_dir_all(&state).unwrap();
+    // In the sandbox no sw_vers answers, so the current context is
+    // exactly "macos " — a tick made in this world matches it.
+    let journal = |context: &str| {
+        format!(
+            r#"{{"schema":1,"acknowledged":{{"manual:insert the yubikey":{{"spec":{{"Map":{{}}}},"context":"{context}"}}}}}}"#
+        )
+    };
+    std::fs::write(state.join("journal.json"), journal("macos ")).unwrap();
+    let ticked = niwa(home.path(), &[], &[]);
+    assert!(
+        !stdout(&ticked).contains("checklist"),
+        "a ticked step must not count: {}",
+        stdout(&ticked)
+    );
+
+    // The same tick, made on an older macOS, re-arms by itself.
+    std::fs::write(state.join("journal.json"), journal("macos 14")).unwrap();
+    let rearmed = niwa(home.path(), &[], &[]);
+    assert!(
+        stdout(&rearmed).contains("1 manual step in the checklist"),
+        "a moved world must re-arm the step: {}",
+        stdout(&rearmed)
+    );
+}
+
+#[test]
 fn check_says_plainly_when_the_analyzer_is_missing() {
     let home = tempfile::tempdir().unwrap();
     pending_config(home.path());

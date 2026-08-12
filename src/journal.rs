@@ -92,6 +92,10 @@ pub struct Acknowledgement {
     /// The config commit that was checked out at the time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config: Option<String>,
+    /// The world a checklist tick was made in (macOS major, the
+    /// app's install stamp). When the world moves, the tick re-arms.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
 }
 
 impl Acknowledgement {
@@ -103,6 +107,7 @@ impl Acknowledgement {
             bytes,
             applied: None,
             config: None,
+            context: None,
         }
     }
 }

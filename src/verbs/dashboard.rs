@@ -41,13 +41,23 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         .len();
     baseline.save(&paths.state);
 
-    let manual = analysis
+    let facts = crate::facts::Facts::gather(&paths);
+    // A ticked step stays ticked while the world it was ticked in
+    // stands; a reinstall or a macOS major re-arms it by itself.
+    let open_steps: Vec<&crate::model::Declaration> = analysis
         .effective
         .iter()
         .filter(|declaration| matches!(declaration.identity.kind, Kind::Permission | Kind::Manual))
-        .count();
+        .filter(|declaration| {
+            journal
+                .acknowledged(&declaration.identity.to_string())
+                .and_then(|ack| ack.context.as_deref())
+                != Some(step_context(&facts, &declaration.identity).as_str())
+        })
+        .collect();
+    let manual = open_steps.len();
 
-    let name = crate::facts::Facts::gather(&paths).name;
+    let name = facts.name.clone();
     let applied = crate::stamp::read_all(&paths)
         .into_iter()
         .find(|(stem, _)| stem == &name)
@@ -92,7 +102,11 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         return Ok(ExitCode::SUCCESS);
     }
     out.plain("");
-    out.plain("[a]pply  [p]lan  [r]eview  [u]pdate  [h]istory  [q]uit");
+    if manual > 0 {
+        out.plain("[a]pply  [p]lan  [r]eview  [t]ick  [u]pdate  [h]istory  [q]uit");
+    } else {
+        out.plain("[a]pply  [p]lan  [r]eview  [u]pdate  [h]istory  [q]uit");
+    }
     let mut line = String::new();
     if std::io::stdin().read_line(&mut line).is_err() {
         return Ok(ExitCode::SUCCESS);
@@ -110,8 +124,71 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         ),
         "p" => super::plan::run(out, false, false),
         "r" => super::pull::run(out, false),
+        "t" if manual > 0 => tick(out, &paths, &facts, &open_steps),
         "u" => super::update::run(out, None),
         "h" => super::history::run(out),
         _ => ExitCode::SUCCESS,
     })
+}
+
+/// Tick one checklist step off, remembering the world it was ticked
+/// in. Ticking is the person's act; niwa never guesses it happened.
+fn tick(
+    out: &Out,
+    paths: &Paths,
+    facts: &crate::facts::Facts,
+    steps: &[&crate::model::Declaration],
+) -> ExitCode {
+    for (index, step) in steps.iter().enumerate() {
+        out.plain(&format!("{} · {}", index + 1, step.identity.key));
+    }
+    out.plain("which one is done? (a number, or enter to cancel)");
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line).is_err() {
+        return ExitCode::SUCCESS;
+    }
+    let Some(step) = line
+        .trim()
+        .parse::<usize>()
+        .ok()
+        .and_then(|n| n.checked_sub(1))
+        .and_then(|n| steps.get(n))
+    else {
+        return ExitCode::SUCCESS;
+    };
+    let result = Journal::load(&paths.state).and_then(|mut journal| {
+        let mut ack = crate::journal::Acknowledgement::new(step.spec.clone(), None);
+        ack.context = Some(step_context(facts, &step.identity));
+        journal.acknowledge(step.identity.to_string(), ack);
+        journal.save(&paths.state)
+    });
+    match result {
+        Ok(()) => {
+            out.result(Mark::Ok, &format!("{} · ticked", step.identity.key));
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            out.error(&error);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The world a tick lives in: the macOS major, and for a permission,
+/// the app bundle's install time. Either moving re-arms the step.
+fn step_context(facts: &crate::facts::Facts, identity: &crate::model::Identity) -> String {
+    let major = facts.os.split('.').next().unwrap_or_default();
+    let mut context = format!("macos {major}");
+    if matches!(identity.kind, Kind::Permission)
+        && let Some(app) = identity.key.split(':').next()
+    {
+        let bundle = std::path::Path::new("/Applications").join(format!("{app}.app"));
+        if let Ok(modified) = std::fs::metadata(&bundle).and_then(|meta| meta.modified())
+            && let Ok(stamp) = modified.duration_since(std::time::UNIX_EPOCH)
+        {
+            use std::fmt::Write as _;
+            let _ = write!(context, " · app {}", stamp.as_secs());
+        }
+    }
+    context
 }
