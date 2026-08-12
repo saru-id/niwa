@@ -45,8 +45,20 @@ fn render(out: &Out, plan: &Plan) -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
-    // Group pending work by the unit that declared it, in program
-    // order, with in-sync counts kept quiet.
+    render_pending(out, plan);
+
+    let mut summary = format!("{checked} checked · {pending} would change");
+    if unchecked > 0 {
+        use std::fmt::Write as _;
+        let _ = write!(summary, " · {unchecked} not yet checkable");
+    }
+    out.result(Mark::Changed, &summary);
+    ExitCode::from(2)
+}
+
+/// The pending half of a plan, grouped by the unit that declared it,
+/// in program order. Apply prints the same screen before confirming.
+pub fn render_pending(out: &Out, plan: &Plan) {
     let mut current: Option<String> = None;
     let mut rows: Vec<(Mark, String, String)> = Vec::new();
     for item in &plan.items {
@@ -64,14 +76,6 @@ fn render(out: &Out, plan: &Plan) -> ExitCode {
         rows.push((mark, display_name(&item.declaration), detail));
     }
     flush(out, &mut rows);
-
-    let mut summary = format!("{checked} checked · {pending} would change");
-    if unchecked > 0 {
-        use std::fmt::Write as _;
-        let _ = write!(summary, " · {unchecked} not yet checkable");
-    }
-    out.result(Mark::Changed, &summary);
-    ExitCode::from(2)
 }
 
 fn flush(out: &Out, rows: &mut Vec<(Mark, String, String)>) {

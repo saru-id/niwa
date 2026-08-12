@@ -115,6 +115,14 @@ fn the_converged_plan_is_one_line() {
 }
 
 #[test]
+fn the_apply_screen_shows_the_work_then_the_summary() {
+    let home = pending_home();
+    let run = niwa(home.path(), &["apply", "--yes"], false);
+    assert_eq!(run.code, 0, "{}", run.stderr);
+    insta::assert_snapshot!("apply_pending_piped", run.stdout);
+}
+
+#[test]
 fn the_conflict_screen_names_both_locations() {
     let home = tempfile::tempdir().unwrap();
     write(

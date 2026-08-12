@@ -214,7 +214,7 @@ fn compare_defaults(declaration: &Declaration, paths: &Paths) -> Action {
 
 /// Where a preference domain lives on disk. niwa reads plists
 /// directly; it never shells out to the `defaults` tool.
-fn domain_path(paths: &Paths, domain: &str) -> PathBuf {
+pub fn domain_path(paths: &Paths, domain: &str) -> PathBuf {
     domain.strip_prefix('/').map_or_else(
         || {
             if domain == "NSGlobalDomain" {
@@ -234,7 +234,7 @@ fn domain_path(paths: &Paths, domain: &str) -> PathBuf {
 /// Canonicalize a plist value into the model's shape. Dates and raw
 /// data cannot be declared from a config, so they render as opaque
 /// strings and always read as a difference.
-fn plist_to_value(value: &plist::Value) -> Value {
+pub fn plist_to_value(value: &plist::Value) -> Value {
     match value {
         plist::Value::Boolean(b) => Value::Bool(*b),
         plist::Value::Integer(i) => i

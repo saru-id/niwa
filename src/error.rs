@@ -28,6 +28,18 @@ pub enum Error {
 
     #[error("the journal cannot be read")]
     JournalUnreadable { detail: String },
+
+    #[error("another apply is already running")]
+    ApplyLocked { path: PathBuf },
+
+    #[error("{doing} failed")]
+    Apply { doing: String, detail: String },
+
+    #[error("the config tree has uncommitted changes")]
+    DirtyTree,
+
+    #[error("apply needs a confirmation and no terminal is attached")]
+    NeedsConfirmation,
 }
 
 impl From<mlua::Error> for Error {
@@ -75,6 +87,19 @@ impl Error {
                 .collect(),
             Self::JournalNewer { .. } => {
                 vec!["update niwa, then run this again".to_string()]
+            }
+            Self::ApplyLocked { path } => vec![
+                format!("the lock is {}", path.display()),
+                "wait for the other apply to finish; if it crashed, delete the lock file"
+                    .to_string(),
+            ],
+            Self::Apply { detail, .. } => vec![detail.clone()],
+            Self::DirtyTree => vec![
+                "unattended applies run committed configs only: commit first".to_string(),
+                "pass --dirty with --yes if you truly mean to apply uncommitted edits".to_string(),
+            ],
+            Self::NeedsConfirmation => {
+                vec!["pass --yes to apply without a prompt".to_string()]
             }
             Self::JournalUnreadable { detail } => {
                 vec![detail.clone(), "run `niwa doctor` once it exists; the journal file lives under ~/.local/state/niwa".to_string()]

@@ -1,4 +1,5 @@
 mod api;
+mod apply;
 mod cli;
 mod error;
 mod facts;
@@ -21,5 +22,20 @@ fn main() -> ExitCode {
     match cli.verb {
         cli::Verb::Check => verbs::check::run(&out),
         cli::Verb::Plan => verbs::plan::run(&out),
+        cli::Verb::Apply {
+            yes,
+            dirty,
+            force,
+            verify,
+        } => verbs::apply_verb::run(
+            &out,
+            &verbs::apply_verb::Options {
+                yes,
+                dirty,
+                force,
+                verify,
+            },
+        ),
+        cli::Verb::Undo { yes } => verbs::undo::run(&out, yes),
     }
 }

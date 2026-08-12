@@ -1,8 +1,10 @@
 //! One module per verb. Verbs orchestrate; the layers below them own
 //! the behavior.
 
+pub mod apply_verb;
 pub mod check;
 pub mod plan;
+pub mod undo;
 
 use crate::error::Error;
 use crate::luau::{Limits, Runtime};

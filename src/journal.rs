@@ -23,6 +23,36 @@ pub struct Journal {
     schema: u32,
     /// Acknowledgements by identity string.
     acknowledged: BTreeMap<String, Acknowledgement>,
+    /// One entry per apply that changed something, oldest first.
+    #[serde(default)]
+    applies: Vec<ApplyEntry>,
+}
+
+/// What one apply changed, in order, with everything undo needs.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ApplyEntry {
+    pub id: u64,
+    pub steps: Vec<Step>,
+}
+
+/// One reversible (or honestly irreversible) effect.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Step {
+    pub identity: String,
+    pub effect: Effect,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Effect {
+    /// A file was written. `previous` is the digest of the archived
+    /// bytes it replaced; `None` means the file did not exist.
+    FileWritten { previous: Option<String> },
+    /// A symlink was made. `previous` is the digest of an archived
+    /// regular file it displaced.
+    LinkMade { previous: Option<String> },
+    /// A preference key was set. `previous` is the value it replaced;
+    /// `None` means the key did not exist.
+    DefaultsSet { previous: Option<Value> },
 }
 
 /// What one apply left behind for one identity: the spec it made true
@@ -39,6 +69,7 @@ impl Default for Journal {
         Self {
             schema: SCHEMA,
             acknowledged: BTreeMap::new(),
+            applies: Vec::new(),
         }
     }
 }
@@ -73,10 +104,6 @@ impl Journal {
     }
 
     /// Write the journal atomically: temp file, then rename.
-    #[allow(
-        dead_code,
-        reason = "the execution engine writes the journal; it lands with apply"
-    )]
     pub fn save(&self, state: &Path) -> Result<(), Error> {
         std::fs::create_dir_all(state).map_err(|error| Error::JournalUnreadable {
             detail: error.to_string(),
@@ -97,12 +124,49 @@ impl Journal {
         self.acknowledged.get(identity)
     }
 
-    #[allow(
-        dead_code,
-        reason = "the execution engine writes the journal; it lands with apply"
-    )]
     pub fn acknowledge(&mut self, identity: String, acknowledgement: Acknowledgement) {
         self.acknowledged.insert(identity, acknowledgement);
+    }
+
+    pub fn drop_acknowledgement(&mut self, identity: &str) {
+        self.acknowledged.remove(identity);
+    }
+
+    /// Open the next apply entry and return its id. The entry is
+    /// saved with every step, so an interruption keeps what landed.
+    pub fn begin_apply(&mut self) -> u64 {
+        let id = self.applies.last().map_or(1, |entry| entry.id + 1);
+        self.applies.push(ApplyEntry {
+            id,
+            steps: Vec::new(),
+        });
+        id
+    }
+
+    pub fn record_step(&mut self, id: u64, step: Step) {
+        if let Some(entry) = self.applies.iter_mut().find(|entry| entry.id == id) {
+            entry.steps.push(step);
+        }
+    }
+
+    /// Drop an apply entry that changed nothing; an empty entry would
+    /// make `undo` report an apply that never was.
+    pub fn discard_empty_apply(&mut self, id: u64) {
+        if self
+            .applies
+            .last()
+            .is_some_and(|last| last.id == id && last.steps.is_empty())
+        {
+            self.applies.pop();
+        }
+    }
+
+    pub fn last_apply(&self) -> Option<&ApplyEntry> {
+        self.applies.last()
+    }
+
+    pub fn pop_apply(&mut self) -> Option<ApplyEntry> {
+        self.applies.pop()
     }
 }
 

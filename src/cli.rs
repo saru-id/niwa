@@ -21,4 +21,26 @@ pub enum Verb {
     /// Show what apply would do. Exit 0 when in sync, 2 when changes
     /// are pending, 1 on an error
     Plan,
+    /// Make the config true: plan, confirm, execute
+    Apply {
+        /// Apply without asking
+        #[arg(long)]
+        yes: bool,
+        /// With --yes: allow a config tree with uncommitted changes
+        #[arg(long)]
+        dirty: bool,
+        /// Overwrite files that hold edits niwa never wrote
+        #[arg(long)]
+        force: bool,
+        /// Re-check everything after the run; fail if anything still
+        /// reports a change
+        #[arg(long)]
+        verify: bool,
+    },
+    /// Reverse the most recent apply
+    Undo {
+        /// Undo without asking
+        #[arg(long)]
+        yes: bool,
+    },
 }
