@@ -15,13 +15,7 @@ use crate::paths::Paths;
 use crate::proposals;
 
 pub fn run(out: &Out, provider: &str, name: &str) -> ExitCode {
-    match add(out, provider, name) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, add(out, provider, name))
 }
 
 fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {

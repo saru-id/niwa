@@ -11,13 +11,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, yes: bool) -> ExitCode {
-    match undo(out, yes) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, undo(out, yes))
 }
 
 fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {

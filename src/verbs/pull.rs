@@ -20,13 +20,7 @@ use crate::paths::Paths;
 use crate::proposals;
 
 pub fn run(out: &Out, all: bool) -> ExitCode {
-    match pull(out, all) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, pull(out, all))
 }
 
 enum Answer {

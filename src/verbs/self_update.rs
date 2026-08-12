@@ -9,13 +9,7 @@ use crate::error::Error;
 use crate::out::{Mark, Out};
 
 pub fn run(out: &Out, action: &str, rollback: bool) -> ExitCode {
-    match self_update(out, action, rollback) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, self_update(out, action, rollback))
 }
 
 fn self_update(out: &Out, action: &str, rollback: bool) -> Result<ExitCode, Error> {

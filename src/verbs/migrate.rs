@@ -12,13 +12,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
-    match migrate(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, migrate(out))
 }
 
 fn migrate(out: &Out) -> Result<ExitCode, Error> {

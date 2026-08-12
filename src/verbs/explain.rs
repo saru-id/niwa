@@ -11,13 +11,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, target: &str) -> ExitCode {
-    match explain(out, target) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, explain(out, target))
 }
 
 fn explain(out: &Out, target: &str) -> Result<ExitCode, Error> {

@@ -9,13 +9,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
-    match fmt(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, fmt(out))
 }
 
 fn fmt(out: &Out) -> Result<ExitCode, Error> {

@@ -35,13 +35,7 @@ pub struct Options {
 }
 
 pub fn run(out: &Out, options: &Options) -> ExitCode {
-    match apply(out, options) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, apply(out, options))
 }
 
 fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {

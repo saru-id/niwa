@@ -9,13 +9,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
-    match history(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, history(out))
 }
 
 fn history(out: &Out) -> Result<ExitCode, Error> {

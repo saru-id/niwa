@@ -14,13 +14,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
-    match dashboard(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, dashboard(out))
 }
 
 fn dashboard(out: &Out) -> Result<ExitCode, Error> {

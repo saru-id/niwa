@@ -9,13 +9,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, name: Option<&str>, remove: bool) -> ExitCode {
-    match tag(out, name, remove) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, tag(out, name, remove))
 }
 
 fn tag(out: &Out, name: Option<&str>, remove: bool) -> Result<ExitCode, Error> {

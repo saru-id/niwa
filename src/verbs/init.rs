@@ -18,13 +18,7 @@ use crate::util::proc::bounded_stdout;
 const TYPES: &str = include_str!("../../share/types/init.luau");
 
 pub fn run(out: &Out) -> ExitCode {
-    match init(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, init(out))
 }
 
 fn init(out: &Out) -> Result<ExitCode, Error> {

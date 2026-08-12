@@ -33,6 +33,18 @@ use crate::model::analysis::{Analysis, analyze};
 use crate::model::{Kind, Value};
 use crate::paths::Paths;
 
+/// Every verb's closing move: render the error if there is one, and
+/// turn the result into an exit code.
+pub fn finish(
+    out: &crate::out::Out,
+    result: Result<std::process::ExitCode, Error>,
+) -> std::process::ExitCode {
+    result.unwrap_or_else(|error| {
+        out.error(&error);
+        std::process::ExitCode::FAILURE
+    })
+}
+
 /// One pass over the config: run it, lint conflicts, and require
 /// every `@self/` source to exist. Check passes no engine; plan and
 /// apply pass one in the mode they mean.

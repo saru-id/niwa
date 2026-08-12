@@ -11,13 +11,7 @@ use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, only: Option<&str>) -> ExitCode {
-    match update(out, only) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, update(out, only))
 }
 
 fn update(out: &Out, only: Option<&str>) -> Result<ExitCode, Error> {

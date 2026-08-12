@@ -11,13 +11,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, purge: bool) -> ExitCode {
-    match uninstall(out, purge) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, uninstall(out, purge))
 }
 
 fn uninstall(out: &Out, purge: bool) -> Result<ExitCode, Error> {

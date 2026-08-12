@@ -13,13 +13,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, deep: bool) -> ExitCode {
-    match doctor(out, deep) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, doctor(out, deep))
 }
 
 fn doctor(out: &Out, deep: bool) -> Result<ExitCode, Error> {

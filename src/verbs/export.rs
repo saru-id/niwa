@@ -10,13 +10,7 @@ use crate::out::Out;
 use crate::paths::Paths;
 
 pub fn run(out: &Out, markdown: bool) -> ExitCode {
-    match export(out, markdown) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, export(out, markdown))
 }
 
 fn export(out: &Out, markdown: bool) -> Result<ExitCode, Error> {

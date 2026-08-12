@@ -8,13 +8,7 @@ use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
-    match machines(out) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, machines(out))
 }
 
 fn machines(out: &Out) -> Result<ExitCode, Error> {

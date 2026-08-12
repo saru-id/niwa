@@ -14,13 +14,7 @@ use crate::paths::Paths;
 use crate::util::proc::bounded_output;
 
 pub fn run(out: &Out, action: &str) -> ExitCode {
-    match seal_key(out, action) {
-        Ok(code) => code,
-        Err(error) => {
-            out.error(&error);
-            ExitCode::FAILURE
-        }
-    }
+    super::finish(out, seal_key(out, action))
 }
 
 fn seal_key(out: &Out, action: &str) -> Result<ExitCode, Error> {
