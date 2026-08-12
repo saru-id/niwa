@@ -1,0 +1,18 @@
+# Written by niwa, committed on purpose: machine two resolves to the
+# same versions this machine did. Edit by running `niwa update <name>`.
+niwa = "1.0.0"
+
+[github_release."jesseduffield/lazygit"]
+version = "0.44.1"
+sha256  = "9f2c7e1ab44c1d5f0d1f5f7c3f2e9a41b8a06d7c4a5b9e3d2c1f0a9b8c7d6e5f"
+
+[mise.node]
+version = "22.11.0"
+
+[mise.rust]
+version = "1.84.1"
+
+[use."github:stefan/niwa-rust"]
+ref    = "v1"
+commit = "e5b19d7"
+sha256 = "41ac03bd8f2e6c5a9d7b1e0f3c2a5d8e7f6b9c0a1d2e3f4a5b6c7d8e9f0a1b2c"

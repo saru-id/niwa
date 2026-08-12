@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs nightly at 03:00 via services.luau.
+[ -d /Volumes/backup ] || exit 0
+rsync -a --delete "$HOME/dev/" /Volumes/backup/dev/

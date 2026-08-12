@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs every 15 minutes via services.luau. Quiet by design.
+cd "$HOME/notes" || exit 0
+git add -A
+git commit -qm "sync $(date +%F-%H%M)" 2>/dev/null
+git push -q

@@ -1,0 +1,7 @@
+{
+  "languageMode": "strict",
+  "aliases": {
+    "niwa": "~/.local/share/niwa/types",
+    "self": "."
+  }
+}

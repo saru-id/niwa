@@ -1,0 +1,8 @@
+# Written by niwa after each apply. One file per machine: no merge
+# conflicts, and `niwa machines` reads the fleet from these.
+machine_id = "9E1C6A2F-4B7D-4E0A-9C3B-D2F8A1E64C05"
+name       = "airborne"
+applied    = "2026-08-12T09:41:07Z"
+config     = "a91f3c2"
+niwa     = "1.0.0"
+resources  = 214

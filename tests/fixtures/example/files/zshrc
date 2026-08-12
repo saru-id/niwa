@@ -1,0 +1,11 @@
+# Lives in the repo as files/zshrc, copied to ~/.zshrc by niwa.
+# Edit either side; `niwa pull` brings live edits home.
+
+export EDITOR=nvim
+
+eval "$(starship init zsh)"
+eval "$(zoxide init zsh)"
+eval "$(fzf --zsh)"
+
+alias ls="eza"
+alias cat="bat --plain"
