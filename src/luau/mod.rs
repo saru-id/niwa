@@ -38,6 +38,20 @@ impl Default for Limits {
     }
 }
 
+impl Limits {
+    /// The execute pass runs real effects inside the script's clock:
+    /// installers and downloads take minutes and carry their own
+    /// deadlines. Two hours bounds a worst-case first provisioning
+    /// without ever bounding it wrongly; the plan pass already ran
+    /// the same script's pure code under the ten-second default.
+    pub const fn execute() -> Self {
+        Self {
+            time: Duration::from_hours(2),
+            memory: 256 * 1024 * 1024,
+        }
+    }
+}
+
 pub struct Runtime {
     lua: Lua,
     time: Duration,

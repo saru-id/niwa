@@ -49,9 +49,11 @@ pub fn run_pass(paths: &Paths, engine: Option<Rc<Engine>>) -> Result<Analysis, E
         engine,
     };
     let facts = crate::facts::Facts::gather(paths);
-    let runtime = Runtime::new(paths, &Limits::default(), |lua| {
-        crate::api::build(lua, &ctx, &facts)
-    })?;
+    let limits = match &ctx.engine {
+        Some(engine) if !engine.is_planning() => Limits::execute(),
+        _ => Limits::default(),
+    };
+    let runtime = Runtime::new(paths, &limits, |lua| crate::api::build(lua, &ctx, &facts))?;
     runtime.run_entry()?;
 
     let declarations = state.borrow().declarations.clone();
