@@ -45,18 +45,26 @@ pub fn resolve(repo: &str) -> Result<ReleasePin, Error> {
 
 /// Download, verify against the pin, and install the named binary.
 pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result<(), Error> {
-    let (version, asset_url) = latest_asset(repo)?;
-    if version != pin.version {
-        return Err(Error::Apply {
-            doing: format!("installing {repo}"),
-            detail: format!(
-                "upstream now serves {version}, the lock pins {} · run `niwa update {repo}` to move deliberately",
-                pin.version
-            ),
-        });
-    }
-    let temp = tempdir_file(repo);
-    download(&asset_url, &temp)?;
+    // A prefetched asset is already the locked bytes; the digest
+    // gate below re-proves it either way.
+    let cached = cache_path(paths, pin);
+    let temp = if cached.is_file() {
+        cached
+    } else {
+        let (version, asset_url) = latest_asset(repo)?;
+        if version != pin.version {
+            return Err(Error::Apply {
+                doing: format!("installing {repo}"),
+                detail: format!(
+                    "upstream now serves {version}, the lock pins {} · run `niwa update {repo}` to move deliberately",
+                    pin.version
+                ),
+            });
+        }
+        let temp = tempdir_file(repo);
+        download(&asset_url, &temp)?;
+        temp
+    };
     let bytes = std::fs::read(&temp).map_err(|error| release_error(repo, &error))?;
     if digest(&bytes) != pin.sha256 {
         let _ = std::fs::remove_file(&temp);
@@ -71,12 +79,9 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
     std::fs::create_dir_all(&target_dir).map_err(|error| release_error(repo, &error))?;
     let target = target_dir.join(bin);
 
-    let lower_url = asset_url.to_lowercase();
-    #[allow(
-        clippy::case_sensitive_file_extension_comparisons,
-        reason = "the url is lowercased one line up"
-    )]
-    if lower_url.ends_with(".tar.gz") || lower_url.ends_with(".tgz") {
+    // Content decides the unpack: release assets are tarballs or
+    // bare binaries, and the gzip magic is truer than a file name.
+    if bytes.starts_with(&[0x1f, 0x8b]) {
         extract_binary(repo, &temp, bin, &target)?;
     } else {
         std::fs::copy(&temp, &target).map_err(|error| release_error(repo, &error))?;
@@ -88,6 +93,46 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
         .permissions();
     std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
     std::fs::set_permissions(&target, permissions).map_err(|error| release_error(repo, &error))
+}
+
+/// Where a prefetched asset waits, named by its locked digest: a
+/// cache hit is verified content by construction.
+fn cache_path(paths: &Paths, pin: &ReleasePin) -> std::path::PathBuf {
+    paths.state.join("cache").join(&pin.sha256)
+}
+
+/// Fetch the pinned asset into the cache, for the background
+/// prefetch. Best effort by design: any miss just means the install
+/// downloads for itself, in program order.
+pub fn prefetch(paths: &Paths, repo: &str, pin: &ReleasePin) {
+    let target = cache_path(paths, pin);
+    if target.is_file() {
+        return;
+    }
+    let Ok((version, asset_url)) = latest_asset(repo) else {
+        return;
+    };
+    if version != pin.version {
+        return;
+    }
+    let temp = tempdir_file(&format!("{repo}-prefetch"));
+    if download(&asset_url, &temp).is_err() {
+        return;
+    }
+    let Ok(bytes) = std::fs::read(&temp) else {
+        return;
+    };
+    if digest(&bytes) != pin.sha256 {
+        let _ = std::fs::remove_file(&temp);
+        return;
+    }
+    let Some(parent) = target.parent() else {
+        return;
+    };
+    // The rename is the atom: a torn prefetch never becomes a hit.
+    if std::fs::create_dir_all(parent).is_ok() {
+        let _ = std::fs::rename(&temp, &target);
+    }
 }
 
 /// The latest release's version and the one asset built for this

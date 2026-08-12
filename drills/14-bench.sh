@@ -22,9 +22,16 @@ config
     done
 } >"$HOME/.config/niwa/init.luau"
 
-niwa apply --yes --dirty
+# CI progress: piped runs emit one plain line per interval, no
+# control codes. Interval zero makes the cadence testable.
+STATUS=0
+NIWA_PROGRESS_EVERY=0 /usr/bin/perl -e 'alarm shift; exec @ARGV or die "exec: $!"' 60 \
+    "$NIWA_BIN" apply --yes --dirty >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 1 "two hundred resources converge (exit 0)" test "$STATUS" -eq 0
 check 2 "the two hundredth landed" test -f "$HOME/.bench-200"
+check 2b "piped progress is plain lines with position and elapsed" \
+    sh -c "grep -q ' of 200 · ' '$SANDBOX/stdout' &&
+        ! grep -q \$'\\x1b' '$SANDBOX/stdout'"
 
 START=$(/usr/bin/perl -MTime::HiRes=time -e 'printf "%d", time()*1000')
 niwa apply --yes --dirty

@@ -294,6 +294,29 @@ impl Out {
         }
     }
 
+    /// The single redrawn progress line a terminal gets; scrollback
+    /// is the user's, and filling it with frames is vandalism. Piped
+    /// callers print plain lines through `plain` instead.
+    pub fn progress_line(&self, text: &str) {
+        if self.tty {
+            print!("\r {text}\x1b[K");
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+        }
+    }
+
+    /// Take the progress line back off the screen.
+    pub fn progress_clear(&self) {
+        if self.tty {
+            print!("\r\x1b[K");
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+        }
+    }
+
+    /// Whether a person is watching; progress pacing differs.
+    pub const fn is_tty(&self) -> bool {
+        self.tty
+    }
+
     /// A quiet, indented note.
     pub fn note(&self, text: &str) {
         if self.tty {

@@ -105,7 +105,12 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         paths.clone(),
         journal,
     ));
+    let prefetches = arm_progress(&engine, &paths, &intent, pending);
+
     let run = super::run_pass(&paths, Some(Rc::clone(&engine))).and_then(|_| engine.finish());
+    for handle in prefetches {
+        let _ = handle.join();
+    }
     if let Err(error) = run {
         engine.abort();
         let applied = engine.changed_count();
@@ -121,22 +126,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return Ok(ExitCode::FAILURE);
     }
 
-    let checked = intent.items.len() - intent.unchecked();
-    let mut summary = format!("{checked} checked · {} changed", engine.changed_count());
-    let protected = engine.protected();
-    if !protected.is_empty() {
-        use std::fmt::Write as _;
-        let _ = write!(summary, " · {} protected", protected.len());
-    }
-    out.result(Mark::Ok, &summary);
-    for target in engine.restarted() {
-        out.result(Mark::Restarted, &format!("{target} restarted (once)"));
-    }
-    for identity in &protected {
-        out.note(&format!(
-            "{identity} holds edits niwa never wrote: pull them home, or apply --force"
-        ));
-    }
+    summarize(out, &engine, &intent);
 
     stamp_and_warn(out, &paths, intent.items.len());
 
@@ -163,6 +153,27 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         ));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// The run's closing lines: what changed, what restarted, and what
+/// stayed protected because a person's edits live there.
+fn summarize(out: &Out, engine: &Engine, intent: &crate::plan::Plan) {
+    let checked = intent.items.len() - intent.unchecked();
+    let mut summary = format!("{checked} checked · {} changed", engine.changed_count());
+    let protected = engine.protected();
+    if !protected.is_empty() {
+        use std::fmt::Write as _;
+        let _ = write!(summary, " · {} protected", protected.len());
+    }
+    out.result(Mark::Ok, &summary);
+    for target in engine.restarted() {
+        out.result(Mark::Restarted, &format!("{target} restarted (once)"));
+    }
+    for identity in &protected {
+        out.note(&format!(
+            "{identity} holds edits niwa never wrote: pull them home, or apply --force"
+        ));
+    }
 }
 
 /// Write the stamp, and say so when this machine's id already stamps
@@ -244,6 +255,53 @@ fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
         ),
     );
     Ok(ExitCode::SUCCESS)
+}
+
+/// Arm the long-run progress line and start the background
+/// downloads. Effects still land in program order: the install
+/// re-verifies and downloads for itself when the cache is not ready.
+fn arm_progress(
+    engine: &Engine,
+    paths: &Paths,
+    intent: &crate::plan::Plan,
+    pending: usize,
+) -> Vec<std::thread::JoinHandle<()>> {
+    let open_checklist = intent
+        .items
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.declaration.identity.kind,
+                crate::model::Kind::Permission | crate::model::Kind::Manual
+            )
+        })
+        .count();
+    engine.expect(pending, open_checklist);
+    spawn_prefetches(paths, intent)
+}
+
+/// Every pending release download starts now, in the background;
+/// each thread is bounded by its own network deadlines.
+fn spawn_prefetches(paths: &Paths, intent: &crate::plan::Plan) -> Vec<std::thread::JoinHandle<()>> {
+    let Ok(lock) = crate::lockfile::Lockfile::load(paths) else {
+        return Vec::new();
+    };
+    intent
+        .items
+        .iter()
+        .filter(|item| {
+            matches!(item.action, Action::Create | Action::Change { .. })
+                && item.declaration.identity.kind == crate::model::Kind::GithubRelease
+        })
+        .filter_map(|item| {
+            let repo = item.declaration.identity.key.clone();
+            let pin = lock.github_release.get(&repo)?.clone();
+            let paths = paths.clone();
+            Some(std::thread::spawn(move || {
+                crate::release::prefetch(&paths, &repo, &pin);
+            }))
+        })
+        .collect()
 }
 
 /// `--only` scopes the run to one unit; a name nothing answers to is

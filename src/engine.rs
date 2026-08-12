@@ -74,6 +74,23 @@ pub struct Engine {
     restarted: RefCell<Vec<String>>,
     /// Privileged identities left untouched under --no-privileged.
     privileged_skipped: RefCell<Vec<String>>,
+    /// Long-run progress, armed by `expect` on the execute pass.
+    progress: RefCell<Option<Progress>>,
+    /// The engine's own view of the terminal, for the progress line
+    /// alone; every other word leaves through the verbs' `Out`.
+    screen: crate::out::Out,
+}
+
+/// Position in the whole, for the design's long-run line: `12 of 47
+/// · 6m · checklist: 2 items open`, with estimates wearing a `~`.
+struct Progress {
+    total: usize,
+    open_checklist: usize,
+    done: usize,
+    started: std::time::Instant,
+    last_emit: std::time::Instant,
+    /// Piped runs emit one plain line this often (seconds).
+    every: u64,
 }
 
 impl Engine {
@@ -97,6 +114,57 @@ impl Engine {
             restarts_pending: RefCell::new(Vec::new()),
             restarted: RefCell::new(Vec::new()),
             privileged_skipped: RefCell::new(Vec::new()),
+            progress: RefCell::new(None),
+            screen: crate::out::Out::detect(0),
+        }
+    }
+
+    /// Arm the long-run progress display: how much work the plan
+    /// predicted, and how many checklist items stay open. In CI the
+    /// cadence honors `NIWA_PROGRESS_EVERY` seconds (default thirty).
+    pub fn expect(&self, total: usize, open_checklist: usize) {
+        let every = std::env::var("NIWA_PROGRESS_EVERY")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(30);
+        *self.progress.borrow_mut() = Some(Progress {
+            total,
+            open_checklist,
+            done: 0,
+            started: std::time::Instant::now(),
+            last_emit: std::time::Instant::now(),
+            every,
+        });
+    }
+
+    /// One more resource settled; redraw or emit the progress line.
+    fn tick(&self, landed: usize) {
+        use std::fmt::Write as _;
+        let mut slot = self.progress.borrow_mut();
+        let Some(progress) = slot.as_mut() else {
+            return;
+        };
+        progress.done += landed;
+        let elapsed = progress.started.elapsed().as_secs();
+        let mut line = format!(
+            "{} of {} · {}",
+            progress.done.min(progress.total),
+            progress.total,
+            humanize(elapsed)
+        );
+        if progress.done >= 3 && progress.done < progress.total && elapsed >= 5 {
+            let remaining =
+                elapsed * (progress.total - progress.done) as u64 / progress.done as u64;
+            let _ = write!(line, " · ~{} left", humanize(remaining.max(1)));
+        }
+        if progress.open_checklist > 0 {
+            let _ = write!(line, " · checklist: {} items open", progress.open_checklist);
+        }
+        if self.screen.is_tty() {
+            self.screen.progress_line(&line);
+        } else if progress.last_emit.elapsed().as_secs() >= progress.every {
+            progress.last_emit = std::time::Instant::now();
+            self.screen.plain(&line);
         }
     }
 
@@ -156,6 +224,9 @@ impl Engine {
                 self.flush()?;
                 let force = *force;
                 let truth = self.perform_now(declaration, force)?;
+                if truth.changed {
+                    self.tick(1);
+                }
                 Ok(Some(truth))
             }
         }
@@ -264,6 +335,7 @@ impl Engine {
             journal.save(&self.paths.state)?;
             drop(journal);
             *self.changed.borrow_mut() += 1;
+            self.tick(1);
         }
         Ok(Truth {
             changed,
@@ -351,6 +423,7 @@ impl Engine {
                 );
                 if landed {
                     *self.changed.borrow_mut() += 1;
+                    self.tick(1);
                     acknowledge(&self.journal, &entry.declaration);
                     if let Some(id) = self.apply_id {
                         self.journal.borrow_mut().record_step(
@@ -451,6 +524,7 @@ impl Engine {
     /// drop an apply entry that changed nothing, save.
     pub fn finish(&self) -> Result<(), Error> {
         self.flush()?;
+        self.screen.progress_clear();
         for target in self.restarts_pending.borrow_mut().drain(..) {
             let killed = crate::util::proc::bounded_output(
                 "killall",
@@ -536,6 +610,16 @@ fn acknowledge(journal: &RefCell<Journal>, declaration: &Declaration) {
         declaration.identity.to_string(),
         crate::journal::Acknowledgement::new(declaration.spec.clone(), None),
     );
+}
+
+/// Elapsed time in the voice rules' shape: seconds young, minutes
+/// soon, hours eventually.
+fn humanize(seconds: u64) -> String {
+    match seconds {
+        0..=89 => format!("{seconds}s"),
+        90..=5_399 => format!("{}m", seconds.div_ceil(60)),
+        _ => format!("{}h", seconds / 3600),
+    }
 }
 
 const fn truth_of(action: &Action) -> Truth {
