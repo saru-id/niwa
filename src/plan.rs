@@ -78,9 +78,7 @@ const fn spec_fields(
 }
 
 fn expand_target(paths: &Paths, target: &str) -> PathBuf {
-    target
-        .strip_prefix("~/")
-        .map_or_else(|| PathBuf::from(target), |rest| paths.home.join(rest))
+    paths.expand_home(target)
 }
 
 fn compare_file(declaration: &Declaration, paths: &Paths, journal: &Journal) -> Action {

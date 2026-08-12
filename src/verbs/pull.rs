@@ -129,11 +129,7 @@ fn accept(
 ) -> Accepted {
     match finding {
         Finding::LiveEdit { target, source, .. } => {
-            let live = std::fs::read(target.strip_prefix("~/").map_or_else(
-                || std::path::PathBuf::from(target),
-                |rest| paths.home.join(rest),
-            ))
-            .unwrap_or_default();
+            let live = std::fs::read(paths.expand_home(target)).unwrap_or_default();
             let hits = crate::gate::scan_bytes(&live);
             if let Some((line, reason)) = hits.first() {
                 return Accepted::Held(format!(

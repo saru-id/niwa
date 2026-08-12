@@ -229,12 +229,7 @@ pub fn render_item_diff(out: &Out, paths: &Paths, item: &crate::model::action::I
         return;
     };
     let target = &item.declaration.identity.key;
-    let live = target
-        .strip_prefix("~/")
-        .map(|rest| paths.home.join(rest))
-        .map_or_else(String::new, |path| {
-            std::fs::read_to_string(path).unwrap_or_default()
-        });
+    let live = std::fs::read_to_string(paths.expand_home(target)).unwrap_or_default();
     if live == declared {
         return;
     }

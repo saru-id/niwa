@@ -211,10 +211,7 @@ fn apply_service(
     if let Value::Map(fields) = &declaration.spec
         && let Some(Value::Str(logs)) = fields.get("logs")
     {
-        let dir = logs.strip_prefix("~/").map_or_else(
-            || std::path::PathBuf::from(logs),
-            |rest| paths.home.join(rest),
-        );
+        let dir = paths.expand_home(logs);
         std::fs::create_dir_all(&dir)
             .map_err(|error| apply_error("creating the log directory", &error))?;
     }
@@ -263,9 +260,7 @@ const fn fields_of(
 }
 
 fn expand_target(paths: &Paths, target: &str) -> PathBuf {
-    target
-        .strip_prefix("~/")
-        .map_or_else(|| PathBuf::from(target), |rest| paths.home.join(rest))
+    paths.expand_home(target)
 }
 
 /// The overwrite rule, stated once. Existing bytes are free to

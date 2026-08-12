@@ -113,10 +113,7 @@ pub fn render(paths: &Paths, declaration: &Declaration) -> Option<plist::Diction
 }
 
 fn expand(paths: &Paths, path: &str) -> String {
-    path.strip_prefix("~/").map_or_else(
-        || path.to_string(),
-        |rest| paths.home.join(rest).display().to_string(),
-    )
+    paths.expand_home(path).display().to_string()
 }
 
 /// Does the plist on disk say what the declaration says? Compared as

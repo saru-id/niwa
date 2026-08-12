@@ -52,10 +52,7 @@ fn guard_satisfied(declaration: &Declaration, paths: &Paths) -> bool {
         return true;
     }
     if let Some(Value::Str(creates)) = fields.get("creates") {
-        let target = creates.strip_prefix("~/").map_or_else(
-            || std::path::PathBuf::from(creates),
-            |rest| paths.home.join(rest),
-        );
+        let target = paths.expand_home(creates);
         if target.exists() {
             return true;
         }

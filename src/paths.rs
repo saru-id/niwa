@@ -53,6 +53,15 @@ impl Paths {
         })
     }
 
+    /// Expand a target the way every resource means it: `~/` under
+    /// this run's home, anything else as written. One expander, so a
+    /// drill's redirected home covers every path uniformly.
+    pub fn expand_home(&self, target: &str) -> PathBuf {
+        target
+            .strip_prefix("~/")
+            .map_or_else(|| PathBuf::from(target), |rest| self.home.join(rest))
+    }
+
     /// Where configuration profiles park the keys they own. The
     /// override exists for the hermetic tests; the default is the
     /// system's own place.

@@ -410,9 +410,7 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
 }
 
 fn expand(paths: &Paths, target: &str) -> PathBuf {
-    target
-        .strip_prefix("~/")
-        .map_or_else(|| PathBuf::from(target), |rest| paths.home.join(rest))
+    paths.expand_home(target)
 }
 
 fn lines_differing(old: &[u8], new: &[u8]) -> usize {

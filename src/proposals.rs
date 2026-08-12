@@ -314,12 +314,7 @@ pub fn pull_file(
         doing: format!("pulling {target}"),
         detail: "the source is not a @self path".to_string(),
     })?;
-    let live = std::fs::read(
-        target
-            .strip_prefix("~/")
-            .map_or_else(|| PathBuf::from(target), |tail| paths.home.join(tail)),
-    )
-    .map_err(|error| Error::Apply {
+    let live = std::fs::read(paths.expand_home(target)).map_err(|error| Error::Apply {
         doing: format!("reading {target}"),
         detail: error.to_string(),
     })?;
@@ -344,9 +339,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
     let (kind, key) = identity.split_once(':').unwrap_or((identity, ""));
     match kind {
         "file" | "link" => {
-            let target = key
-                .strip_prefix("~/")
-                .map_or_else(|| PathBuf::from(key), |tail| paths.home.join(tail));
+            let target = paths.expand_home(key);
             if let Ok(current) = std::fs::read(&target) {
                 crate::apply::archive_bytes(&archive_root, identity, &current)?;
             }
