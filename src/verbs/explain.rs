@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::model::{Declaration, Kind, Value};
-use crate::out::{Mark, Out, ago};
+use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out, target: &str) -> ExitCode {
@@ -79,7 +79,7 @@ fn explain(out: &Out, target: &str) -> Result<ExitCode, Error> {
                 if !trail.is_empty() {
                     trail.push_str(" · ");
                 }
-                trail.push_str(&ago(applied));
+                trail.push_str(&out.when(applied));
             }
             out.plain(&format!(
                 "{:<13}{:<8}{trail}",

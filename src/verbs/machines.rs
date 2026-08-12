@@ -4,7 +4,7 @@
 use std::process::ExitCode;
 
 use crate::error::Error;
-use crate::out::{Mark, Out, ago};
+use crate::out::{Mark, Out};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
@@ -48,7 +48,7 @@ fn machines(out: &Out) -> Result<ExitCode, Error> {
         );
         lines.push(format!(
             "{cursor} {stem:name_width$}   applied {:10}   {position}   {} resources",
-            ago(&stamp.applied),
+            out.when(&stamp.applied),
             stamp.resources
         ));
     }

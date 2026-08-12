@@ -105,6 +105,17 @@ enforces the license and source policy in `deny.toml`.
 - Weight: small (toml_edit, winnow).
 - License: MIT OR Apache-2.0.
 
+### similar
+
+- Does: the diffs behind `plan --diff`, word-level highlighted, the
+  library the design names for it.
+- Why not our own: good diffs are an algorithm family (Myers, inline
+  emphasis, grouping), not an afternoon.
+- Maintenance: mitsuhiko, current, widely used; already in the tree
+  as insta's engine.
+- Weight: small (no new transitive dependencies).
+- License: Apache-2.0.
+
 ## Development
 
 ### insta

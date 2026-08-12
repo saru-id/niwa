@@ -78,6 +78,8 @@ pub struct Out {
     tty: bool,
     /// Color implies `tty`; `NO_COLOR` and `TERM=dumb` strip it back.
     color: bool,
+    /// `-v`: humanized times gain their absolutes.
+    verbose: bool,
 }
 
 impl Out {
@@ -85,7 +87,7 @@ impl Out {
     /// `0`) turns everything on even when piped. `NO_COLOR` (set,
     /// non-empty) and `TERM=dumb` remove color but keep the marks a
     /// terminal user still sees.
-    pub fn detect() -> Self {
+    pub fn detect(verbose: bool) -> Self {
         let tty = std::io::stdout().is_terminal();
         let force = std::env::var_os("FORCE_COLOR").is_some_and(|v| !v.is_empty() && v != "0");
         let no_color = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
@@ -93,6 +95,7 @@ impl Out {
         Self {
             tty: tty || force,
             color: force || (tty && !no_color && !dumb),
+            verbose,
         }
     }
 
@@ -158,6 +161,60 @@ impl Out {
     #[expect(clippy::unused_self, reason = "every screen prints through Out")]
     pub fn raw(&self, text: &str) {
         print!("{text}");
+    }
+
+    /// A moment: humanized always, the absolute beside it at `-v`.
+    pub fn when(&self, timestamp: &str) -> String {
+        let humanized = ago(timestamp);
+        if !self.verbose {
+            return humanized;
+        }
+        let absolute = timestamp.parse::<jiff::Timestamp>().map_or_else(
+            |_| timestamp.to_string(),
+            |moment| {
+                moment
+                    .to_zoned(jiff::tz::TimeZone::system())
+                    .strftime("%Y-%m-%d %H:%M")
+                    .to_string()
+            },
+        );
+        format!("{humanized} ({absolute})")
+    }
+
+    /// A file diff, line by line with the changed words emphasized,
+    /// so a one-character change reads as one character. Meaning
+    /// travels by the signs; color and bold only sharpen it.
+    pub fn diff(&self, old: &str, new: &str) {
+        let text_diff = similar::TextDiff::from_lines(old, new);
+        for (index, group) in text_diff.grouped_ops(3).iter().enumerate() {
+            if index > 0 {
+                self.note("···");
+            }
+            for op in group {
+                for change in text_diff.iter_inline_changes(op) {
+                    let (sign, role) = match change.tag() {
+                        similar::ChangeTag::Delete => ("-", Role::Bad),
+                        similar::ChangeTag::Insert => ("+", Role::Good),
+                        similar::ChangeTag::Equal => (" ", Role::Muted),
+                    };
+                    let mut line = String::new();
+                    for (emphasized, piece) in change.iter_strings_lossy() {
+                        if emphasized && self.color {
+                            use std::fmt::Write as _;
+                            let _ = write!(line, "\x1b[1m{piece}\x1b[22m");
+                        } else {
+                            line.push_str(&piece);
+                        }
+                    }
+                    let text = format!("{sign} {}", line.trim_end_matches('\n'));
+                    if self.color {
+                        println!(" {}", self.paint(role, &text));
+                    } else {
+                        self.plain(&text);
+                    }
+                }
+            }
+        }
     }
 
     /// A quiet, indented note.

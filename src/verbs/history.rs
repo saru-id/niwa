@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use crate::error::Error;
 use crate::journal::Journal;
-use crate::out::{Mark, Out, ago, count};
+use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
@@ -33,7 +33,7 @@ fn history(out: &Out) -> Result<ExitCode, Error> {
         let when = entry
             .when
             .as_deref()
-            .map_or_else(String::new, |when| format!(" · {}", ago(when)));
+            .map_or_else(String::new, |when| format!(" · {}", out.when(when)));
         let reach = if newest {
             " · undo reaches this one"
         } else {

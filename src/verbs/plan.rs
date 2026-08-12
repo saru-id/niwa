@@ -8,14 +8,23 @@ use std::rc::Rc;
 use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
-use crate::model::Unit;
+use crate::model::{Kind, Unit, Value};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 use crate::plan::{Action, Plan};
 
-pub fn run(out: &Out) -> ExitCode {
+pub fn run(out: &Out, diff: bool, json: bool) -> ExitCode {
     match build() {
-        Ok(plan) => render(out, &plan),
+        Ok(plan) => {
+            if json {
+                return render_json(out, &plan);
+            }
+            let code = render(out, &plan);
+            if diff {
+                render_diffs(out, &plan);
+            }
+            code
+        }
         Err(error) => {
             out.error(&error);
             ExitCode::FAILURE
@@ -102,5 +111,83 @@ fn display_name(declaration: &crate::model::Declaration) -> String {
         crate::model::Kind::Defaults => declaration.identity.key.replacen(':', " ", 1),
         crate::model::Kind::File | crate::model::Kind::Link => declaration.identity.key.clone(),
         _ => declaration.identity.to_string(),
+    }
+}
+
+/// The machine interface: one JSON document, versioned like the
+/// journal, same exit codes as the human screen.
+fn render_json(out: &Out, plan: &Plan) -> ExitCode {
+    let items: Vec<serde_json::Value> = plan
+        .items
+        .iter()
+        .map(|item| {
+            let (action, detail) = match &item.action {
+                Action::InSync => ("in-sync", None),
+                Action::Create => ("create", None),
+                Action::Change { detail } => ("change", Some(detail.clone())),
+                Action::Unchecked => ("unchecked", None),
+            };
+            serde_json::json!({
+                "identity": item.declaration.identity.to_string(),
+                "unit": unit_name(&item.declaration.unit),
+                "action": action,
+                "detail": detail,
+            })
+        })
+        .collect();
+    let document = serde_json::json!({
+        "version": 1,
+        "resources": plan.items.len(),
+        "pending": plan.pending(),
+        "unchecked": plan.unchecked(),
+        "items": items,
+    });
+    out.raw(&format!("{document}\n"));
+    if plan.pending() == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(2)
+    }
+}
+
+/// `--diff`: the full content diff for every pending file whose
+/// declared bytes are knowable now. Rendered content resolves at
+/// apply time — and may hold secrets — so those files stay a name.
+fn render_diffs(out: &Out, plan: &Plan) {
+    let Ok(paths) = Paths::resolve() else {
+        return;
+    };
+    for item in &plan.items {
+        if !matches!(item.action, Action::Create | Action::Change { .. })
+            || item.declaration.identity.kind != Kind::File
+        {
+            continue;
+        }
+        let Value::Map(fields) = &item.declaration.spec else {
+            continue;
+        };
+        let declared = match (fields.get("source"), fields.get("content")) {
+            (Some(Value::Str(source)), _) => source
+                .strip_prefix("@self/")
+                .and_then(|rest| std::fs::read_to_string(paths.config.join(rest)).ok()),
+            (_, Some(Value::Str(content))) => Some(content.clone()),
+            _ => None,
+        };
+        let Some(declared) = declared else {
+            continue;
+        };
+        let target = &item.declaration.identity.key;
+        let live = target
+            .strip_prefix("~/")
+            .map(|rest| paths.home.join(rest))
+            .map_or_else(String::new, |path| {
+                std::fs::read_to_string(path).unwrap_or_default()
+            });
+        if live == declared {
+            continue;
+        }
+        out.plain("");
+        out.group(target);
+        out.diff(&live, &declared);
     }
 }

@@ -12,7 +12,7 @@ use crate::engine::{Engine, Mode};
 use crate::error::Error;
 use crate::journal::Journal;
 use crate::model::Kind;
-use crate::out::{Mark, Out, ago, count};
+use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
 pub fn run(out: &Out) -> ExitCode {
@@ -51,7 +51,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
     let applied = crate::stamp::read_all(&paths)
         .into_iter()
         .find(|(stem, _)| stem == &name)
-        .map(|(_, stamp)| ago(&stamp.applied));
+        .map(|(_, stamp)| out.when(&stamp.applied));
 
     let mut headline = format!(
         "niwa · {name} · {}",
@@ -104,7 +104,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
                 no_privileged: false,
             },
         ),
-        "p" => super::plan::run(out),
+        "p" => super::plan::run(out, false, false),
         "r" => super::pull::run(out, false),
         "u" => super::update::run(out, None),
         "h" => super::history::run(out),

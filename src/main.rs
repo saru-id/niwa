@@ -34,13 +34,13 @@ use clap::Parser as _;
 
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
-    let out = out::Out::detect();
+    let out = out::Out::detect(cli.verbose);
     let Some(verb) = cli.verb else {
         return verbs::dashboard::run(&out);
     };
     match verb {
         cli::Verb::Check { notify } => verbs::check::run(&out, notify),
-        cli::Verb::Plan => verbs::plan::run(&out),
+        cli::Verb::Plan { diff, json } => verbs::plan::run(&out, diff, json),
         cli::Verb::Apply {
             yes,
             dirty,

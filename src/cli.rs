@@ -11,6 +11,9 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[command(subcommand)]
     pub verb: Option<Verb>,
+    /// More detail: humanized times gain their absolutes
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -25,7 +28,14 @@ pub enum Verb {
     },
     /// Show what apply would do. Exit 0 when in sync, 2 when changes
     /// are pending, 1 on an error
-    Plan,
+    Plan {
+        /// Render full file diffs, word-level highlighted
+        #[arg(long)]
+        diff: bool,
+        /// The machine interface: one versioned JSON document
+        #[arg(long)]
+        json: bool,
+    },
     /// Make the config true: plan, confirm, execute
     Apply {
         /// Apply without asking
