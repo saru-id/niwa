@@ -9,9 +9,36 @@
 //! more than a pipe buffer holds blocks until the deadline kills it.
 //! That suits programs that answer in kilobytes; anything that streams
 //! belongs elsewhere.
+//!
+//! Programs resolve through the `PATH` variable here, explicitly,
+//! never through the exec fallback path. That one rule is load
+//! bearing for the sandbox: a test or drill that clears `PATH` has
+//! taken away every tool, and nothing this module spawns can reach
+//! the real machine behind its back.
 
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+
+/// Find a program the way a shell would, and only that way. A name
+/// with a slash is used as given; a bare name must be an executable
+/// file in one of `PATH`'s entries, or there is nothing to run.
+fn resolve(program: &str) -> Option<PathBuf> {
+    resolve_in(program, std::env::var_os("PATH").as_deref())
+}
+
+fn resolve_in(program: &str, path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
+    if program.contains('/') {
+        return Some(PathBuf::from(program));
+    }
+    std::env::split_paths(path?)
+        .map(|dir| dir.join(program))
+        .find(|candidate| {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::metadata(candidate)
+                .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+        })
+}
 
 /// A finished run: the exit code and what the child said. `code` is
 /// `None` when the deadline killed it.
@@ -23,7 +50,7 @@ pub struct Finished {
 /// Run a program to completion under the deadline and report what
 /// happened, or `None` when it could not start or ran past the clock.
 pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option<Finished> {
-    let mut child = Command::new(program)
+    let mut child = Command::new(resolve(program)?)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -58,7 +85,7 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
 /// failure, a timeout, or a program that is not there. From the
 /// caller's side those are one answer: no information.
 pub fn bounded_stdout(program: &str, args: &[&str], timeout: Duration) -> Option<String> {
-    let mut child = Command::new(program)
+    let mut child = Command::new(resolve(program)?)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -97,6 +124,19 @@ mod tests {
         let answer = bounded_stdout("/bin/sleep", &["120"], Duration::from_millis(300));
         assert_eq!(answer, None);
         assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn without_a_path_nothing_resolves_by_bare_name() {
+        // The exec fallback path must never be consulted: with PATH
+        // gone, even /bin's tools are unreachable by bare name.
+        assert_eq!(resolve_in("echo", None), None);
+        assert_eq!(resolve_in("echo", Some(std::ffi::OsStr::new(""))), None);
+        // A slashed path stays reachable: the caller named a file.
+        assert_eq!(
+            resolve_in("/bin/echo", None),
+            Some(PathBuf::from("/bin/echo"))
+        );
     }
 
     #[test]

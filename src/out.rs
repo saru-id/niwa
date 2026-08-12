@@ -43,6 +43,7 @@ pub enum Mark {
     Added,
     Changed,
     Failed,
+    Restarted,
 }
 
 impl Mark {
@@ -52,6 +53,7 @@ impl Mark {
             Self::Added => "+",
             Self::Changed => "~",
             Self::Failed => "✗",
+            Self::Restarted => "↻",
         }
     }
 
@@ -60,6 +62,7 @@ impl Mark {
             Self::Ok | Self::Added => Role::Good,
             Self::Changed => Role::Warn,
             Self::Failed => Role::Bad,
+            Self::Restarted => Role::Muted,
         }
     }
 }

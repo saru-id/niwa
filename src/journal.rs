@@ -55,6 +55,11 @@ pub enum Effect {
     DefaultsSet { previous: Option<Value> },
     /// A package was installed by this run; undo uninstalls it.
     PackageInstalled,
+    /// An agent's plist was written and the agent loaded. `previous`
+    /// is the digest of the archived plist it replaced.
+    ServiceSet { previous: Option<String> },
+    /// A Homebrew service was started by this run; undo stops it.
+    BrewServiceStarted,
 }
 
 /// What one apply left behind for one identity: the spec it made true

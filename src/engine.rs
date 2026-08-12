@@ -59,6 +59,10 @@ pub struct Engine {
     /// "applied · not reached" honesty.
     changed: RefCell<usize>,
     protected: RefCell<Vec<String>>,
+    /// Restart targets queued by defaults writes, in first-write
+    /// order; five writes to one domain restart its process once.
+    restarts_pending: RefCell<Vec<String>>,
+    restarted: RefCell<Vec<String>>,
 }
 
 impl Engine {
@@ -77,6 +81,8 @@ impl Engine {
             items: RefCell::new(Vec::new()),
             changed: RefCell::new(0),
             protected: RefCell::new(Vec::new()),
+            restarts_pending: RefCell::new(Vec::new()),
+            restarted: RefCell::new(Vec::new()),
         }
     }
 
@@ -141,11 +147,7 @@ impl Engine {
         // names go to the installer.
         let mut to_install: Vec<&Pending> = Vec::new();
         for entry in &pending {
-            let installed = brew::installed(
-                &self.paths,
-                &entry.declaration.identity.kind,
-                &entry.declaration.identity.key,
-            );
+            let installed = self.installed(&entry.declaration);
             if let Some(version) = installed {
                 self.truths.borrow_mut().insert(
                     entry.declaration.identity.clone(),
@@ -162,23 +164,43 @@ impl Engine {
             }
         }
 
-        for kind in [Kind::BrewFormula, Kind::BrewCask] {
-            let names: Vec<String> = to_install
+        for kind in [Kind::BrewFormula, Kind::BrewCask, Kind::Npm, Kind::Mise] {
+            let group: Vec<&&Pending> = to_install
                 .iter()
                 .filter(|entry| entry.declaration.identity.kind == kind)
-                .map(|entry| entry.declaration.identity.key.clone())
                 .collect();
-            if names.is_empty() {
+            if group.is_empty() {
                 continue;
             }
-            let invocation = brew::install(&kind, &names, Duration::from_mins(30));
+            let invocation = match &kind {
+                Kind::Npm => {
+                    let names: Vec<String> = group
+                        .iter()
+                        .map(|entry| entry.declaration.identity.key.clone())
+                        .collect();
+                    crate::npm::install(&names, Duration::from_mins(30))
+                }
+                Kind::Mise => {
+                    let requests: Vec<String> = group
+                        .iter()
+                        .map(|entry| crate::mise::request(&entry.declaration))
+                        .collect();
+                    crate::mise::install(&requests, Duration::from_mins(30))
+                }
+                _ => {
+                    let names: Vec<String> = group
+                        .iter()
+                        .map(|entry| entry.declaration.identity.key.clone())
+                        .collect();
+                    brew::install(&kind, &names, Duration::from_mins(30))
+                }
+            };
 
             for entry in to_install
                 .iter()
                 .filter(|entry| entry.declaration.identity.kind == kind)
             {
-                let name = &entry.declaration.identity.key;
-                let version = brew::installed(&self.paths, &kind, name);
+                let version = self.installed(&entry.declaration);
                 let landed = version.is_some();
                 self.truths.borrow_mut().insert(
                     entry.declaration.identity.clone(),
@@ -218,6 +240,21 @@ impl Engine {
         Ok(())
     }
 
+    /// Is a batchable declaration already satisfied? Returns a
+    /// version-ish string when it is; npm has no cheap version, so
+    /// presence answers with an empty marker.
+    fn installed(&self, declaration: &Declaration) -> Option<String> {
+        match &declaration.identity.kind {
+            Kind::Npm => crate::npm::installed(&declaration.identity.key).then(String::new),
+            Kind::Mise => crate::mise::installed(&self.paths, &declaration.identity.key),
+            _ => brew::installed(
+                &self.paths,
+                &declaration.identity.kind,
+                &declaration.identity.key,
+            ),
+        }
+    }
+
     fn perform_now(&self, declaration: &Declaration, force: bool) -> Result<Truth, Error> {
         let mut journal = self.journal.borrow_mut();
         let (outcome, effect) = perform(declaration, &self.paths, &mut journal, force)?;
@@ -233,7 +270,10 @@ impl Engine {
         journal.save(&self.paths.state)?;
         drop(journal);
         match outcome {
-            Outcome::Done => *self.changed.borrow_mut() += 1,
+            Outcome::Done => {
+                *self.changed.borrow_mut() += 1;
+                self.queue_restart(declaration);
+            }
             Outcome::Protected => self
                 .protected
                 .borrow_mut()
@@ -269,13 +309,48 @@ impl Engine {
     }
 
     /// Close an execute pass: run whatever the batch still holds,
+    /// restart what the defaults writes asked for (once per process),
     /// drop an apply entry that changed nothing, save.
     pub fn finish(&self) -> Result<(), Error> {
         self.flush()?;
+        for target in self.restarts_pending.borrow_mut().drain(..) {
+            let killed = crate::util::proc::bounded_output(
+                "killall",
+                &[target.as_str()],
+                Duration::from_secs(10),
+            )
+            .is_some_and(|finished| finished.code == Some(0));
+            if killed {
+                self.restarted.borrow_mut().push(target);
+            }
+        }
         if let Some(id) = self.apply_id {
             self.journal.borrow_mut().discard_empty_apply(id);
         }
         self.journal.borrow().save(&self.paths.state)
+    }
+
+    /// A defaults write asks for its process restart; the queue keeps
+    /// one entry per target, so five writes bounce the Dock once.
+    fn queue_restart(&self, declaration: &Declaration) {
+        if !matches!(declaration.identity.kind, Kind::Defaults) {
+            return;
+        }
+        let crate::model::Value::Map(fields) = &declaration.spec else {
+            return;
+        };
+        let Some(crate::model::Value::Str(target)) = fields.get("restart") else {
+            return;
+        };
+        let mut pending = self.restarts_pending.borrow_mut();
+        if !pending.iter().any(|queued| queued == target) {
+            pending.push(target.clone());
+        }
+    }
+
+    /// The processes this run actually bounced, in order.
+    pub fn restarted(&self) -> Vec<String> {
+        self.restarted.borrow().clone()
     }
 
     /// Close a failed execute pass: keep what landed for undo, but
@@ -297,7 +372,10 @@ impl Engine {
 }
 
 const fn batchable(kind: &Kind) -> bool {
-    matches!(kind, Kind::BrewFormula | Kind::BrewCask)
+    matches!(
+        kind,
+        Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise
+    )
 }
 
 fn is_optional(declaration: &Declaration) -> bool {

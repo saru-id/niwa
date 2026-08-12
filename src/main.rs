@@ -7,10 +7,13 @@ mod error;
 mod facts;
 mod journal;
 mod luau;
+mod mise;
 mod model;
+mod npm;
 mod out;
 mod paths;
 mod plan;
+mod services;
 mod util;
 mod verbs;
 

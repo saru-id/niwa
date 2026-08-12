@@ -130,6 +130,7 @@ mod tests {
             config: dir.to_path_buf(),
             state: dir.join("state"),
             brew_prefix: dir.join("brew"),
+            data: dir.join(".local/share"),
         }
     }
 

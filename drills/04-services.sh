@@ -1,0 +1,136 @@
+#!/bin/sh
+# Drill: launchd services, brew services, and restart coalescing.
+#
+# Stub launchctl, brew, and killall executables record every call, so
+# the drill can prove the plist lands where launchd looks, a changed
+# definition reloads and kickstarts, five preference writes bounce one
+# process once, and undo boots the agent out again.
+
+. "$(dirname "$0")/lib.sh"
+
+echo "drill: services"
+
+export HOMEBREW_PREFIX="$SANDBOX/brew"
+mkdir -p "$HOMEBREW_PREFIX/Cellar"
+CALLS="$SANDBOX/calls.log"
+BIN="$SANDBOX/bin"
+mkdir -p "$BIN"
+
+cat >"$BIN/launchctl" <<EOF
+#!/bin/sh
+echo "launchctl \$*" >>"$CALLS"
+exit 0
+EOF
+cat >"$BIN/killall" <<EOF
+#!/bin/sh
+echo "killall \$*" >>"$CALLS"
+exit 0
+EOF
+cat >"$BIN/brew" <<EOF
+#!/bin/sh
+echo "brew \$*" >>"$CALLS"
+if [ "\$1" = "services" ] && [ "\$2" = "start" ]; then
+    mkdir -p "$HOME/Library/LaunchAgents"
+    printf '<?xml version="1.0"?><plist version="1.0"><dict/></plist>' \
+        >"$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
+elif [ "\$1" = "services" ] && [ "\$2" = "stop" ]; then
+    rm -f "$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
+elif [ "\$1" = "install" ]; then
+    shift
+    for name in "\$@"; do
+        mkdir -p "$HOMEBREW_PREFIX/Cellar/\$name/1.0.0"
+        echo '{}' >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
+    done
+fi
+exit 0
+EOF
+chmod 755 "$BIN/launchctl" "$BIN/killall" "$BIN/brew"
+export PATH="$BIN:/usr/bin:/bin"
+
+config
+cat >"$HOME/.config/niwa/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.service {
+  label    = "dev.drill.sync",
+  program  = { "~/.local/bin/sync-notes", "--quiet" },
+  interval = "15m",
+  logs     = "~/.local/state/sync-notes/",
+}
+EOF
+
+niwa apply --yes
+check 1 "apply succeeds (exit 0)" test "$STATUS" -eq 0
+PLIST="$HOME/Library/LaunchAgents/dev.drill.sync.plist"
+check 2 "the agent's plist landed where launchd looks" test -f "$PLIST"
+check 3 "the agent was bootstrapped" grep -q "launchctl bootstrap" "$CALLS"
+check 4 "the log directory exists before launchd needs it" \
+    test -d "$HOME/.local/state/sync-notes"
+check 5 "the program path expanded past the tilde" \
+    sh -c "/usr/bin/plutil -p '$PLIST' | grep -q '$HOME/.local/bin/sync-notes'"
+
+niwa plan
+check 6 "the service is converged (exit 0)" test "$STATUS" -eq 0
+
+# A changed definition reloads: bootout, bootstrap, kickstart.
+: >"$CALLS"
+cat >"$HOME/.config/niwa/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.service {
+  label    = "dev.drill.sync",
+  program  = { "~/.local/bin/sync-notes", "--quiet" },
+  interval = "30m",
+  logs     = "~/.local/state/sync-notes/",
+}
+EOF
+
+niwa plan
+check 7 "a changed definition is pending (exit 2)" test "$STATUS" -eq 2
+
+niwa apply --yes
+check 8 "the reload boots out, bootstraps, and kickstarts" \
+    sh -c "grep -q 'launchctl bootout' '$CALLS' && grep -q 'launchctl bootstrap' '$CALLS' && grep -q 'launchctl kickstart' '$CALLS'"
+
+niwa undo --yes
+check 9 "undo restores the previous definition" \
+    sh -c "/usr/bin/plutil -p '$PLIST' | grep -q '\"StartInterval\" => 900'"
+
+# Brew services: declaring implies the formula, the plist is the receipt.
+: >"$CALLS"
+cat >"$HOME/.config/niwa/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.brew.service "redis"
+EOF
+
+niwa apply --yes
+check 10 "brew service apply succeeds (exit 0)" test "$STATUS" -eq 0
+check 11 "the implied formula was installed first" \
+    grep -q "brew install redis" "$CALLS"
+check 12 "the service was started" grep -q "brew services start redis" "$CALLS"
+check 13 "homebrew's plist is the receipt" \
+    test -f "$HOME/Library/LaunchAgents/homebrew.mxcl.redis.plist"
+
+niwa plan
+check 14 "the brew service is converged (exit 0)" test "$STATUS" -eq 0
+
+niwa undo --yes
+check 15 "undo stopped the service" grep -q "brew services stop redis" "$CALLS"
+
+# Restart coalescing: five dock writes, one bounce, at the end.
+: >"$CALLS"
+cat >"$HOME/.config/niwa/init.luau" <<'EOF'
+local niwa = require("@niwa")
+niwa.dock {
+  autohide = true,
+  tilesize = 48,
+  apps = {},
+  minimize_effect = "scale",
+}
+niwa.defaults("com.apple.dock", { orientation = "left" }, { restart = "Dock" })
+EOF
+
+niwa apply --yes
+check 16 "the defaults apply succeeds (exit 0)" test "$STATUS" -eq 0
+check 17 "five dock writes bounced the Dock exactly once" \
+    test "$(grep -c "killall Dock" "$CALLS")" = "1"
+
+echo "drill: services · all checks passed"

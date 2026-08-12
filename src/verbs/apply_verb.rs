@@ -114,6 +114,9 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         let _ = write!(summary, " · {} protected", protected.len());
     }
     out.result(Mark::Ok, &summary);
+    for target in engine.restarted() {
+        out.result(Mark::Restarted, &format!("{target} restarted (once)"));
+    }
     for identity in &protected {
         out.note(&format!(
             "{identity} holds edits niwa never wrote: pull them home, or apply --force"

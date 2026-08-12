@@ -20,6 +20,9 @@ pub struct Paths {
     /// Where Homebrew lives: `HOMEBREW_PREFIX` when set and absolute,
     /// the architecture's default otherwise.
     pub brew_prefix: PathBuf,
+    /// Shared data: `~/.local/share`. mise keeps its installs here,
+    /// and niwa its shipped types.
+    pub data: PathBuf,
 }
 
 impl Paths {
@@ -40,11 +43,13 @@ impl Paths {
                     PathBuf::from("/usr/local")
                 }
             });
+        let data = xdg_dir(&home, "XDG_DATA_HOME", ".local/share");
         Ok(Self {
             home,
             config,
             state,
             brew_prefix,
+            data,
         })
     }
 }

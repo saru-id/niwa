@@ -100,8 +100,98 @@ fn apply_one(
         Kind::File => apply_file(declaration, paths, journal, archive_root, force),
         Kind::Link => apply_link(declaration, paths, journal, archive_root, force),
         Kind::Defaults => apply_defaults(declaration, paths, journal, archive_root),
+        Kind::Service => apply_service(declaration, paths, journal, archive_root, force),
+        Kind::BrewService => apply_brew_service(declaration, paths, journal),
         _ => Ok((Outcome::Unchecked, None)),
     }
+}
+
+/// Write the agent's plist (owned like a file, so the overwrite rule
+/// and the archive apply), then load it — with a reload and kickstart
+/// when the definition changed rather than appeared.
+fn apply_service(
+    declaration: &Declaration,
+    paths: &Paths,
+    journal: &mut Journal,
+    archive_root: &Path,
+    force: bool,
+) -> Result<(Outcome, Option<Effect>), Error> {
+    let Some(declared) = crate::services::render(paths, declaration) else {
+        return Ok((Outcome::Unchecked, None));
+    };
+    let label = &declaration.identity.key;
+    let target = crate::services::agent_plist(paths, label);
+
+    let mut bytes = Vec::new();
+    plist::Value::Dictionary(declared)
+        .to_writer_xml(&mut bytes)
+        .map_err(|error| apply_error("rendering the agent's plist", &error))?;
+
+    let previous = if let Ok(current) = std::fs::read(&target) {
+        if current != bytes && !may_overwrite(declaration, journal, &current, force) {
+            return Ok((Outcome::Protected, None));
+        }
+        archive(archive_root, &declaration.identity.to_string(), &current)?;
+        Some(digest(&current))
+    } else {
+        None
+    };
+    let reload = previous.is_some();
+
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| apply_error("creating the agents directory", &error))?;
+    }
+    // The log directory has to exist before launchd tries to open it.
+    if let Value::Map(fields) = &declaration.spec
+        && let Some(Value::Str(logs)) = fields.get("logs")
+    {
+        let dir = logs.strip_prefix("~/").map_or_else(
+            || std::path::PathBuf::from(logs),
+            |rest| paths.home.join(rest),
+        );
+        std::fs::create_dir_all(&dir)
+            .map_err(|error| apply_error("creating the log directory", &error))?;
+    }
+    write_atomic(&target, &bytes)?;
+    crate::services::bootstrap(paths, label, reload);
+
+    journal.acknowledge(
+        declaration.identity.to_string(),
+        Acknowledgement {
+            spec: declaration.spec.clone(),
+            bytes: Some(digest(&bytes)),
+        },
+    );
+    Ok((Outcome::Done, Some(Effect::ServiceSet { previous })))
+}
+
+/// Start a Homebrew service; the plist brew writes is the receipt the
+/// check reads.
+fn apply_brew_service(
+    declaration: &Declaration,
+    paths: &Paths,
+    journal: &mut Journal,
+) -> Result<(Outcome, Option<Effect>), Error> {
+    let name = &declaration.identity.key;
+    let invocation = crate::services::brew_service_start(name);
+    if !crate::services::brew_service_plist(paths, name).is_file() {
+        return Err(Error::ResourceFailed {
+            identity: declaration.identity.to_string(),
+            provenance: declaration.provenance.to_string(),
+            command: invocation.command,
+            code: invocation.code,
+            stderr: invocation.stderr_tail,
+        });
+    }
+    journal.acknowledge(
+        declaration.identity.to_string(),
+        Acknowledgement {
+            spec: declaration.spec.clone(),
+            bytes: None,
+        },
+    );
+    Ok((Outcome::Done, Some(Effect::BrewServiceStarted)))
 }
 
 const fn fields_of(
@@ -397,80 +487,150 @@ pub fn reverse(entry: &ApplyEntry, paths: &Paths, journal: &mut Journal) -> Resu
 fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path) -> Result<(), Error> {
     match &step.effect {
         Effect::FileWritten { previous } => {
-            let Some(target) = step.identity.strip_prefix("file:") else {
-                return Ok(());
-            };
-            let target = expand_target(paths, target);
-            if let Ok(current) = std::fs::read(&target) {
-                archive(archive_root, &step.identity, &current)?;
-            }
-            match previous {
-                Some(digest) => {
-                    let bytes = read_archived(archive_root, &step.identity, digest)?;
-                    write_atomic(&target, &bytes)?;
-                }
-                None => {
-                    std::fs::remove_file(&target)
-                        .map_err(|error| apply_error("removing the created file", &error))?;
-                }
-            }
+            reverse_file(step, paths, archive_root, previous.as_deref())
         }
         Effect::LinkMade { previous } => {
-            let Some(target) = step.identity.strip_prefix("link:") else {
-                return Ok(());
-            };
-            let target = expand_target(paths, target);
-            if std::fs::symlink_metadata(&target).is_ok() {
-                std::fs::remove_file(&target)
-                    .map_err(|error| apply_error("removing the link", &error))?;
-            }
-            if let Some(digest) = previous {
-                let bytes = read_archived(archive_root, &step.identity, digest)?;
-                write_atomic(&target, &bytes)?;
-            }
-        }
-        Effect::PackageInstalled => {
-            let (kind, name) = match step.identity.split_once(':') {
-                Some(("brew.formula", name)) => (crate::model::Kind::BrewFormula, name),
-                Some(("brew.cask", name)) => (crate::model::Kind::BrewCask, name),
-                _ => return Ok(()),
-            };
-            crate::brew::uninstall(&kind, name, std::time::Duration::from_mins(10)).map_err(
-                |detail| Error::Apply {
-                    doing: format!("uninstalling {name}"),
-                    detail,
-                },
-            )?;
+            reverse_link(step, paths, archive_root, previous.as_deref())
         }
         Effect::DefaultsSet { previous } => {
-            let Some(rest) = step.identity.strip_prefix("defaults:") else {
-                return Ok(());
-            };
-            let Some((domain, key)) = rest.split_once(':') else {
-                return Ok(());
-            };
-            let store = crate::plan::domain_path(paths, domain);
-            if let Ok(bytes) = std::fs::read(&store) {
-                archive(archive_root, &step.identity, &bytes)?;
-            }
-            let mut root = plist::Value::from_file(&store)
-                .ok()
-                .and_then(plist::Value::into_dictionary)
-                .unwrap_or_default();
-            match previous {
-                Some(value) => {
-                    root.insert(key.to_string(), value_to_plist(value));
-                }
-                None => {
-                    root.remove(key);
-                }
-            }
-            plist::Value::Dictionary(root)
-                .to_file_binary(&store)
-                .map_err(|error| apply_error("restoring the preference file", &error))?;
+            reverse_defaults(step, paths, archive_root, previous.as_ref())
+        }
+        Effect::PackageInstalled => reverse_package(step),
+        Effect::ServiceSet { previous } => {
+            reverse_service(step, paths, archive_root, previous.as_deref())
+        }
+        Effect::BrewServiceStarted => reverse_brew_service(step),
+    }
+}
+
+fn reverse_file(
+    step: &Step,
+    paths: &Paths,
+    archive_root: &Path,
+    previous: Option<&str>,
+) -> Result<(), Error> {
+    let Some(target) = step.identity.strip_prefix("file:") else {
+        return Ok(());
+    };
+    let target = expand_target(paths, target);
+    if let Ok(current) = std::fs::read(&target) {
+        archive(archive_root, &step.identity, &current)?;
+    }
+    match previous {
+        Some(digest) => {
+            let bytes = read_archived(archive_root, &step.identity, digest)?;
+            write_atomic(&target, &bytes)
+        }
+        None => std::fs::remove_file(&target)
+            .map_err(|error| apply_error("removing the created file", &error)),
+    }
+}
+
+fn reverse_link(
+    step: &Step,
+    paths: &Paths,
+    archive_root: &Path,
+    previous: Option<&str>,
+) -> Result<(), Error> {
+    let Some(target) = step.identity.strip_prefix("link:") else {
+        return Ok(());
+    };
+    let target = expand_target(paths, target);
+    if std::fs::symlink_metadata(&target).is_ok() {
+        std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
+    }
+    if let Some(digest) = previous {
+        let bytes = read_archived(archive_root, &step.identity, digest)?;
+        write_atomic(&target, &bytes)?;
+    }
+    Ok(())
+}
+fn reverse_package(step: &Step) -> Result<(), Error> {
+    let Some((provider, name)) = step.identity.split_once(':') else {
+        return Ok(());
+    };
+    let deadline = std::time::Duration::from_mins(10);
+    let result = match provider {
+        "brew.formula" => crate::brew::uninstall(&crate::model::Kind::BrewFormula, name, deadline),
+        "brew.cask" => crate::brew::uninstall(&crate::model::Kind::BrewCask, name, deadline),
+        "npm" => crate::npm::uninstall(name, deadline),
+        "mise" => crate::mise::unuse(name, deadline),
+        _ => return Ok(()),
+    };
+    result.map_err(|detail| Error::Apply {
+        doing: format!("uninstalling {name}"),
+        detail,
+    })
+}
+
+fn reverse_service(
+    step: &Step,
+    paths: &Paths,
+    archive_root: &Path,
+    previous: Option<&str>,
+) -> Result<(), Error> {
+    let Some(label) = step.identity.strip_prefix("service:") else {
+        return Ok(());
+    };
+    crate::services::bootout(paths, label);
+    let target = crate::services::agent_plist(paths, label);
+    if let Ok(current) = std::fs::read(&target) {
+        archive(archive_root, &step.identity, &current)?;
+    }
+    match previous {
+        Some(digest) => {
+            let bytes = read_archived(archive_root, &step.identity, digest)?;
+            write_atomic(&target, &bytes)?;
+            crate::services::bootstrap(paths, label, false);
+        }
+        None => {
+            let _ = std::fs::remove_file(&target);
         }
     }
     Ok(())
+}
+
+fn reverse_brew_service(step: &Step) -> Result<(), Error> {
+    let Some(name) = step.identity.strip_prefix("brew.service:") else {
+        return Ok(());
+    };
+    crate::services::brew_service_stop(name).map_err(|detail| Error::Apply {
+        doing: format!("stopping the {name} service"),
+        detail,
+    })
+}
+
+fn reverse_defaults(
+    step: &Step,
+    paths: &Paths,
+    archive_root: &Path,
+    previous: Option<&Value>,
+) -> Result<(), Error> {
+    let Some(rest) = step.identity.strip_prefix("defaults:") else {
+        return Ok(());
+    };
+    let Some((domain, key)) = rest.split_once(':') else {
+        return Ok(());
+    };
+    let store = crate::plan::domain_path(paths, domain);
+    if let Ok(bytes) = std::fs::read(&store) {
+        archive(archive_root, &step.identity, &bytes)?;
+    }
+    let mut root = plist::Value::from_file(&store)
+        .ok()
+        .and_then(plist::Value::into_dictionary)
+        .unwrap_or_default();
+    match previous {
+        Some(value) => {
+            root.insert(key.to_string(), value_to_plist(value));
+        }
+        None => {
+            root.remove(key);
+        }
+    }
+    plist::Value::Dictionary(root)
+        .to_file_binary(&store)
+        .map_err(|error| apply_error("restoring the preference file", &error))
 }
 
 fn read_archived(archive_root: &Path, identity: &str, digest: &str) -> Result<Vec<u8>, Error> {

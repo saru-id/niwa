@@ -65,6 +65,31 @@ pub fn compare(declaration: &Declaration, paths: &Paths, journal: &Journal) -> A
                 None => Action::Create,
             }
         }
+        Kind::Npm => {
+            if crate::npm::installed(&declaration.identity.key) {
+                Action::InSync
+            } else {
+                Action::Create
+            }
+        }
+        Kind::Mise => match crate::mise::installed(paths, &declaration.identity.key) {
+            Some(_) => Action::InSync,
+            None => Action::Create,
+        },
+        Kind::Service => match crate::services::agent_in_sync(paths, declaration) {
+            Some(true) => Action::InSync,
+            Some(false) => Action::Change {
+                detail: "definition changed".to_string(),
+            },
+            None => Action::Create,
+        },
+        Kind::BrewService => {
+            if crate::services::brew_service_plist(paths, &declaration.identity.key).is_file() {
+                Action::InSync
+            } else {
+                Action::Create
+            }
+        }
         _ => Action::Unchecked,
     }
 }
@@ -293,6 +318,7 @@ mod tests {
             config: dir.join(".config/niwa"),
             state: dir.join(".local/state/niwa"),
             brew_prefix: dir.join("brew"),
+            data: dir.join(".local/share"),
         }
     }
 
@@ -404,7 +430,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = paths_in(dir.path());
         let declaration = Declaration {
-            identity: Identity::new(Kind::Service, "dev.x.sync"),
+            identity: Identity::new(Kind::Permission, "Ghostty:accessibility"),
             spec: Value::Map(BTreeMap::new()),
             provenance: Provenance {
                 file: "test.luau".to_string(),
