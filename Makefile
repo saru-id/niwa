@@ -2,7 +2,7 @@
 # `check` runs before every commit.
 # `verify` runs before any work is called finished.
 
-.PHONY: check fmt clippy test deny verify drills coverage
+.PHONY: check fmt clippy test deny verify drills coverage site-check site-dev
 
 check: fmt clippy test deny
 
@@ -38,3 +38,11 @@ coverage:
 			NIWA_BIN="$$CARGO_LLVM_COV_TARGET_DIR/debug/niwa" sh "$$drill" || exit 1; \
 		done && \
 		cargo llvm-cov report'; status=$$?; rm -f default_*.profraw; exit $$status
+
+# The documentation site has its own gate. It is separate from `check` on
+# purpose: a tool commit must never require building the site.
+site-check:
+	cd site && pnpm install --frozen-lockfile && pnpm run check
+
+site-dev:
+	cd site && pnpm install --frozen-lockfile && pnpm run dev

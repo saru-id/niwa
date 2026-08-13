@@ -1,0 +1,193 @@
+/* The site's tokens and base element styles.
+ *
+ * Colors are plain custom properties, not StyleX variables, because four
+ * other things have to read these names: the syntax token rules, the file
+ * tree across its shadow boundary, the search host, and hand written CSS.
+ * StyleX consumes them as ordinary values, for example `var(--ink)`.
+ */
+
+/* ---- Motion ------------------------------------------------------------
+ * One rule, and it comes first so nothing declared later escapes it.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ---- Theme -------------------------------------------------------------
+ * Three states, controlled by a class on <html>. No class follows the
+ * system. `theme-light` and `theme-dark` are explicit overrides.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --ground: oklch(1 0 0);
+  --surface: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --border-strong: oklch(0.86 0 0);
+  --ink-strong: oklch(0.16 0 0);
+  --ink: oklch(0.28 0 0);
+  --ink-muted: oklch(0.48 0 0);
+  --accent: oklch(0.527 0.179 273.8);
+  --link: oklch(0.46 0.179 273.8);
+  --role-good: oklch(0.48 0.13 150);
+  --role-warn: oklch(0.48 0.095 80);
+  --role-bad: oklch(0.48 0.16 25);
+  --role-accent: oklch(0.46 0.179 273.8);
+  --role-muted: var(--ink-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) {
+    --ground: oklch(0.145 0 0);
+    --surface: oklch(0.178 0 0);
+    --border: oklch(0.269 0 0);
+    --border-strong: oklch(0.36 0 0);
+    --ink-strong: oklch(0.965 0 0);
+    --ink: oklch(0.9 0 0);
+    --ink-muted: oklch(0.78 0 0);
+    --accent: oklch(0.704 0.157 278.4);
+    --link: oklch(0.86 0.06 278.4);
+    --role-good: oklch(0.84 0.15 148);
+    --role-warn: oklch(0.84 0.13 85);
+    --role-bad: oklch(0.82 0.1 25);
+    --role-accent: oklch(0.8 0.1 278.4);
+    --role-muted: var(--ink-muted);
+  }
+}
+
+:root.theme-dark {
+  color-scheme: dark;
+
+  --ground: oklch(0.145 0 0);
+  --surface: oklch(0.178 0 0);
+  --border: oklch(0.269 0 0);
+  --border-strong: oklch(0.36 0 0);
+  --ink-strong: oklch(0.965 0 0);
+  --ink: oklch(0.9 0 0);
+  --ink-muted: oklch(0.78 0 0);
+  --accent: oklch(0.704 0.157 278.4);
+  --link: oklch(0.86 0.06 278.4);
+  --role-good: oklch(0.84 0.15 148);
+  --role-warn: oklch(0.84 0.13 85);
+  --role-bad: oklch(0.82 0.1 25);
+  --role-accent: oklch(0.8 0.1 278.4);
+  --role-muted: var(--ink-muted);
+}
+
+:root.theme-light {
+  color-scheme: light;
+}
+
+/* ---- Syntax tokens -----------------------------------------------------
+ * The twenty-one `--th-*` variables per theme, and the `.th-*` rules that
+ * read them, are transcribed by hand from the GitHub themes. They arrive
+ * with the highlighting pipeline and belong in the three theme blocks
+ * above. Keep `.th-token` first among the rules: it and `.th-keyword` have
+ * equal specificity, and only source order makes the second one win.
+ */
+
+/* ---- Type --------------------------------------------------------------
+ * System faces. The tool wears the reader's terminal theme; the site wears
+ * the reader's platform faces. On a Mac both resolve to the same family.
+ */
+
+:root {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-h1: 2rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.1875rem;
+  --text-h4: 1rem;
+  --text-body: 1rem;
+  --text-code: 1rem;
+  --text-output: 1rem;
+  --text-inline-code: 0.925em;
+  --text-nav: 0.875rem;
+  --text-table: 0.875rem;
+  --text-toc: 0.8125rem;
+  --text-meta: 0.75rem;
+  --text-kicker: 0.6875rem;
+
+  /* Prose only. Code, output, tables and trees run the full column and
+   * scroll past it. 36rem lands near seventy-three rendered characters in
+   * the system sans; verify by counting a real line before changing it. */
+  --measure: 36rem;
+}
+
+/* ---- Base --------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.65;
+  overflow-wrap: break-word;
+}
+
+/* Meaning never travels by color alone, so a prose link is underlined at
+ * rest. Links inside a nav landmark are bare: there, position carries the
+ * meaning. */
+a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--link), var(--accent));
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition:
+    color 120ms ease,
+    text-decoration-thickness 120ms ease;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+nav a {
+  text-decoration: none;
+}
+
+/* niwa prints paths, flags and comparisons. `~=`, `->` and `!=` must read
+ * as two characters, and the tool emits a real arrow that a forged ligature
+ * would make indistinguishable from a typed one. */
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}

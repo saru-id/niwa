@@ -158,3 +158,119 @@ enforces the license and source policy in `deny.toml`.
 - Maintenance: the proptest-rs team, current, widely used.
 - Weight: dev-only (rand and friends).
 - License: MIT OR Apache-2.0.
+
+## Site dependencies
+
+The documentation site under `site/` is a separate build with its own
+package manager. It ships no code to the tool and is never linked into
+the binary. Every version is pinned exactly, because several of these
+packages are alpha or beta and treat a minor as breaking.
+
+### astro
+
+- Does: builds the site to static HTML — routing, the content loader, the
+  asset graph, and the dev server.
+- Why not our own: a static site generator with content collections and a
+  build pipeline is a large finished problem, and the design site already
+  proved this one on the same content.
+- Maintenance and weight: released weekly, 51 direct dependencies, build
+  time only.
+- License: MIT.
+
+### @astrojs/react
+
+- Does: lets React components render inside Astro pages.
+- Why not our own: it is the supported bridge between the two renderers,
+  and every component on the site renders at build time through it.
+- Maintenance and weight: released alongside Astro, adds the Vite React
+  plugin.
+- License: MIT.
+
+### react and react-dom
+
+- Does: the component model the styled components and the markdown
+  renderer are written in. Both run at build time; no page loads them.
+- Why not our own: the rendering pipeline the site ports is React, and so
+  is every library it consumes.
+- Maintenance and weight: the reference implementation, current, build
+  time only.
+- License: MIT.
+
+### @stylexjs/stylex
+
+- Does: component styles, compiled to atomic CSS at build time, reading
+  the theme tokens as plain custom properties.
+- Why not our own: hand-written CSS for sixty-two pages drifts. StyleX
+  makes a style a value the type checker sees, with no runtime.
+- Maintenance and weight: Meta, releases every few months, three small
+  runtime dependencies and 334 KB unpacked.
+- License: MIT.
+
+### @stylexjs/unplugin
+
+- Does: runs the StyleX compiler inside Astro's Vite build. It is the only
+  door, because the React integration has no place to pass a Babel plugin.
+- Why not our own: the compiler is a Babel plugin with its own CSS
+  collection and ordering rules; wiring it by hand is the same code with
+  fewer eyes on it.
+- Maintenance and weight: released with StyleX, build time only, pulls
+  Babel, browserslist and lightningcss.
+- License: MIT.
+
+### unplugin
+
+- Does: the bundler abstraction `@stylexjs/unplugin` is built on. It is
+  declared here because that package leaves it as an unmet peer.
+- Why not our own: it is not ours to write; it is a peer we have to name.
+- Maintenance and weight: current, build time only, pinned to the 2.x line
+  the StyleX plugin asks for.
+- License: MIT.
+
+### @astrojs/check
+
+- Does: type checks `.astro` files, which no plain TypeScript compiler
+  can parse.
+- Why not our own: it wraps the Astro language server, which is the same
+  program the editor runs. A second implementation would disagree with
+  the editor.
+- Maintenance and weight: current, dev only, brings the language server
+  and Volar.
+- License: MIT.
+
+### typescript and typescript-7
+
+- Does: two compilers. `typescript` is 6.0.3, the version `astro check`
+  and editors load. `typescript-7` is the native 7.0.2 compiler, and it
+  checks the plain `.ts` and `.tsx` sources.
+- Why not our own: two exist because `astro check` needs a programmatic
+  API the native compiler does not ship yet. `site/README.md` records the
+  reason and the end of it.
+- Maintenance and weight: both current releases of their lines, dev only.
+- License: Apache-2.0.
+
+### @types/node, @types/react and @types/react-dom
+
+- Does: the type declarations for Node, React and the DOM renderer.
+- Why not our own: they are the published descriptions of libraries we
+  did not write.
+- Maintenance and weight: DefinitelyTyped, current, dev only, no code.
+- License: MIT.
+
+### vitest
+
+- Does: runs the Worker's recognition tests.
+- Why not our own: it reads the same Vite config the site builds with, so
+  a test imports a module exactly as the build does.
+- Maintenance and weight: current, dev only, shares the bundler already
+  installed.
+- License: MIT.
+
+### wrangler
+
+- Does: runs and deploys the Cloudflare Worker that serves the apex, and
+  serves the built site locally.
+- Why not our own: it is the platform's own tool. There is no other way to
+  deploy the Worker.
+- Maintenance and weight: current, dev only, brings the local runtime
+  (workerd, miniflare).
+- License: MIT OR Apache-2.0.

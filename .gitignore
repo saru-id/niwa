@@ -1,2 +1,8 @@
 /target
 *.profraw
+
+# The site's build and install artifacts.
+site/node_modules
+site/dist
+site/.astro
+site/.wrangler

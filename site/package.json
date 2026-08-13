@@ -1,0 +1,34 @@
+{
+  "name": "niwa-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "test": "vitest run",
+    "typecheck": "node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json",
+    "check": "export ASTRO_TELEMETRY_DISABLED=1; astro sync && astro check && node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json && vitest run && astro build"
+  },
+  "dependencies": {
+    "@astrojs/react": "6.0.2",
+    "@stylexjs/stylex": "0.19.0",
+    "astro": "7.2.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@stylexjs/unplugin": "0.19.0",
+    "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "6.0.3",
+    "typescript-7": "npm:typescript@7.0.2",
+    "unplugin": "2.3.11",
+    "vitest": "4.1.10",
+    "wrangler": "4.122.0"
+  }
+}

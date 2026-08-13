@@ -1,0 +1,28 @@
+---
+import { getCollection } from 'astro:content'
+import '../../styles/app.css'
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs')
+  return docs.map((entry) => ({ params: { slug: entry.id }, props: { entry } }))
+}
+
+const { entry } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{entry.data.title} · niwa</title>
+  </head>
+  <body>
+    <main>
+      <h1>{entry.data.title}</h1>
+      <!-- The raw body is what the rendering pipeline will read. Showing it
+        here proves the loader reaches it. -->
+      <pre>{entry.body}</pre>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+# The installer is a shell script, not a download and not a document. The
+# type says so, and the five minute lifetime matches what the Worker sets
+# when it serves the same file from the apex.
+/install.sh
+  Content-Type: text/x-shellscript; charset=utf-8
+  Cache-Control: public, max-age=300
