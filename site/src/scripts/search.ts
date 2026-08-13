@@ -59,8 +59,12 @@ async function open(): Promise<void> {
     ?.setAttribute('aria-label', 'Search the documentation')
 }
 
-document.querySelector('[data-search-open]')?.addEventListener('click', () => {
-  void open()
+/* The button is delegated, not bound. It is rendered by the shell, which
+ * hydrates and can replace the element it drew; a listener on the document
+ * survives that, and works before the shell's script has arrived. */
+document.addEventListener('click', (event) => {
+  const target = event.target
+  if (target instanceof Element && target.closest('[data-search-open]') !== null) void open()
 })
 
 document.addEventListener('keydown', (event) => {

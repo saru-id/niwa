@@ -1,13 +1,9 @@
 ---
-import * as stylex from '@stylexjs/stylex'
 import type { Heading } from '../lib/headings'
 import '../styles/app.css'
 import Footer from './Footer.astro'
-import Header from './Header.astro'
-import { styles } from './Layout.styles'
 import Search from './Search.astro'
-import Sidebar from './Sidebar.astro'
-import Toc from './Toc.astro'
+import { FallbackNav, Shell } from './Shell'
 
 interface Props {
   /** Absent on the landing, where the site's name is the whole title. */
@@ -18,12 +14,15 @@ interface Props {
   /** Search indexes every page unless the page says otherwise. Opting out
    * is for pages that answer nobody's search, like the 404. */
   indexed?: boolean
+  /**
+   * The page renders no rail, so the header carries the navigation at every
+   * width. Only a page that draws its own full-width bands sets it.
+   */
+  carriesNavigation?: boolean
 }
 
-const { title, description, headings, indexed = true } = Astro.props
+const { title, description, headings, indexed = true, carriesNavigation = false } = Astro.props
 const pathname = Astro.url.pathname
-// A page with no headings has no rail, and its grid keeps two columns.
-const toc = headings !== undefined && headings.length > 0 ? headings : undefined
 ---
 
 <!doctype html>
@@ -32,12 +31,17 @@ const toc = headings !== undefined && headings.length > 0 ? headings : undefined
     {
       /* First in the head and inline, so the class is on <html> before the
         first paint: a stored choice applied after it is a flash. Storage can
-        be refused, and then the system preference decides. */
+        be refused, and then the system preference decides.
+        `data-theme` carries the same choice for the design system's tokens;
+        the header's control keeps the two in step from then on. */
     }
     <script is:inline>
       try {
         const t = localStorage.getItem('niwa-theme')
-        if (t === 'light' || t === 'dark') document.documentElement.classList.add('theme-' + t)
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.classList.add('theme-' + t)
+          document.documentElement.setAttribute('data-theme', t)
+        }
       } catch {}
     </script>
     <meta charset="utf-8" />
@@ -64,15 +68,27 @@ const toc = headings !== undefined && headings.length > 0 ? headings : undefined
     {import.meta.env.DEV && <link rel="stylesheet" href="/virtual:stylex.css" />}
   </head>
   <body>
-    <a href="#main" {...stylex.props(styles.skip)}>Skip to content</a>
-    <Header pathname={pathname} />
-    <div {...stylex.props(styles.page, toc !== undefined && styles.pageWithToc)}>
-      <Sidebar pathname={pathname} variant="rail" />
-      <main id="main" {...stylex.props(styles.main)} data-pagefind-body={indexed ? '' : undefined}>
-        <slot />
-      </main>
-      {toc !== undefined && <Toc headings={toc} />}
-    </div>
+    {
+      /* `client:idle` and not `client:load`: the shell is finished HTML
+        before any of it runs. What the script adds is the drawer, the
+        table of contents following the reader, and the theme control. */
+    }
+    <Shell
+      client:idle
+      pathname={pathname}
+      headings={headings}
+      indexed={indexed}
+      carriesNavigation={carriesNavigation}
+    >
+      <slot />
+    </Shell>
+    {
+      /* Below the shell, so the skip link stays the first thing the
+        keyboard reaches. With a script this element is text, not markup. */
+    }
+    <noscript>
+      <FallbackNav pathname={pathname} carriesNavigation={carriesNavigation} />
+    </noscript>
     <Footer />
     <Search />
   </body>

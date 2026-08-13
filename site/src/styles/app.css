@@ -1,10 +1,18 @@
 /* The site's tokens and base element styles.
  *
- * Colors are plain custom properties, not StyleX variables, because four
+ * Colors are plain custom properties, not StyleX variables, because five
  * other things have to read these names: the syntax token rules, the file
- * tree across its shadow boundary, the search host, and hand written CSS.
- * StyleX consumes them as ordinary values, for example `var(--ink)`.
+ * tree across its shadow boundary, the search host, the design system's
+ * theme, and hand written CSS. StyleX consumes them as ordinary values,
+ * for example `var(--ink)`.
+ *
+ * The design system's sheets come first and are layered. Everything this
+ * file declares below the import is unlayered, and unlayered author styles
+ * outrank every layer, so the site wins any collision without raising a
+ * selector or reaching for `!important`.
  */
+
+@import './astryx.css';
 
 /* ---- Motion ------------------------------------------------------------
  * One rule, and it comes first so nothing declared later escapes it.
@@ -167,6 +175,38 @@
 
 :root.theme-light {
   color-scheme: light;
+}
+
+/* The design system reads the same three states, through `color-scheme`.
+ *
+ * Its tokens hold `light-dark()` pairs, and `light-dark()` resolves from
+ * `color-scheme`. Its own switch is a `data-theme` attribute on `<html>`,
+ * which the blocking script and `scripts/theme.ts` write beside the class,
+ * so the two spellings never disagree. Most of its colour tokens are not
+ * pairs at all: `theme/niwa.theme.ts` points them at the tokens above, so
+ * they follow the class directly.
+ *
+ * One rule is needed. The `Theme` provider declares `color-scheme` on its
+ * own wrapper from a `mode` prop, and on a static page that prop is fixed
+ * when the page is built. A declared value beats an inherited one, so the
+ * wrapper would pin every component to the mode the build chose. `inherit`
+ * hands the decision back to `<html>`, where the reader's control lives.
+ */
+[data-astryx-theme] {
+  color-scheme: inherit;
+}
+
+/* The site prints three inks and the design system holds two names for
+ * them, so `--color-text-primary` carries running text and a heading takes
+ * the strongest ink here. The theme file cannot do it: the system writes
+ * its own rule for `color="primary"` after every theme override, at the
+ * same weight, and later wins. Unlayered, this rule does not have to
+ * outweigh anything. Both spellings of a heading are named, the component
+ * and a bare element inside a themed region, and a heading asking for
+ * another colour keeps it. */
+[data-astryx-theme]
+  :is(h1, h2, h3, h4, h5, h6):is(:not([data-color]), [data-color='primary']) {
+  color: var(--ink-strong);
 }
 
 /* ---- Syntax tokens -----------------------------------------------------
@@ -416,12 +456,43 @@ html {
   /* The header is sticky, so a heading jumped to must clear it. One value
    * feeds the offset, the rails' own sticky top, and their height. */
   --header-height: 3.75rem;
+  /* The shell measures its own header and writes this name on itself once
+   * its script runs. Until then, and for a reader with no script, the
+   * navigation column would stick to the top of the viewport and slide
+   * under the header. The site already knows the number. */
+  --appshell-header-height: var(--header-height);
   /* The page does not bounce past its own edges: the header is fixed to the
    * top of the scroll, and a rubber-band would tear it off. */
   overscroll-behavior: none;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* ---- Shell -------------------------------------------------------------
+ * Two rules the design system's shell cannot state for itself.
+ *
+ * It decides between the navigation column and the drawer from a media
+ * query it reads in JavaScript, and the page is HTML before that runs. So
+ * the server draws the column at every width, and this hides it at exactly
+ * the width where the shell will hide it: no jump when the script arrives,
+ * and no 260 pixel column beside a phone. A reader with no script keeps the
+ * column above the breakpoint and is given the same navigation below it,
+ * once, from the `<noscript>` under the shell.
+ */
+
+@media (max-width: 768px) {
+  .astryx-app-shell-sidenav {
+    display: none;
+  }
+}
+
+/* The keyboard hint the segmented control raises the first time it is
+ * focused fades over 150ms, and that number is compiled into the shipped
+ * sheet where the theme's duration tokens do not reach. The budget is 120,
+ * and this is the only place on the page that leaves it. */
+[popover] {
+  transition-duration: 120ms;
 }
 
 body {
@@ -456,6 +527,19 @@ a {
   transition:
     color 120ms ease,
     text-decoration-thickness 120ms ease;
+}
+
+/* Inside a navigation landmark, and inside the drawer that carries one, the
+ * rule above does not apply: those links are furniture, and the design
+ * system draws furniture. `revert-layer` is the whole mechanism. The rule
+ * above is unlayered and so outranks every layer; reverting the layer hands
+ * these four properties back to the system's own, which is the rest state,
+ * the hover, and the page the reader is standing on. */
+:is(nav, dialog) a {
+  color: revert-layer;
+  text-decoration: revert-layer;
+  text-decoration-color: revert-layer;
+  text-decoration-thickness: revert-layer;
 }
 
 a:hover {
@@ -530,4 +614,43 @@ h3:hover .anchor-heading,
 h4:hover .anchor-heading,
 .anchor-heading:focus-visible {
   opacity: 1;
+}
+
+/* ---- Navigation labels wrap ---------------------------------------------
+ * The design system sets a nav label on one line and ends it with an
+ * ellipsis. That is right for a word or two. This site's labels are
+ * sentences — "Adopt a machine you already use", "Presence is
+ * authoritative, removal is an offer" — and an ellipsis hides which page
+ * the link leads to, which is the one thing a rail is for. No component
+ * prop reaches this, so the site says it here, in the two rails only.
+ */
+
+:is(nav[aria-label='Site'], nav[aria-label='On this page']) :is(a, a *) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* A row built for one line has no room between two. The rail gets its
+ * spacing back, so a wrapped label reads as one item and not as two. The
+ * items are flex children of a group, not list items, so the gap goes on
+ * the group and the padding on the row itself. */
+nav[aria-label='Site'] details > div {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.25rem;
+}
+
+/* A rail row is a fixed 28 pixels tall, so a wrapped label overflows it and
+ * lands on the row below. The row has to grow instead.
+ *
+ * `!important` is the only thing that reaches it. The design system's
+ * compiled styles carry StyleX's specificity guard — `:not(#\#)` three
+ * times over, which scores as three ids — so no honest selector outranks
+ * them. The site uses this in one other place, the reduced-motion rule,
+ * and for the same reason: the declaration has to be the last word. */
+nav[aria-label='Site'] a {
+  block-size: auto !important;
+  min-block-size: 1.75rem;
+  padding-block: 0.25rem !important;
 }
