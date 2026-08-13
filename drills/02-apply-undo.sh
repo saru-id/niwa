@@ -35,6 +35,7 @@ check 6 "a second apply verifies clean (exit 0)" test "$STATUS" -eq 0
 
 # A hand edit is a person's work: apply must not replace it.
 printf 'export EDITOR=vim # mine\n' >"$HOME/.zshrc"
+chmod 640 "$HOME/.zshrc"
 niwa apply --yes
 check 7 "apply leaves the hand edit in place" \
     grep -q "mine" "$HOME/.zshrc"
@@ -48,6 +49,8 @@ check 9 "the displaced hand edit was archived first" \
 niwa undo --yes
 check 10 "undo succeeds (exit 0)" test "$STATUS" -eq 0
 check 11 "undo restored the hand edit" grep -q "mine" "$HOME/.zshrc"
+check 11b "the restored file wears the mode it had" \
+    test "$(stat -f %Lp "$HOME/.zshrc")" = "640"
 
 niwa undo --yes
 niwa undo --yes

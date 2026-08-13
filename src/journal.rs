@@ -57,8 +57,14 @@ pub struct Step {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Effect {
     /// A file was written. `previous` is the digest of the archived
-    /// bytes it replaced; `None` means the file did not exist.
-    FileWritten { previous: Option<String> },
+    /// bytes it replaced (`None`: the file did not exist), and
+    /// `previous_mode` the permissions those bytes wore, so undo
+    /// restores the file as it stood, mode included.
+    FileWritten {
+        previous: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        previous_mode: Option<u32>,
+    },
     /// A symlink was made. `previous` is the digest of an archived
     /// regular file it displaced.
     LinkMade { previous: Option<String> },

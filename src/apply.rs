@@ -54,6 +54,15 @@ impl Lock {
                     let _ = std::fs::remove_file(&path);
                     let lock = Self::try_stamp(&path)
                         .map_err(|error| apply_error("taking the apply lock", &error))?;
+                    // Two reclaimers can interleave remove and stamp;
+                    // the file's final pid is the referee. Whoever
+                    // reads someone else's pid lost and backs off.
+                    let ours = std::fs::read_to_string(&path)
+                        .is_ok_and(|text| text.trim() == std::process::id().to_string());
+                    if !ours {
+                        std::mem::forget(lock);
+                        return Err(Error::ApplyLocked { path });
+                    }
                     return Ok((lock, true));
                 }
                 Err(Error::ApplyLocked { path })
@@ -97,7 +106,13 @@ impl Lock {
 
 impl Drop for Lock {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
+        // Only this process's own stamp comes off: a lock someone
+        // else re-stamped after a reclaim race stays theirs.
+        let ours = std::fs::read_to_string(&self.path)
+            .is_ok_and(|text| text.trim() == std::process::id().to_string());
+        if ours {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
 }
 
@@ -417,21 +432,20 @@ fn archive_sealed(
 /// Best effort by design — a file that will not delete today deletes
 /// on a later run.
 pub fn prune_archives(paths: &Paths, journal: &Journal) {
+    // Every journaled apply survives, not only the newest: undo
+    // walks backward one entry at a time, and each walk needs its
+    // own archived bytes regardless of age.
     let keep: std::collections::HashSet<String> = journal
-        .last_apply()
-        .map(|entry| {
-            entry
-                .steps
-                .iter()
-                .filter_map(|step| match &step.effect {
-                    Effect::FileWritten { previous }
-                    | Effect::LinkMade { previous }
-                    | Effect::ServiceSet { previous } => previous.clone(),
-                    _ => None,
-                })
-                .collect()
+        .applies()
+        .iter()
+        .flat_map(|entry| entry.steps.iter())
+        .filter_map(|step| match &step.effect {
+            Effect::FileWritten { previous, .. }
+            | Effect::LinkMade { previous }
+            | Effect::ServiceSet { previous } => previous.clone(),
+            _ => None,
         })
-        .unwrap_or_default();
+        .collect();
     let Some(cutoff) =
         std::time::SystemTime::now().checked_sub(std::time::Duration::from_hours(90 * 24))
     else {
@@ -514,6 +528,7 @@ fn apply_file(
     };
 
     // The overwrite rule, for targets that already hold other bytes.
+    let mut previous_mode = None;
     let previous = if let Ok(current) = std::fs::read(&target) {
         if current != declared && !may_overwrite(declaration, journal, &current, force) {
             return Ok((Outcome::Protected, None));
@@ -528,6 +543,12 @@ fn apply_file(
         } else {
             archive(archive_root, &declaration.identity.to_string(), &current)?;
         }
+        // The mode the displaced bytes wore travels with the digest,
+        // so undo puts the file back exactly as it stood.
+        previous_mode = std::fs::metadata(&target).ok().map(|meta| {
+            use std::os::unix::fs::PermissionsExt as _;
+            meta.permissions().mode() & 0o777
+        });
         Some(digest(&current))
     } else {
         None
@@ -552,7 +573,13 @@ fn apply_file(
         declaration.identity.to_string(),
         Acknowledgement::new(declaration.spec.clone(), Some(digest(&declared))),
     );
-    Ok((Outcome::Done, Some(Effect::FileWritten { previous })))
+    Ok((
+        Outcome::Done,
+        Some(Effect::FileWritten {
+            previous,
+            previous_mode,
+        }),
+    ))
 }
 
 fn apply_link(
@@ -770,9 +797,17 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
 
 fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path, seal: bool) -> Result<(), Error> {
     match &step.effect {
-        Effect::FileWritten { previous } => {
-            reverse_file(step, paths, archive_root, previous.as_deref(), seal)
-        }
+        Effect::FileWritten {
+            previous,
+            previous_mode,
+        } => reverse_file(
+            step,
+            paths,
+            archive_root,
+            previous.as_deref(),
+            *previous_mode,
+            seal,
+        ),
         Effect::LinkMade { previous } => {
             reverse_link(step, paths, archive_root, previous.as_deref())
         }
@@ -797,6 +832,7 @@ fn reverse_file(
     paths: &Paths,
     archive_root: &Path,
     previous: Option<&str>,
+    previous_mode: Option<u32>,
     seal: bool,
 ) -> Result<(), Error> {
     let Some(target) = step.identity.strip_prefix("file:") else {
@@ -809,7 +845,15 @@ fn reverse_file(
     match previous {
         Some(digest) => {
             let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
-            write_atomic(&target, &bytes)
+            // The previous world, whole: its bytes and the mode they
+            // wore, not the umask of the moment.
+            previous_mode.map_or_else(
+                || write_atomic(&target, &bytes),
+                |mode| {
+                    crate::util::write_atomic(&target, &bytes, Some(mode), false)
+                        .map_err(|error| apply_error("restoring the previous file", &error))
+                },
+            )
         }
         None => std::fs::remove_file(&target)
             .map_err(|error| apply_error("removing the created file", &error)),
