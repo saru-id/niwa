@@ -15,17 +15,17 @@ import * as stylex from '@stylexjs/stylex'
  * on the left edge the header's wordmark and the footer's line already use. */
 const COLUMN = '48rem'
 
-/* The landing holds two widths and no others. Words sit at the reading
- * measure, the same one every documentation page uses. The two exhibits —
- * the config and the plan it produces — run to the column, because their
- * lines are a fixed width the page does not get to choose. A third width
- * anywhere reads as an accident. */
-const WORDS = 'var(--measure)'
+/* The landing holds one width. Every paragraph, heading, rule, list and
+ * code block ends at the same place as the config excerpt below them,
+ * because a right edge that moves between blocks reads as an accident
+ * rather than as a decision. The reading measure governs the long-form
+ * documentation pages; a landing is short, and coherence wins here. */
+const WORDS = COLUMN
 
 /* The display line, from 38px at 375px to 72px at 1280px and no larger. The
  * floor keeps `configured` inside a 375px viewport with room to spare; the
  * ceiling keeps the statement to three lines in a 48rem column. */
-const DISPLAY = 'clamp(2.125rem, 1.25rem + 2.9vw, 3rem)'
+const DISPLAY = 'clamp(2.375rem, 1.5rem + 3.75vw, 4.5rem)'
 
 export const styles = stylex.create({
   // Flow root, so every band's air is the band's padding and never a margin
