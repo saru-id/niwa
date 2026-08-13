@@ -86,6 +86,9 @@ pub struct Engine {
     /// Restart targets queued by defaults writes, in first-write
     /// order; five writes to one domain restart its process once.
     restarts_pending: RefCell<Vec<String>>,
+    /// Whether any preference file changed this run; the finish
+    /// invalidates cfprefsd exactly once when one did.
+    defaults_written: RefCell<bool>,
     restarted: RefCell<Vec<String>>,
     /// Privileged identities left untouched under --no-privileged.
     privileged_skipped: RefCell<Vec<String>>,
@@ -137,6 +140,7 @@ impl Engine {
             changed: RefCell::new(0),
             protected: RefCell::new(Vec::new()),
             restarts_pending: RefCell::new(Vec::new()),
+            defaults_written: RefCell::new(false),
             restarted: RefCell::new(Vec::new()),
             privileged_skipped: RefCell::new(Vec::new()),
             failed: RefCell::new(0),
@@ -524,6 +528,9 @@ impl Engine {
         match outcome {
             Outcome::Done => {
                 *self.changed.borrow_mut() += 1;
+                if matches!(declaration.identity.kind, Kind::Defaults) {
+                    *self.defaults_written.borrow_mut() = true;
+                }
                 self.queue_restart(declaration);
             }
             Outcome::Protected => self
@@ -568,6 +575,17 @@ impl Engine {
     pub fn finish(&self) -> Result<(), Error> {
         self.flush()?;
         self.screen.progress_clear();
+        // cfprefsd caches preference domains; a plist written behind
+        // its back can be ignored or reverted from the cache. One
+        // invalidation per run makes the writes real, before any app
+        // restarts and re-reads them.
+        if *self.defaults_written.borrow() {
+            let _ = crate::util::proc::bounded_output(
+                "killall",
+                &["cfprefsd"],
+                Duration::from_secs(10),
+            );
+        }
         for target in self.restarts_pending.borrow_mut().drain(..) {
             let killed = crate::util::proc::bounded_output(
                 "killall",

@@ -115,6 +115,13 @@ niwa apply --yes
 check 16 "the defaults apply succeeds (exit 0)" test "$STATUS" -eq 0
 check 17 "five dock writes bounced the Dock exactly once" \
     test "$(grep -c "killall Dock" "$CALLS")" = "1"
+check 17b "the preferences daemon dropped its cache first, once" \
+    sh -c "test \"\$(grep -c 'killall cfprefsd' '$CALLS')\" = '1' \
+        && grep -n 'killall' '$CALLS' | grep cfprefsd | head -1 | cut -d: -f1 | {
+            read cf
+            dock=\$(grep -n 'killall Dock' '$CALLS' | head -1 | cut -d: -f1)
+            test \"\$cf\" -lt \"\$dock\"
+        }"
 
 # --- unattended converge is dogfood ---------------------------------
 # The design's own pattern: a declared service running niwa itself.
