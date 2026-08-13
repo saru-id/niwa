@@ -58,6 +58,29 @@ pub struct Finished {
     pub stderr_tail: String,
 }
 
+/// Poll one child to completion under its deadline: the one wait in
+/// this module. `None` means the clock ran out (the child is killed
+/// and reaped) or the wait itself failed.
+fn wait_deadline(
+    child: &mut std::process::Child,
+    timeout: Duration,
+    poll: Duration,
+) -> Option<std::process::ExitStatus> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return Some(status),
+            Ok(None) if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(poll),
+            Err(_) => return None,
+        }
+    }
+}
+
 /// Run a program to completion under the deadline and report what
 /// happened, or `None` when it could not start or ran past the clock.
 pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option<Finished> {
@@ -68,31 +91,18 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
         .stderr(Stdio::piped())
         .spawn()
         .ok()?;
-    let deadline = Instant::now() + timeout;
-    loop {
-        match child.try_wait() {
-            Ok(Some(_)) => {
-                let output = child.wait_with_output().ok()?;
-                let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-                let skip = stderr.lines().count().saturating_sub(6);
-                let tail: Vec<&str> = stderr.lines().skip(skip).collect();
-                let stderr_tail = tail.join("\n");
-                return Some(Finished {
-                    code: output.status.code(),
-                    stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-                    stderr,
-                    stderr_tail,
-                });
-            }
-            Ok(None) if Instant::now() >= deadline => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-            Err(_) => return None,
-        }
-    }
+    wait_deadline(&mut child, timeout, Duration::from_millis(10))?;
+    let output = child.wait_with_output().ok()?;
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let skip = stderr.lines().count().saturating_sub(6);
+    let tail: Vec<&str> = stderr.lines().skip(skip).collect();
+    let stderr_tail = tail.join("\n");
+    Some(Finished {
+        code: output.status.code(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr,
+        stderr_tail,
+    })
 }
 
 /// Run a program that owns the terminal — the one shape an $EDITOR
@@ -100,19 +110,12 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
 /// one; a day covers any editing session that is still a session.
 pub fn interactive(program: &str, args: &[&str]) -> Option<i32> {
     let mut child = Command::new(resolve(program)?).args(args).spawn().ok()?;
-    let deadline = Instant::now() + Duration::from_hours(24);
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return status.code(),
-            Ok(None) if Instant::now() >= deadline => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(50)),
-            Err(_) => return None,
-        }
-    }
+    wait_deadline(
+        &mut child,
+        Duration::from_hours(24),
+        Duration::from_millis(50),
+    )?
+    .code()
 }
 
 /// Run a program and return its trimmed stdout, or `None` for a
@@ -126,26 +129,13 @@ pub fn bounded_stdout(program: &str, args: &[&str], timeout: Duration) -> Option
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
-    let deadline = Instant::now() + timeout;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                let output = child.wait_with_output().ok()?;
-                if !status.success() {
-                    return None;
-                }
-                let stdout = String::from_utf8(output.stdout).ok()?;
-                return Some(stdout.trim().to_string());
-            }
-            Ok(None) if Instant::now() >= deadline => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-            Err(_) => return None,
-        }
+    let status = wait_deadline(&mut child, timeout, Duration::from_millis(10))?;
+    let output = child.wait_with_output().ok()?;
+    if !status.success() {
+        return None;
     }
+    let stdout = String::from_utf8(output.stdout).ok()?;
+    Some(stdout.trim().to_string())
 }
 
 /// What one tool invocation came to, kept for the failure screen:
