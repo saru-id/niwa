@@ -1,0 +1,257 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import Kicker from '../../../components/Kicker.astro'
+import Layout from '../../../components/Layout.astro'
+import NextLinks from '../../../components/NextLinks.astro'
+import { Screen } from '../../../components/Screen'
+import { pageLink } from '../../../data/links'
+import { GLOBAL_FLAGS, VERBS, neighbour, usage } from '../../../data/verbs'
+import { styles } from '../_styles'
+
+// Twenty pages from one template. The props carry the verb itself, so the
+// page never looks a name back up.
+export function getStaticPaths() {
+  return VERBS.map((verb) => ({ params: { verb: verb.name }, props: { verb } }))
+}
+
+const { verb } = Astro.props
+const command = verb.name === 'niwa' ? 'niwa' : `niwa ${verb.name}`
+// Bare `niwa` is the tool's own front door, so the global flags are
+// tabled there and every other page points at that table.
+const dashboard = verb.name === 'niwa'
+
+const sections = [
+  verb.arguments.length > 0 && { id: 'arguments', text: 'Arguments' },
+  verb.flags.length > 0 && { id: 'flags', text: 'Flags' },
+  dashboard && { id: 'global-flags', text: 'Global flags' },
+  verb.exits.length > 0 && { id: 'exit-codes', text: 'Exit codes' },
+  verb.screens.length > 0 && { id: 'screens', text: 'Screens' },
+].filter((section) => section !== false && section !== undefined)
+
+const headings = sections.map((section) => ({
+  depth: 2 as const,
+  id: section.id,
+  text: section.text,
+}))
+
+const after = neighbour(verb)
+const next = [
+  pageLink(verb.concept),
+  {
+    href: after.path,
+    label: after.name === 'niwa' ? 'niwa' : `niwa ${after.name}`,
+    why: 'the next verb in this group',
+  },
+]
+---
+
+<Layout title={command} description={verb.job} headings={headings}>
+  <Kicker label="Commands" />
+  <h1 {...stylex.props(styles.h1)}>{command}</h1>
+  <p {...stylex.props(styles.deck)}>{verb.job}</p>
+  <pre {...stylex.props(styles.signature)} tabindex="0"><code>{usage(verb)}</code></pre>
+
+  {
+    verb.arguments.length > 0 && (
+      <Fragment>
+        <h2 id="arguments" {...stylex.props(styles.h2)}>
+          Arguments
+        </h2>
+        <div {...stylex.props(styles.tableFrame)}>
+          <table {...stylex.props(styles.table)}>
+            <thead>
+              <tr>
+                <th {...stylex.props(styles.th)}>Argument</th>
+                <th {...stylex.props(styles.th)}>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              {verb.arguments.map((argument, index) => (
+                <tr>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      styles.cell,
+                      index === verb.arguments.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {argument.name}
+                  </td>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      index === verb.arguments.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {argument.meaning}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    )
+  }
+
+  {
+    verb.flags.length > 0 && (
+      <Fragment>
+        <h2 id="flags" {...stylex.props(styles.h2)}>
+          Flags
+        </h2>
+        <div {...stylex.props(styles.tableFrame)}>
+          <table {...stylex.props(styles.table)}>
+            <thead>
+              <tr>
+                <th {...stylex.props(styles.th)}>Flag</th>
+                <th {...stylex.props(styles.th)}>Argument</th>
+                <th {...stylex.props(styles.th)}>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              {verb.flags.map((flag, index) => (
+                <tr>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      styles.cell,
+                      index === verb.flags.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {flag.name}
+                  </td>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      styles.cell,
+                      index === verb.flags.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {flag.argument === '' ? '—' : flag.argument}
+                  </td>
+                  <td
+                    {...stylex.props(styles.td, index === verb.flags.length - 1 && styles.lastRow)}
+                  >
+                    {flag.meaning}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    )
+  }
+
+  {
+    dashboard ? (
+      <Fragment>
+        <h2 id="global-flags" {...stylex.props(styles.h2)}>
+          Global flags
+        </h2>
+        <p {...stylex.props(styles.p)}>Every verb takes these two.</p>
+        <div {...stylex.props(styles.tableFrame)}>
+          <table {...stylex.props(styles.table)}>
+            <thead>
+              <tr>
+                <th {...stylex.props(styles.th)}>Flag</th>
+                <th {...stylex.props(styles.th)}>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              {GLOBAL_FLAGS.map((flag, index) => (
+                <tr>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      styles.cell,
+                      index === GLOBAL_FLAGS.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {flag.name}
+                  </td>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      index === GLOBAL_FLAGS.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {flag.meaning}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    ) : (
+      <p {...stylex.props(styles.p)}>
+        <code {...stylex.props(styles.code)}>-v</code>,{' '}
+        <code {...stylex.props(styles.code)}>--verbose</code> and{' '}
+        <code {...stylex.props(styles.code)}>--debug</code> are global and this verb takes
+        them too. They are tabled on <a href="/reference/cli/niwa#global-flags">niwa</a>.
+      </p>
+    )
+  }
+
+  {
+    verb.exits.length > 0 && (
+      <Fragment>
+        <h2 id="exit-codes" {...stylex.props(styles.h2)}>
+          Exit codes
+        </h2>
+        <div {...stylex.props(styles.tableFrame)}>
+          <table {...stylex.props(styles.table)}>
+            <thead>
+              <tr>
+                <th {...stylex.props(styles.th)}>Code</th>
+                <th {...stylex.props(styles.th)}>When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {verb.exits.map((exit, index) => (
+                <tr>
+                  <td
+                    {...stylex.props(
+                      styles.td,
+                      styles.cell,
+                      index === verb.exits.length - 1 && styles.lastRow,
+                    )}
+                  >
+                    {exit.code}
+                  </td>
+                  <td
+                    {...stylex.props(styles.td, index === verb.exits.length - 1 && styles.lastRow)}
+                  >
+                    {exit.when}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Fragment>
+    )
+  }
+
+  {
+    verb.screens.length > 0 && (
+      <Fragment>
+        <h2 id="screens" {...stylex.props(styles.h2)}>
+          Screens
+        </h2>
+        <p {...stylex.props(styles.p)}>
+          {verb.screens.length === 1
+            ? 'The screen below is a snapshot the tool wrote, reproduced byte for byte.'
+            : 'The screens below are snapshots the tool wrote, reproduced byte for byte.'}
+        </p>
+        {verb.screens.map((screen) => (
+          <Screen fixture={screen.fixture} command={screen.command} />
+        ))}
+      </Fragment>
+    )
+  }
+
+  <NextLinks links={next} />
+</Layout>

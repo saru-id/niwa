@@ -223,7 +223,7 @@ export const NAV: readonly NavGroup[] = [
       {
         path: '/reference/cli/plan',
         title: 'plan',
-        job: 'Show what apply would do',
+        job: 'Show what apply would do. Exit 0 when in sync, 2 when changes are pending, 1 on an error',
       },
       {
         path: '/reference/cli/apply',
@@ -278,7 +278,7 @@ export const NAV: readonly NavGroup[] = [
       {
         path: '/reference/cli/init',
         title: 'init',
-        job: 'Write a starter config that describes this machine, install the editor types, and load the watcher',
+        job: 'Write a starter config that describes this machine, install the editor types, and load the watcher. Once per machine',
       },
       {
         path: '/reference/cli/history',

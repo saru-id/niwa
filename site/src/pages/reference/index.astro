@@ -1,0 +1,85 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import Kicker from '../../components/Kicker.astro'
+import Layout from '../../components/Layout.astro'
+import NextLinks from '../../components/NextLinks.astro'
+import { pageLink } from '../../data/links'
+import { FREQUENCIES, verbsOf } from '../../data/verbs'
+import { styles } from './_styles'
+
+const deck =
+  'Twenty verbs, the Luau API, and the shapes niwa reads and writes. The verbs are grouped by how often you reach for them, not alphabetically.'
+
+// The three groups are the sections; the last heading routes to the rest.
+const headings = [
+  ...FREQUENCIES.map((frequency) => ({
+    depth: 2 as const,
+    id: frequency.id,
+    text: frequency.label,
+  })),
+  { depth: 2 as const, id: 'the-rest', text: 'The rest of the reference' },
+]
+
+const rest = [
+  pageLink('/reference/api'),
+  pageLink('/reference/files'),
+  pageLink('/reference/formats'),
+  pageLink('/reference/output'),
+  pageLink('/reference/environment'),
+]
+
+const next = [
+  pageLink('/reference/api'),
+  pageLink('/reference/files'),
+  pageLink('/reference/output'),
+]
+---
+
+<Layout title="Reference" description={deck} headings={headings}>
+  <Kicker label="Reference" />
+  <h1 {...stylex.props(styles.h1)}>Reference</h1>
+  <p {...stylex.props(styles.deck)}>{deck}</p>
+  <p {...stylex.props(styles.p)}>
+    Every verb exits <code {...stylex.props(styles.code)}>0</code> on success and
+    <code {...stylex.props(styles.code)}>1</code> on an error. Where a verb says more than
+    that, its page carries an exit codes table. Two flags are global and every verb takes
+    them: <code {...stylex.props(styles.code)}>-v</code>, <code
+      {...stylex.props(styles.code)}>--verbose</code
+    > and <code {...stylex.props(styles.code)}>--debug</code>.
+  </p>
+
+  {
+    FREQUENCIES.map((frequency) => (
+      <Fragment>
+        <h2 id={frequency.id} {...stylex.props(styles.h2)}>
+          {frequency.label}
+        </h2>
+        <p {...stylex.props(styles.p)}>{frequency.when}</p>
+        <ul {...stylex.props(styles.list)}>
+          {verbsOf(frequency.id).map((verb) => (
+            <li {...stylex.props(styles.item)}>
+              <a href={verb.path} {...stylex.props(styles.name)}>
+                {verb.name === 'niwa' ? 'niwa' : `niwa ${verb.name}`}
+              </a>{' '}
+              <span {...stylex.props(styles.said)}>— {verb.job}</span>
+            </li>
+          ))}
+        </ul>
+      </Fragment>
+    ))
+  }
+
+  <h2 id="the-rest" {...stylex.props(styles.h2)}>The rest of the reference</h2>
+  <ul {...stylex.props(styles.list)}>
+    {
+      rest.map((link) => (
+        <li {...stylex.props(styles.item)}>
+          <a href={link.href}>{link.label}</a>{' '}
+          <span {...stylex.props(styles.said)}>— {link.why}</span>
+        </li>
+      ))
+    }
+  </ul>
+
+  <NextLinks links={next} />
+</Layout>

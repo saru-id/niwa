@@ -1,0 +1,16 @@
+---
+import { FACTS } from '../../../data/facts'
+import { pageLink } from '../../../data/links'
+import ApiPage from '../_ApiPage.astro'
+
+const deck =
+  'Seven values a config can read about the machine it runs on. They are gathered once per run, so twenty guards asking the same question cost one answer.'
+const entries = FACTS.map((fact) => ({
+  name: fact.name,
+  signatures: [fact.signature],
+  description: fact.description,
+}))
+const next = [pageLink('/reference/api/functions'), pageLink('/concepts/config')]
+---
+
+<ApiPage title="Facts" deck={deck} entries={entries} next={next} />

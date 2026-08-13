@@ -1,0 +1,54 @@
+---
+/* One Luau API page: a run of entries, each with a heading, a signature,
+ * and a paragraph. Seven pages share it, so the furniture is written
+ * once. The leading underscore keeps Astro from routing this file. */
+import * as stylex from '@stylexjs/stylex'
+import Kicker from '../../components/Kicker.astro'
+import Layout from '../../components/Layout.astro'
+import NextLinks from '../../components/NextLinks.astro'
+import type { PageLink } from '../../data/links'
+import { anchor } from '../../data/resources'
+import { styles } from './_styles'
+
+interface Entry {
+  readonly name: string
+  /** One line, or several where the call is overloaded. */
+  readonly signatures: readonly string[]
+  readonly description: string
+}
+
+interface Props {
+  title: string
+  deck: string
+  entries: readonly Entry[]
+  next: readonly PageLink[]
+}
+
+const { title, deck, entries, next } = Astro.props
+const headings = entries.map((entry) => ({
+  depth: 2 as const,
+  id: anchor(entry.name),
+  text: entry.name,
+}))
+---
+
+<Layout title={title} description={deck} headings={headings}>
+  <Kicker label="Luau API" />
+  <h1 {...stylex.props(styles.h1)}>{title}</h1>
+  <p {...stylex.props(styles.deck)}>{deck}</p>
+  {
+    entries.map((entry) => (
+      <Fragment>
+        <h2 id={anchor(entry.name)} {...stylex.props(styles.h2)}>
+          {entry.name}
+        </h2>
+        {/* On one line: a `pre` keeps every byte between its tags. */}
+        {entry.signatures.map((signature) => (
+          <pre {...stylex.props(styles.signature)} tabindex="0"><code>{signature}</code></pre>
+        ))}
+        <p {...stylex.props(styles.p)}>{entry.description}</p>
+      </Fragment>
+    ))
+  }
+  <NextLinks links={next} />
+</Layout>
