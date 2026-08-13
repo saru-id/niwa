@@ -41,12 +41,15 @@ export type ActHandle = {
 	exec: (command: string) -> (),
 }
 
+-- The analyzer does not pick between overloads by a table literal's
+-- fields, so shapes that share a return type share one signature and a
+-- union names them. Only the list form returns a list, so only it
+-- stands apart.
 type PackageFn =
-	((name: string) -> Result)
+	((name: string | { name: string, optional: boolean? }) -> Result)
 	& ((names: { string }) -> { Result })
-	& ((options: { name: string, optional: boolean? }) -> Result)
 
-type ServiceFn = ((name: string) -> Result) & ((names: { string }) -> Result)
+type ServiceFn = (name: string | { string }) -> Result
 
 export type Niwa = {
 	-- Homebrew, read through receipts, never `brew list`.
@@ -139,8 +142,9 @@ export type Niwa = {
 	-- Recorded as irreversible.
 	once: (name: string, body: () -> ()) -> Result,
 
-	-- Failures inside the block do not halt the apply.
-	try: <T>(body: () -> T) -> T,
+	-- Failures inside the block do not halt the apply. The block's own
+	-- value does not come back: a contained failure has none.
+	try: <T...>(body: () -> T...) -> (),
 
 	-- A checklist entry with a deep link. Never a fake check.
 	permission: (options: { app: string, needs: string }) -> Result,
@@ -151,7 +155,7 @@ export type Niwa = {
 
 	-- Searches the keychain, then secrets/<name>.age, then an external
 	-- manager. Force one with `from`.
-	secret: ((name: string) -> Secret) & ((options: { name: string, from: string? }) -> Secret),
+	secret: (name: string | { name: string, from: string? }) -> Secret,
 
 	-- String templating with masked secrets: `{name}` placeholders.
 	render: (template: string, values: { [string]: string | number | Secret }) -> Rendered,
