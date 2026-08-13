@@ -186,7 +186,36 @@ pub fn refuse_mid_merge(
     paths: &crate::paths::Paths,
     doing: &str,
 ) -> Result<(), crate::error::Error> {
-    if paths.config.join(".git/MERGE_HEAD").exists() {
+    let dotgit = paths.config.join(".git");
+    if !dotgit.exists() {
+        return Ok(());
+    }
+    // In a plain checkout MERGE_HEAD sits under .git; a worktree's
+    // .git is a file pointing elsewhere, so git itself answers where.
+    let merging = if dotgit.is_dir() {
+        dotgit.join("MERGE_HEAD").exists()
+    } else {
+        crate::util::proc::bounded_stdout(
+            "git",
+            &[
+                "-C",
+                &paths.config.display().to_string(),
+                "rev-parse",
+                "--git-path",
+                "MERGE_HEAD",
+            ],
+            std::time::Duration::from_secs(10),
+        )
+        .is_some_and(|answer| {
+            let head = std::path::Path::new(answer.trim());
+            if head.is_absolute() {
+                head.exists()
+            } else {
+                paths.config.join(head).exists()
+            }
+        })
+    };
+    if merging {
         return Err(crate::error::Error::apply(
             doing,
             "the config tree is mid-merge · finish or abort the merge first",
