@@ -376,6 +376,17 @@ fn an_acknowledgement_gone_on_both_sides_is_dropped() {
 }
 
 #[test]
+fn a_mid_merge_tree_refuses_proposals_too() {
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    std::fs::create_dir_all(home.path().join(".config/niwa/.git")).unwrap();
+    std::fs::write(home.path().join(".config/niwa/.git/MERGE_HEAD"), "abc\n").unwrap();
+    let output = niwa(home.path(), &[], &["pull", "--all"]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    assert!(stderr(&output).contains("mid-merge"), "{}", stderr(&output));
+}
+
+#[test]
 fn check_says_plainly_when_the_analyzer_is_missing() {
     let home = tempfile::tempdir().unwrap();
     pending_config(home.path());

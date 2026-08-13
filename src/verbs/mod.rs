@@ -180,3 +180,18 @@ pub fn plan_of(engine: Rc<Engine>) -> crate::model::action::Plan {
         .collect();
     crate::model::action::Plan { items }
 }
+
+/// The design's one git boundary: a mid-merge tree is nobody's
+/// config, so nothing that writes to it (apply, pull, add) proceeds.
+pub fn refuse_mid_merge(
+    paths: &crate::paths::Paths,
+    doing: &str,
+) -> Result<(), crate::error::Error> {
+    if paths.config.join(".git/MERGE_HEAD").exists() {
+        return Err(crate::error::Error::apply(
+            doing,
+            "the config tree is mid-merge · finish or abort the merge first",
+        ));
+    }
+    Ok(())
+}

@@ -35,6 +35,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
     };
 
     let paths = Paths::resolve()?;
+    super::refuse_mid_merge(&paths, "adding")?;
     let analysis = super::run_pass(&paths, None)?;
 
     let identity = Identity::new(kind, name);
@@ -110,6 +111,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
 fn add_secret(out: &Out, name: &str) -> Result<ExitCode, Error> {
     use std::io::Read as _;
     let paths = Paths::resolve()?;
+    super::refuse_mid_merge(&paths, "sealing a secret")?;
     if name.is_empty() || name.contains('/') {
         return Err(Error::Apply {
             doing: "sealing a secret".to_string(),
