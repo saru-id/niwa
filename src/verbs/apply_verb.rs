@@ -177,15 +177,11 @@ fn walk(
             continue;
         }
         loop {
-            eprint!(
-                "{} · [y]es [s]kip [d]iff [a]ll [q]uit ",
+            let answer = out.prompt(&format!(
+                "{} · [y]es [s]kip [d]iff [a]ll [q]uit",
                 item.declaration.identity
-            );
-            let mut answer = String::new();
-            if std::io::stdin().read_line(&mut answer).is_err() {
-                return None;
-            }
-            match answer.trim() {
+            ))?;
+            match answer.as_str() {
                 "y" | "" => break,
                 "s" => {
                     declined.insert(item.declaration.identity.to_string());

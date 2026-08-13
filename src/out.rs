@@ -251,6 +251,27 @@ impl Out {
         print!("{text}");
     }
 
+    /// One question, one answer. The question lands on stderr so a
+    /// piped stdout stays the screen alone; the answer comes back
+    /// trimmed and lowercased, so `y` and `Y` mean the same thing.
+    /// `None` is a closed or unreadable stdin — never an answer, so
+    /// every caller reads it as a decline.
+    #[expect(clippy::unused_self, reason = "every screen prints through Out")]
+    pub fn prompt(&self, question: &str) -> Option<String> {
+        eprint!("{question} ");
+        let mut answer = String::new();
+        match std::io::stdin().read_line(&mut answer) {
+            Ok(0) | Err(_) => None,
+            Ok(_) => Some(answer.trim().to_lowercase()),
+        }
+    }
+
+    /// A yes/no question; only an explicit yes is a yes.
+    pub fn confirm(&self, question: &str) -> bool {
+        self.prompt(question)
+            .is_some_and(|answer| matches!(answer.as_str(), "y" | "yes"))
+    }
+
     /// How much detail the person asked for: 0, `-v`, or `-vv`.
     pub const fn verbosity(&self) -> u8 {
         self.verbose

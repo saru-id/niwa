@@ -53,11 +53,7 @@ fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {
         if !std::io::stdin().is_terminal() {
             return Err(Error::NeedsConfirmation);
         }
-        eprint!("undo {}? [y/N] ", count(steps.len(), "change"));
-        let mut answer = String::new();
-        if std::io::stdin().read_line(&mut answer).is_err()
-            || !matches!(answer.trim(), "y" | "Y" | "yes")
-        {
+        if !out.confirm(&format!("undo {}? [y/N]", count(steps.len(), "change"))) {
             out.result(Mark::Ok, "canceled · nothing changed");
             return Ok(ExitCode::FAILURE);
         }

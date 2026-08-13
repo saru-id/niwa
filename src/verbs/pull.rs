@@ -294,15 +294,10 @@ fn describe(
 
 /// The four answers, defined once, meaning the same thing everywhere.
 fn ask(out: &Out) -> Answer {
-    out.note("[a]pply  [e]dit  [n]ever  [s]kip");
-    let mut line = String::new();
-    if std::io::stdin().read_line(&mut line).is_err() {
-        return Answer::Skip;
-    }
-    match line.trim() {
-        "a" | "A" => Answer::Apply,
-        "e" | "E" => Answer::Edit,
-        "n" | "N" => Answer::Never,
+    match out.prompt("[a]pply  [e]dit  [n]ever  [s]kip").as_deref() {
+        Some("a") => Answer::Apply,
+        Some("e") => Answer::Edit,
+        Some("n") => Answer::Never,
         _ => Answer::Skip,
     }
 }

@@ -27,11 +27,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
             Mark::Waiting,
             "no config yet · scan this machine into a starter config?",
         );
-        eprint!("run niwa init now? [y/N] ");
-        let mut answer = String::new();
-        if std::io::stdin().read_line(&mut answer).is_ok()
-            && matches!(answer.trim(), "y" | "Y" | "yes")
-        {
+        if out.confirm("run niwa init now? [y/N]") {
             return Ok(super::init::run(out));
         }
     }
@@ -91,16 +87,15 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         return Ok(ExitCode::SUCCESS);
     }
     out.plain("");
-    if manual > 0 {
-        out.plain("[a]pply  [p]lan  [r]eview  [t]ick  [u]pdate  [h]istory  [q]uit");
+    let keys = if manual > 0 {
+        "[a]pply  [p]lan  [r]eview  [t]ick  [u]pdate  [h]istory  [q]uit"
     } else {
-        out.plain("[a]pply  [p]lan  [r]eview  [u]pdate  [h]istory  [q]uit");
-    }
-    let mut line = String::new();
-    if std::io::stdin().read_line(&mut line).is_err() {
+        "[a]pply  [p]lan  [r]eview  [u]pdate  [h]istory  [q]uit"
+    };
+    let Some(line) = out.prompt(keys) else {
         return Ok(ExitCode::SUCCESS);
-    }
-    Ok(match line.trim() {
+    };
+    Ok(match line.as_str() {
         "a" => super::apply_verb::run(
             out,
             &super::apply_verb::Options {
@@ -206,13 +201,10 @@ fn tick(
     for (index, step) in steps.iter().enumerate() {
         out.plain(&format!("{} · {}", index + 1, step.identity.key));
     }
-    out.plain("which one is done? (a number, or enter to cancel)");
-    let mut line = String::new();
-    if std::io::stdin().read_line(&mut line).is_err() {
+    let Some(line) = out.prompt("which one is done? (a number, or enter to cancel)") else {
         return ExitCode::SUCCESS;
-    }
+    };
     let Some(step) = line
-        .trim()
         .parse::<usize>()
         .ok()
         .and_then(|n| n.checked_sub(1))

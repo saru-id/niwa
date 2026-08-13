@@ -106,4 +106,20 @@ niwa undo --yes
 check 19 "the un-reversed step is still known" \
     grep -q "undo would reverse 1 change" "$SANDBOX/stdout"
 
+# --- prompts hear any case, and a closed stdin declines --------------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.file("~/.walk-case", { content = "walked" })
+LUAU
+{ sleep 1; printf 'Y\ns\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/walk-case.log" \
+    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+check 20 "an uppercase Y is a yes in the walk" grep -q "walked" "$HOME/.walk-case"
+{ sleep 1; printf 'YES\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/undo-case.log" \
+    "$NIWA_BIN" undo >/dev/null 2>&1 || true
+check 21 "an uppercase YES is a yes to undo" sh -c "! test -e '$HOME/.walk-case'"
+{ sleep 1; } | /usr/bin/script -q "$SANDBOX/walk-eof.log" \
+    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+check 22 "a closed stdin quits the walk, changing nothing" \
+    sh -c "! test -e '$HOME/.walk-case'"
+
 echo "drill: apply and undo · all checks passed"

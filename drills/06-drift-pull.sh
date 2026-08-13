@@ -130,6 +130,16 @@ check 13 "saying yes in the walk uninstalls the orphan" \
     test ! -d "$HOMEBREW_PREFIX/Cellar/fd"
 check 14 "the declared formula stayed" test -d "$HOMEBREW_PREFIX/Cellar/htop"
 
+# --- the question lands on stderr, the screen stays stdout ----------
+mkdir -p "$HOMEBREW_PREFIX/Cellar/fd/9.0.0"
+echo '{"installed_on_request":true}' \
+    >"$HOMEBREW_PREFIX/Cellar/fd/9.0.0/INSTALL_RECEIPT.json"
+{ sleep 1; printf 's\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/ask.log" \
+    sh -c "'$NIWA_BIN' pull >'$SANDBOX/ask-stdout' 2>/dev/null" || true
+check 14b "the answers are offered on stderr, not the screen" \
+    sh -c "! grep -q 'a.pply' '$SANDBOX/ask-stdout'"
+rm -rf "$HOMEBREW_PREFIX/Cellar/fd"
+
 # --- the gate holds a secret back -------------------------------------
 printf 'export EDITOR=nvim\nexport GH=ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345\n' >"$HOME/.zshrc"
 
