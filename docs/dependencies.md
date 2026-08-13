@@ -301,3 +301,27 @@ packages are alpha or beta and treat a minor as breaking.
 - Maintenance and weight: current, dev only, brings the local runtime
   (workerd, miniflare).
 - License: MIT OR Apache-2.0.
+
+### pagefind and astro-pagefind
+
+- Does: builds a static, chunked search index over the built pages, and
+  ships the modal search interface the header opens. astro-pagefind runs
+  the indexer as part of the Astro build.
+- Why not our own: client-side search over a static site with ranked
+  excerpts is a solved, subtle problem; the index format and its lazy
+  loading are the value.
+- Maintenance and weight: both current; the indexer is a platform binary
+  that runs at build time only, the interface is a small script loaded on
+  demand.
+- License: MIT (both).
+
+### @pierre/trees
+
+- Does: renders the file trees the docs show — config repo layouts and
+  the paths under the home directory — from input prepared at build time.
+- Why not our own: keyboard behavior, virtualization and middle-ellipsis
+  truncation on a tree widget are real work, and its server-rendered
+  path fits a site with no framework in the browser.
+- Maintenance and weight: beta, released steadily, pinned exactly for
+  that reason.
+- License: Apache-2.0.
