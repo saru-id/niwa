@@ -1,14 +1,196 @@
 ---
+import * as stylex from '@stylexjs/stylex'
+import Footer from '../components/Footer.astro'
+import Header from '../components/Header.astro'
 import Kicker from '../components/Kicker.astro'
-import Layout from '../components/Layout.astro'
+import Search from '../components/Search.astro'
+import { styles as shell } from '../components/Layout.styles'
+import { Markdown } from '../components/Markdown'
+import { Screen } from '../components/Screen'
+import '../styles/app.css'
+import { styles } from '../components/Landing.styles'
 
-// Placeholder prose. The landing's seven bands arrive with their own task;
-// what this page proves today is the shell around them.
+/* The landing.
+ *
+ * Seven bands: header, statement, config, screen, the daily loop, the
+ * boundary, footer. Bands 3 and 4 are one exhibit: the tool's own test
+ * writes that config verbatim and snapshots the plan it produces.
+ */
+
+const pathname = Astro.url.pathname
+
+// The source a refused fence names. This page holds its own markdown.
+const SELF = 'src/pages/index.astro'
+
+// Both blocks go through the same markdown pipeline the documentation uses,
+// so the frame, the language badge and the copy control are the site's own.
+const INSTALL = ['```shell', 'curl -fsSL niwa.rs | sh', '```'].join('\n')
+
+const CONFIG_SOURCE = `--!strict
+local niwa = require("@niwa")
+
+niwa.brew.formula { "fd", "ripgrep", "jq" }
+
+niwa.dock {
+  autohide = true,
+  tilesize = 48,
+}
+
+niwa.file("~/.zshrc", { source = "@self/files/zshrc" })
+
+local nvim = niwa.brew.formula "neovim"
+local cfg  = niwa.link("~/.config/nvim", { to = "@self/files/nvim" })
+if nvim.changed or cfg.changed then
+  niwa.run("nvim --headless '+Lazy! sync' +qa", { timeout = "5m" })
+end`
+
+const CONFIG = ['```luau', CONFIG_SOURCE, '```'].join('\n')
+
+/* Band 4 is the plan the config above produces: the tool's own test writes
+ * that config verbatim and snapshots this screen. */
+const PLAN = 'plan_mixed_pending_color'
 ---
 
-<Layout description="niwa is a configuration tool for macOS.">
-  <Kicker label="niwa" />
-  <h1>niwa</h1>
-  <p>One Luau script declares what a machine should be.</p>
-  <p><a href="/docs/probe">Probe page</a></p>
-</Layout>
+<!doctype html>
+<html lang="en">
+  <head>
+    {
+      /* First in the head and inline, so the class is on <html> before the
+        first paint: a stored choice applied after it is a flash. */
+    }
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('niwa-theme')
+        if (t === 'light' || t === 'dark') document.documentElement.classList.add('theme-' + t)
+      } catch {}
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>niwa</title>
+    <meta name="description" content="niwa is a configuration tool for macOS." />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a href="#main" {...stylex.props(shell.skip)}>Skip to content</a>
+
+    {/* Band 1. The site header, unchanged. */}
+    <Header pathname={pathname} />
+
+    <main id="main" data-pagefind-body>
+      {/* Band 2. Kicker, the statement, one hairline, and what follows from it. */}
+      <section {...stylex.props(shell.column, styles.bandStatement)}>
+        <div {...stylex.props(styles.column)}>
+          <Kicker label="niwa" />
+          <h1 {...stylex.props(styles.statement)}>
+            Your whole Mac, configured by one script you can actually read.
+          </h1>
+          <hr {...stylex.props(styles.rule)} />
+          <p {...stylex.props(styles.lede)}>
+            niwa is a configuration tool for macOS. One Luau script declares what the machine
+            should be: packages, dotfiles, settings, and services. Applying it makes that true.
+            Apply again and almost nothing happens, because almost everything is already true.
+          </p>
+          <div {...stylex.props(styles.install)}>
+            <Markdown source={INSTALL} file={SELF} />
+          </div>
+          <p {...stylex.props(styles.secondary)}>
+            <a href="/start">What the installer touches</a>
+          </p>
+        </div>
+      </section>
+
+      {/* Band 3. The config. */}
+      <section {...stylex.props(shell.column, styles.band)}>
+        <div {...stylex.props(styles.column)}>
+          <figure {...stylex.props(styles.figure)}>
+            {/* No client directive. React runs once, during the build. */}
+            <Markdown source={CONFIG} file={SELF} />
+            <figcaption {...stylex.props(styles.caption)}>init.luau</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      {/* Band 4. The screen that config produces. Read as one pair with band 3. */}
+      <section {...stylex.props(shell.column, styles.band)}>
+        <div {...stylex.props(styles.column)}>
+          <Screen fixture={PLAN} command="niwa plan" />
+        </div>
+      </section>
+
+      {/* Band 5. The three motions, numbered. */}
+      <section {...stylex.props(shell.column, styles.band)}>
+        <div {...stylex.props(styles.column)}>
+          <h2 {...stylex.props(styles.heading)}>The daily loop</h2>
+          <ol {...stylex.props(styles.steps)}>
+            <li {...stylex.props(styles.step)}>
+              <span {...stylex.props(styles.numeral)}>1</span>
+              <div>
+                <p {...stylex.props(styles.stepText)}>
+                  Change the machine through the config. Add a line, run{' '}
+                  <code {...stylex.props(styles.code)}>niwa apply</code>, done.
+                </p>
+                <p {...stylex.props(styles.onward)}>
+            <a href="/start/first-apply">Your first apply</a>
+                </p>
+              </div>
+            </li>
+            <li {...stylex.props(styles.step)}>
+              <span {...stylex.props(styles.numeral)}>2</span>
+              <div>
+                <p {...stylex.props(styles.stepText)}>
+                  Change the machine directly, then keep it. niwa notices, and offers the config
+                  line back. Accept it, and your script says what your machine says.
+                </p>
+                <p {...stylex.props(styles.onward)}>
+            <a href="/concepts/drift">Drift and the write-back loop</a>
+                </p>
+              </div>
+            </li>
+            <li {...stylex.props(styles.step)}>
+              <span {...stylex.props(styles.numeral)}>3</span>
+              <div>
+                <p {...stylex.props(styles.stepText)}>
+                  Set up a new machine. One command, then read the plan and confirm.
+                </p>
+                <p {...stylex.props(styles.onward)}>
+            <a href="/start/second-machine">Set up a second machine</a>
+                </p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      {/* Band 6. The boundary. */}
+      <section {...stylex.props(shell.column, styles.bandLast)}>
+        <div {...stylex.props(styles.column)}>
+          <h2 {...stylex.props(styles.heading)}>What niwa will not do</h2>
+          <p {...stylex.props(styles.boundaryText)}>
+            It never applies on its own. The watcher notices and notifies; applying is your call,
+            unless you declare a schedule yourself.
+          </p>
+          <p {...stylex.props(styles.boundaryText)}>
+            Undo restores what the last apply changed. It is not a rollback of the whole world.
+          </p>
+          <p {...stylex.props(styles.boundaryText)}>
+            One plan, in your order. Program order is the order; there is no dependency graph to
+            out-guess you.
+          </p>
+          <p {...stylex.props(styles.boundaryOnward)}>
+            <a href="/concepts/limits">Every refusal, with its reason</a>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    {/* Band 7. The site footer, unchanged. */}
+    <Footer />
+
+    <Search />
+
+    <script>
+      import '../scripts/copy'
+    </script>
+  </body>
+</html>
