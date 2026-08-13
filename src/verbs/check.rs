@@ -55,7 +55,7 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
     }
 
     lint_unreferenced(out, &paths, &analysis);
-    lint_code_locations(out, &paths, &analysis)?;
+    lint_code_locations(out, &paths, &analysis, notify)?;
 
     // The watcher pings for exactly three things: a config error you
     // just saved (handled in `run`), drift you just caused (below),
@@ -144,11 +144,18 @@ fn lint_code_locations(
     out: &Out,
     paths: &Paths,
     analysis: &crate::model::analysis::Analysis,
+    notify: bool,
 ) -> Result<(), Error> {
     // The lock comes before the load: a snapshot taken while an
     // apply still runs would erase its tail on save. When the lock
-    // is busy the notes still print; only the memory waits.
-    let lock = crate::apply::Lock::take(&paths.state).ok();
+    // is busy the notes still print; only the memory waits — and a
+    // watcher-triggered run never takes the lock at all, so it can
+    // never bounce an apply the person just launched.
+    let lock = if notify {
+        None
+    } else {
+        crate::apply::Lock::take(&paths.state).ok()
+    };
     let mut journal = Journal::load(&paths.state)?;
     let mut remembered = false;
     for declaration in &analysis.effective {

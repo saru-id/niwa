@@ -16,6 +16,9 @@ pub fn run(out: &Out, name: Option<&str>) -> ExitCode {
 
 fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
+    // The lockfile and the module cache are shared state: one update
+    // at a time, like every mutation.
+    let _lock = crate::apply::Lock::take(&paths.state)?;
     let analysis = super::run_pass(&paths, None)?;
     let mut lock = Lockfile::load(&paths)?;
     let mut rows: Vec<(Mark, String, String)> = Vec::new();

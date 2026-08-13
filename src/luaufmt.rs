@@ -17,11 +17,12 @@ pub fn format(text: &str) -> Option<String> {
     for line in text.lines() {
         let trimmed = line.trim_end();
 
-        // Long-bracket strings and comments keep their bytes exactly.
+        // Long-bracket strings and comments keep their bytes exactly
+        // — the untrimmed line, or a content declaration would drift.
         if in_long_bracket {
-            out.push_str(trimmed);
+            out.push_str(line);
             out.push('\n');
-            if trimmed.contains("]]") {
+            if line.contains("]]") {
                 in_long_bracket = false;
             }
             continue;

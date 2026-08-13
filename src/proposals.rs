@@ -357,7 +357,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             })?;
         }
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
-            crate::apply::uninstall_package(&parsed)?;
+            crate::apply::uninstall_package(paths, &parsed)?;
         }
         Kind::Service => {
             crate::services::bootout(paths, key);

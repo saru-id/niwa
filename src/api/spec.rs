@@ -89,9 +89,16 @@ pub use crate::util::parse_duration;
 
 /// `owner/repo`, exactly: two non-empty segments, one slash.
 pub fn github_repo_ok(repo: &str) -> bool {
+    let ok = |part: &str| {
+        !part.is_empty()
+            && part != ".."
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+    };
     let mut parts = repo.split('/');
-    let owner_ok = parts.next().is_some_and(|p| !p.is_empty());
-    let name_ok = parts.next().is_some_and(|p| !p.is_empty());
+    let owner_ok = parts.next().is_some_and(ok);
+    let name_ok = parts.next().is_some_and(ok);
     owner_ok && name_ok && parts.next().is_none()
 }
 

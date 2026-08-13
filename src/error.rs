@@ -168,9 +168,8 @@ impl Error {
             }
             Self::ApplyLocked { path } => vec![
                 format!("the lock is {}", path.display()),
-                "wait for the other apply to finish · a crashed run's lock is reclaimed by itself"
+                "wait for the other run to finish · a crashed holder's lock releases by itself"
                     .to_string(),
-                "a lock that will not clear holds no readable pid; delete it then".to_string(),
             ],
             Self::Apply { detail, .. } => vec![detail.clone()],
             Self::DirtyTree => vec![

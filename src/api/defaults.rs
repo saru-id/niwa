@@ -55,7 +55,10 @@ fn declare_defaults(
     // that: confined to /Library/Preferences, or a plist write could
     // land anywhere the user can write.
     if domain.starts_with('/') {
-        if !domain.starts_with("/Library/Preferences/") || domain.contains("..") {
+        if !domain.starts_with("/Library/Preferences/")
+            || domain.contains("..")
+            || domain.contains(':')
+        {
             return Err(spec.fail(&format!(
                 "an absolute domain lives under /Library/Preferences, got \"{domain}\""
             )));
