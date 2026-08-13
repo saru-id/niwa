@@ -45,7 +45,7 @@ fn a_syntax_error_names_the_file_and_line() {
     let output = niwa(home.path(), &["check"]);
     assert_eq!(output.status.code(), Some(1));
     let err = stderr(&output);
-    assert!(err.contains("init.luau"), "{err}");
+    assert!(err.contains("init.luau:2"), "{err}");
 }
 
 #[test]

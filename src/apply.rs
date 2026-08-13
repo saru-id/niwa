@@ -187,8 +187,9 @@ fn apply_release(
     ))
 }
 
-/// Where this run's displaced bytes go. One directory per apply,
-/// named by a monotonic counter persisted beside the journal.
+/// Where displaced bytes go: one directory per identity, one copy
+/// per distinct content, shared across applies — the digest is the
+/// name, so undo finds bytes without reading them.
 pub fn archive_dir(paths: &Paths) -> PathBuf {
     paths.state.join("archive")
 }
