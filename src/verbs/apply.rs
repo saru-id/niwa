@@ -432,6 +432,8 @@ fn privileged_block(out: &Out, intent: &crate::model::action::Plan) {
 fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: usize) {
     let manual: Vec<&crate::model::action::Item> =
         intent.items.iter().filter(|item| is_manual(item)).collect();
+    // Ten pending changes is where a run stops feeling instant; below
+    // that the checklist would arrive after the summary anyway.
     if pending >= 10 && !manual.is_empty() {
         out.plain("");
         out.group("yours meanwhile");

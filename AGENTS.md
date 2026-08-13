@@ -36,6 +36,15 @@ These apply to the README, doc comments, help text, and error messages.
 - Active voice. No idioms. No jokes. Write "for example", not "e.g.".
 - Do not name or compare with other tools.
 
+## Comments
+
+- A comment states a constraint the code cannot show: a reason, a
+  boundary, a consequence. Never a narration of the next line.
+- Present tense, about the code as it stands. No milestones, no
+  "for now", no "when it lands".
+- Every hard-coded deadline or threshold carries the reason for its
+  number.
+
 ## Commits
 
 - Conventional Commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`,

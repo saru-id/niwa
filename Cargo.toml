@@ -23,7 +23,6 @@ unicode-width = "0.2.2"
 
 [dev-dependencies]
 insta = { version = "1.48.0", features = ["filters"] }
-mlua = { version = "0.12.0", features = ["luau"] }
 proptest = "1.11.0"
 tempfile = "3"
 

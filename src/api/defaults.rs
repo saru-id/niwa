@@ -140,8 +140,8 @@ pub fn record(
 }
 
 /// The dock sugar and its lowering table. `apps` becomes
-/// `persistent-apps`; the provider turns the list into the plist shape
-/// when it lands.
+/// `persistent-apps`; the provider turns the list into the plist
+/// shape at apply time.
 fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {

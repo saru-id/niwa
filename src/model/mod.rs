@@ -225,10 +225,6 @@ pub struct Declaration {
     pub unit: Unit,
     /// Needs administrator rights; the plan folds these into one
     /// password prompt at the top.
-    #[allow(
-        dead_code,
-        reason = "set by every declaration today; the plan reads it when it lands"
-    )]
     pub privileged: bool,
 }
 

@@ -37,8 +37,8 @@ impl Role {
     }
 }
 
-/// The mark vocabulary. One set, used by every verb. The enum grows as
-/// verbs land; the full table lives in the design's interface chapter.
+/// The mark vocabulary: one set, used by every verb. The full table
+/// lives in the design's interface chapter.
 #[derive(Clone, Copy)]
 pub enum Mark {
     Ok,

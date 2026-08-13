@@ -256,9 +256,9 @@ fn placeholders(template: &str) -> Result<Vec<String>, String> {
     Ok(names)
 }
 
-/// `niwa.use("github:owner/repo@ref")`: recorded and pinned by the
-/// lockfile when it lands; the module itself is fetched by resolve,
-/// never during a plan.
+/// `niwa.use("github:owner/repo@ref")`: recorded here, pinned by
+/// `niwa update`; the module itself is fetched by resolve, never
+/// during a plan.
 fn declare_use(lua: &Lua, ctx: &Ctx, source: &str) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {

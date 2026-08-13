@@ -1,8 +1,8 @@
 //! mise toolchains, read through mise's install directories.
 //!
 //! A tool counts as present when any version of it is installed; which
-//! version a spec like `lts` resolves to is the lockfile's business,
-//! in a later milestone. mise itself is invoked only to change things.
+//! version a spec like `lts` resolves to is the lockfile's business.
+//! mise itself is invoked only to change things.
 
 use std::path::PathBuf;
 use std::time::Duration;

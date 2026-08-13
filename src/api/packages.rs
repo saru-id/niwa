@@ -1,8 +1,8 @@
 //! The package surface: `niwa.brew.*`, `niwa.mas.app`,
 //! `niwa.npm.global`, `niwa.mise.tool`, `niwa.github_release`.
 //!
-//! Everything here is a validating stub for now: identities and specs
-//! are real, providers read receipts in a later milestone.
+//! Declarations validate and settle here; the providers (brew, npm,
+//! mise, release) read the machine and make the changes.
 
 use std::collections::BTreeMap;
 

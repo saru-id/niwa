@@ -9,8 +9,7 @@ enforces the license and source policy in `deny.toml`.
 
 ### clap
 
-- Does: command line parsing, help text, and shell completions for the whole
-  verb surface.
+- Does: command line parsing and help text for the whole verb surface.
 - Why not our own: correct argument parsing with good help output is a large,
   finished problem. clap is the community standard and its derive form keeps
   the surface declared in one place.
@@ -82,9 +81,10 @@ enforces the license and source policy in `deny.toml`.
   yourself is the mistake. age is a small, audited format built for
   exactly this shape of problem.
 - Maintenance: the reference Rust implementation, actively maintained.
-- Weight: the largest tree here (curve and AEAD crates, BSD-3-Clause
-  dalek crates among them), all pure Rust.
-- License: MIT OR Apache-2.0; curve25519-dalek and friends BSD-3-Clause.
+- Maintenance: actively maintained; tracks upstream Luau releases.
+- Weight: the largest native piece: it compiles the vendored Luau C++
+  sources at build time.
+- License: MIT (mlua and the vendored Luau both).
 
 ### jiff
 
@@ -94,7 +94,7 @@ enforces the license and source policy in `deny.toml`.
   precisely the wheels not to reinvent.
 - Maintenance: BurntSushi, current, releases often.
 - Weight: self-contained.
-- License: MIT OR Apache-2.0 (Unlicense OR MIT).
+- License: Unlicense OR MIT.
 
 ### toml
 

@@ -14,6 +14,8 @@ use crate::model::{Declaration, Value};
 use crate::paths::Paths;
 use crate::util::proc::bounded_output;
 
+/// launchctl answers in milliseconds or is wedged; thirty seconds is
+/// generous without letting a hung daemon stall the whole apply.
 const LAUNCHCTL_DEADLINE: Duration = Duration::from_secs(30);
 
 /// Where a declared agent's plist lives.

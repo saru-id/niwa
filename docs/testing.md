@@ -55,6 +55,3 @@ nobody re-derives it:
 - **Custom `reverse` through undo.** Validated at definition,
   journaled irreversible by name; driving the handler from undo
   lands after 0.1.0 (deviations ledger).
-- **Terminal niceties.** OSC 8 hyperlinks and width-adaptive layout
-  are design intents that are not implemented at this version, so
-  there is nothing to cover.

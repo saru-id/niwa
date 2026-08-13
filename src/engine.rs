@@ -175,6 +175,9 @@ impl Engine {
             progress.total,
             humanize(elapsed)
         );
+        // An estimate from fewer than three settles, or five seconds,
+        // is noise wearing a number; below that the line stays honest
+        // and short.
         if progress.done >= 3 && progress.done < progress.total && elapsed >= 5 {
             let remaining =
                 elapsed * (progress.total - progress.done) as u64 / progress.done as u64;

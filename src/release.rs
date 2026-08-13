@@ -17,7 +17,11 @@ use crate::model::{Declaration, Value};
 use crate::paths::Paths;
 use crate::util::proc::{bounded_output, bounded_stdout};
 
+/// A release lookup is one small JSON answer; a minute covers a slow
+/// network without hiding an outage.
 const API_DEADLINE: Duration = Duration::from_mins(1);
+/// Binaries run to tens of megabytes; ten minutes covers a slow line,
+/// and a stalled download past that is dead, not slow.
 const DOWNLOAD_DEADLINE: Duration = Duration::from_mins(10);
 
 /// Where release binaries land.

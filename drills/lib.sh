@@ -23,6 +23,10 @@ SANDBOX="$(mktemp -d)"
 export HOME="$SANDBOX/home"
 mkdir -p "$HOME"
 
+# An instrumented binary without a profile path drops default_*.profraw
+# into the working directory; aim strays at the sandbox instead.
+export LLVM_PROFILE_FILE="${LLVM_PROFILE_FILE:-$SANDBOX/%p-%m.profraw}"
+
 # Managed preferences resolve into the sandbox too; the real
 # machine's configuration profiles must never shape a drill.
 export NIWA_MANAGED_PREFS="$SANDBOX/managed"

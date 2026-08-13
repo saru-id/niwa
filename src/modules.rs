@@ -17,6 +17,8 @@ use crate::lockfile::UsePin;
 use crate::paths::Paths;
 use crate::util::proc::bounded_output;
 
+/// A module clone is small by design; five minutes covers a cold
+/// clone on a slow line without letting a dead remote hang resolve.
 const GIT_DEADLINE: Duration = Duration::from_mins(5);
 
 /// Where resolved modules live, by tree hash.

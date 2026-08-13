@@ -38,6 +38,8 @@ fn history(out: &Out) -> Result<ExitCode, Error> {
             entry.id,
             count(entry.steps.len(), "change")
         ));
+        // Four steps give the shape of an apply at a glance; the rest
+        // fold into a count so one big run cannot bury the screen.
         for step in entry.steps.iter().take(4) {
             out.note(&step.identity);
         }

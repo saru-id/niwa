@@ -11,8 +11,8 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[command(subcommand)]
     pub verb: Option<Verb>,
-    /// More detail: `-v` adds absolutes and groups converged output,
-    /// `-vv` lists every resource
+    /// More detail: -v adds absolutes and groups converged output,
+    /// -vv lists every resource
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
     /// Keep the raw stack trace on config errors, for reports
@@ -134,7 +134,7 @@ pub enum Verb {
     },
     /// Set, list, or remove this machine's tags
     Tag {
-        /// The tag to set (or remove, with --remove); bare `tag` lists
+        /// The tag to set (or remove, with --remove); bare tag lists
         name: Option<String>,
         /// Remove the named tag instead of setting it
         #[arg(long)]
