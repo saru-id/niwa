@@ -180,4 +180,18 @@ check 20 "apply converges onto the new pin (exit 0)" test "$STATUS" -eq 0
 check 21 "the binary is the pinned version's bytes" \
     sh -c "'$HOME/.local/bin/lazygit' | grep -q '0.45.0'"
 
+# --- a hand-built binary is a person's work -------------------------
+printf '#!/bin/sh\necho hand-built\n' >"$HOME/.local/bin/lazygit"
+chmod 755 "$HOME/.local/bin/lazygit"
+niwa apply --yes
+check 22 "apply protects the hand-built binary" \
+    sh -c "test $STATUS -eq 0 && '$HOME/.local/bin/lazygit' | grep -q hand-built"
+niwa apply --yes --force
+check 23 "force replaces it, archived first" \
+    sh -c "'$HOME/.local/bin/lazygit' | grep -q 0.45.0 \
+        && grep -rq hand-built '$HOME/.local/state/niwa/archive'"
+niwa undo --yes
+check 24 "undo brings the person's binary back" \
+    sh -c "'$HOME/.local/bin/lazygit' | grep -q hand-built"
+
 echo "drill: lockfile · all checks passed"

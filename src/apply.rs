@@ -135,7 +135,7 @@ pub fn perform(
         }
         Action::Unchecked => Ok((Outcome::Unchecked, None)),
         Action::Create | Action::Change { .. } => match &declaration.identity.kind {
-            Kind::GithubRelease => apply_release(declaration, paths, journal, lock),
+            Kind::GithubRelease => apply_release(declaration, paths, journal, lock, force),
             Kind::Run | Kind::Once => apply_exec(declaration, paths, journal),
             _ => apply_one(declaration, paths, journal, &archive_root, force),
         },
@@ -184,6 +184,7 @@ fn apply_release(
     paths: &Paths,
     journal: &mut Journal,
     lock: &crate::lockfile::Lockfile,
+    force: bool,
 ) -> Result<(Outcome, Option<Effect>), Error> {
     let repo = &declaration.identity.key;
     let Some(pin) = lock.github_release.get(repo) else {
@@ -193,18 +194,38 @@ fn apply_release(
         });
     };
     let bin = crate::release::bin_of(declaration);
+    let target = crate::release::bin_dir(paths).join(&bin);
+    // The overwrite rule holds for binaries like any file: bytes
+    // niwa never acknowledged are a person's build, protected until
+    // `pull` or a per-file `--force` says otherwise — and what force
+    // displaces is archived first, so undo can bring it back.
+    let previous = if let Ok(current) = std::fs::read(&target) {
+        if !may_overwrite(declaration, journal, &current, force) {
+            return Ok((Outcome::Protected, None));
+        }
+        archive(
+            &archive_dir(paths),
+            &declaration.identity.to_string(),
+            &current,
+        )?;
+        Some(digest(&current))
+    } else {
+        None
+    };
     crate::release::install(paths, repo, &bin, pin)?;
-    // The acknowledged digest is the pin's: compare reads it back to
-    // tell a converged binary from a bumped pin's leftovers.
-    journal.acknowledge(
-        declaration.identity.to_string(),
-        Acknowledgement::new(declaration.spec.clone(), Some(pin.sha256.clone())),
-    );
-    let path = crate::release::bin_dir(paths)
-        .join(&bin)
-        .display()
-        .to_string();
-    Ok((Outcome::Done, Some(Effect::BinaryInstalled { path })))
+    // The acknowledgement records two facts compare reads back: the
+    // installed binary's own digest (a hand swap shows as drift) and
+    // the pin it came from (a bumped pin shows as pending).
+    let installed = std::fs::read(&target)
+        .map_err(|error| apply_error(&format!("reading the installed {bin}"), &error))?;
+    let mut ack = Acknowledgement::new(declaration.spec.clone(), Some(digest(&installed)));
+    ack.context = Some(pin.sha256.clone());
+    journal.acknowledge(declaration.identity.to_string(), ack);
+    let path = target.display().to_string();
+    Ok((
+        Outcome::Done,
+        Some(Effect::BinaryInstalled { path, previous }),
+    ))
 }
 
 /// Where this run's displaced bytes go. One directory per apply,
@@ -712,15 +733,17 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
             live.map(|bytes| digest(&bytes))
         }
         // A converged re-ack keeps what the install recorded — the
-        // release digest compare reads back must survive row two.
+        // digests and pin compare reads back must survive row two.
         _ => journal
             .acknowledged(&declaration.identity.to_string())
             .and_then(|ack| ack.bytes.clone()),
     };
-    journal.acknowledge(
-        declaration.identity.to_string(),
-        Acknowledgement::new(declaration.spec.clone(), bytes),
-    );
+    let context = journal
+        .acknowledged(&declaration.identity.to_string())
+        .and_then(|ack| ack.context.clone());
+    let mut ack = Acknowledgement::new(declaration.spec.clone(), bytes);
+    ack.context = context;
+    journal.acknowledge(declaration.identity.to_string(), ack);
 }
 
 /// The bytes a file declaration means, when they are knowable
@@ -818,8 +841,15 @@ fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path, seal: bool) -> 
             reverse_service(step, paths, archive_root, previous.as_deref(), seal)
         }
         Effect::BrewServiceStarted => reverse_brew_service(step),
-        Effect::BinaryInstalled { path } => std::fs::remove_file(path)
-            .map_err(|error| apply_error("removing the installed binary", &error)),
+        Effect::BinaryInstalled { path, previous } => match previous {
+            Some(digest) => {
+                let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
+                crate::util::write_atomic(std::path::Path::new(path), &bytes, Some(0o755), false)
+                    .map_err(|error| apply_error("restoring the previous binary", &error))
+            }
+            None => std::fs::remove_file(path)
+                .map_err(|error| apply_error("removing the installed binary", &error)),
+        },
         // Irreversible steps are reversed by nobody; the undo verb
         // names them before this point.
         Effect::Irreversible { .. } => Ok(()),

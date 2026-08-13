@@ -61,21 +61,36 @@ pub fn compare(
             }
         }
         Kind::GithubRelease => {
-            if crate::release::installed(paths, &crate::release::bin_of(declaration)) {
-                // Present is not convergence: the pin names the bytes.
-                let pinned = lock.github_release.get(&declaration.identity.key);
-                let acked = journal
-                    .acknowledged(&declaration.identity.to_string())
-                    .and_then(|ack| ack.bytes.as_deref());
-                match (pinned, acked) {
-                    (Some(pin), Some(sha)) if sha == pin.sha256 => Action::InSync,
-                    (Some(pin), _) => Action::Change {
-                        detail: format!("pinned {} waits", pin.version),
-                    },
-                    (None, _) => Action::InSync,
+            let target = crate::release::bin_dir(paths).join(crate::release::bin_of(declaration));
+            match std::fs::read(&target) {
+                Ok(current) => {
+                    // Present is not convergence. The acknowledgement
+                    // holds two facts: the installed binary's digest
+                    // (a hand swap is drift, and stays protected) and
+                    // the pin it came from (a bump is pending work).
+                    let Some(pin) = lock.github_release.get(&declaration.identity.key) else {
+                        return Action::InSync;
+                    };
+                    let ack = journal.acknowledged(&declaration.identity.to_string());
+                    let same_pin = ack
+                        .and_then(|ack| ack.context.as_deref())
+                        .is_some_and(|context| context == pin.sha256);
+                    let same_bytes = ack
+                        .and_then(|ack| ack.bytes.as_deref())
+                        .is_some_and(|sha| sha == crate::util::digest(&current));
+                    if same_pin && same_bytes {
+                        Action::InSync
+                    } else if same_pin {
+                        Action::Change {
+                            detail: "the binary differs from the applied pin".to_string(),
+                        }
+                    } else {
+                        Action::Change {
+                            detail: format!("pinned {} waits", pin.version),
+                        }
+                    }
                 }
-            } else {
-                Action::Create
+                Err(_) => Action::Create,
             }
         }
         Kind::Run => crate::exec::compare_run(declaration, paths),

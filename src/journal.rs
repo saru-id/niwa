@@ -78,8 +78,14 @@ pub enum Effect {
     ServiceSet { previous: Option<String> },
     /// A Homebrew service was started by this run; undo stops it.
     BrewServiceStarted,
-    /// A release binary was installed at this path; undo removes it.
-    BinaryInstalled { path: String },
+    /// A release binary was installed at this path. `previous` is
+    /// the digest of the archived bytes it replaced; undo restores
+    /// them, or removes the binary when there was nothing before.
+    BinaryInstalled {
+        path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        previous: Option<String>,
+    },
     /// A command ran. There is no taking it back, and undo says so by
     /// name instead of quietly skipping it.
     Irreversible { what: String },

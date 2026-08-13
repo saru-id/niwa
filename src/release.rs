@@ -29,11 +29,6 @@ pub fn bin_dir(paths: &Paths) -> PathBuf {
     paths.home.join(".local/bin")
 }
 
-/// Is the declared binary present?
-pub fn installed(paths: &Paths, bin: &str) -> bool {
-    bin_dir(paths).join(bin).is_file()
-}
-
 /// Ask the API for the latest release and hash its matching asset:
 /// the resolution `niwa update` records.
 pub fn resolve(repo: &str) -> Result<ReleasePin, Error> {
