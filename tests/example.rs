@@ -7,8 +7,10 @@
     reason = "this is a test crate; tests panic loudly by design"
 )]
 
+mod common;
+
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Output;
 
 /// Copy the example config into a throwaway home and return it.
 fn example_home() -> tempfile::TempDir {
@@ -46,13 +48,8 @@ fn stub_machine_name(home: &Path, name: &str) -> PathBuf {
 }
 
 fn check(home: &Path, path: Option<&Path>) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
-    command
-        .arg("check")
-        .env_clear()
-        .env("HOME", home)
-        .env("NIWA_MANAGED_PREFS", home.join("managed"))
-        .envs(coverage_env());
+    let mut command = common::command(home);
+    command.arg("check");
     if let Some(path) = path {
         command.env("PATH", path);
     }
@@ -100,14 +97,4 @@ fn the_host_overrides_change_the_count_not_the_verdict() {
         String::from_utf8(check(home.path(), Some(&bin)).stdout).unwrap()
     };
     assert_ne!(plain, as_airborne, "airborne adds casks and a hostname");
-}
-
-/// Instrumented builds tell children where to write coverage profiles
-/// through this variable; without it an instrumented child dumps a
-/// `default_*.profraw` into its working directory. Passing it through
-/// keeps coverage collectable and the filesystem clean.
-fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
-    std::env::var_os("LLVM_PROFILE_FILE")
-        .map(|value| ("LLVM_PROFILE_FILE", value))
-        .into_iter()
 }

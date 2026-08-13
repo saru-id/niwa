@@ -8,34 +8,9 @@
     reason = "this is a test crate; tests panic loudly by design"
 )]
 
+mod common;
+use common::{niwa, stdout, write};
 use std::path::Path;
-use std::process::{Command, Output};
-
-fn niwa(home: &Path, envs: &[(&str, &str)], args: &[&str]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
-    command
-        .args(args)
-        .env_clear()
-        .env("HOME", home)
-        // Hermetic by construction: without this, surveys would read
-        // the developer machine's real Homebrew receipts.
-        .env("HOMEBREW_PREFIX", home.join("brew"))
-        .envs(coverage_env());
-    for (key, value) in envs {
-        command.env(key, value);
-    }
-    command.output().unwrap()
-}
-
-fn write(home: &Path, rel: &str, content: &str) {
-    let path = home.join(".config/niwa").join(rel);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, content).unwrap();
-}
-
-fn stdout(output: &Output) -> String {
-    String::from_utf8(output.stdout.clone()).unwrap()
-}
 
 /// One file resource that is pending: the target does not exist yet.
 fn pending_config(home: &Path) {
@@ -643,14 +618,4 @@ fn force_takes_targets_and_protection_shows_the_diff() {
         "hand b\n",
         "the unnamed file keeps its hand edits"
     );
-}
-
-/// Instrumented builds tell children where to write coverage profiles
-/// through this variable; without it an instrumented child dumps a
-/// `default_*.profraw` into its working directory. Passing it through
-/// keeps coverage collectable and the filesystem clean.
-fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
-    std::env::var_os("LLVM_PROFILE_FILE")
-        .map(|value| ("LLVM_PROFILE_FILE", value))
-        .into_iter()
 }

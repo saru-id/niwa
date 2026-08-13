@@ -9,20 +9,15 @@
     reason = "this is a test crate; tests panic loudly by design"
 )]
 
+mod common;
+use common::niwa as niwa_full;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
 use proptest::prelude::*;
 
 fn niwa(home: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_niwa"))
-        .args(args)
-        .env_clear()
-        .env("HOME", home)
-        .env("NIWA_MANAGED_PREFS", home.join("managed"))
-        .envs(coverage_env())
-        .output()
-        .unwrap()
+    niwa_full(home, &[], args)
 }
 
 /// One generated resource: a file with declared content, or a link
@@ -146,14 +141,4 @@ proptest! {
             );
         }
     }
-}
-
-/// Instrumented builds tell children where to write coverage profiles
-/// through this variable; without it an instrumented child dumps a
-/// `default_*.profraw` into its working directory. Passing it through
-/// keeps coverage collectable and the filesystem clean.
-fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
-    std::env::var_os("LLVM_PROFILE_FILE")
-        .map(|value| ("LLVM_PROFILE_FILE", value))
-        .into_iter()
 }

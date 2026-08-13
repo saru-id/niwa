@@ -6,32 +6,13 @@
     reason = "this is a test crate; tests panic loudly by design"
 )]
 
+mod common;
+use common::{command, niwa as niwa_full, stderr, stdout, write};
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
 
 fn niwa(home: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_niwa"))
-        .args(args)
-        .env_clear()
-        .env("HOME", home)
-        .env("NIWA_MANAGED_PREFS", home.join("managed"))
-        .envs(coverage_env())
-        .output()
-        .unwrap()
-}
-
-fn write(home: &Path, rel: &str, content: &str) {
-    let path = home.join(".config/niwa").join(rel);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, content).unwrap();
-}
-
-fn stdout(output: &Output) -> String {
-    String::from_utf8(output.stdout.clone()).unwrap()
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8(output.stderr.clone()).unwrap()
+    niwa_full(home, &[], args)
 }
 
 #[test]
@@ -190,23 +171,10 @@ fn xdg_config_home_is_honored_when_absolute() {
     let config = elsewhere.path().join("niwa");
     std::fs::create_dir_all(&config).unwrap();
     std::fs::write(config.join("init.luau"), "").unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_niwa"))
+    let output = command(home.path())
         .arg("check")
-        .env_clear()
-        .env("HOME", home.path())
-        .envs(coverage_env())
         .env("XDG_CONFIG_HOME", elsewhere.path())
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-}
-
-/// Instrumented builds tell children where to write coverage profiles
-/// through this variable; without it an instrumented child dumps a
-/// `default_*.profraw` into its working directory. Passing it through
-/// keeps coverage collectable and the filesystem clean.
-fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
-    std::env::var_os("LLVM_PROFILE_FILE")
-        .map(|value| ("LLVM_PROFILE_FILE", value))
-        .into_iter()
 }

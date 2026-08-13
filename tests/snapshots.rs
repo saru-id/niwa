@@ -7,8 +7,8 @@
     reason = "this is a test crate; tests panic loudly by design"
 )]
 
+mod common;
 use std::path::Path;
-use std::process::Command;
 
 struct Run {
     stdout: String,
@@ -17,16 +17,8 @@ struct Run {
 }
 
 fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
-    command
-        .args(args)
-        .env_clear()
-        .env("HOME", home)
-        .env("NIWA_MANAGED_PREFS", home.join("managed"))
-        // Hermetic by construction: without this, surveys would read
-        // the developer machine's real Homebrew receipts.
-        .env("HOMEBREW_PREFIX", home.join("brew"))
-        .envs(coverage_env());
+    let mut command = common::command(home);
+    command.args(args);
     if force_color {
         command.env("FORCE_COLOR", "1");
     }
@@ -43,11 +35,7 @@ fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
     }
 }
 
-fn write(home: &Path, rel: &str, content: &str) {
-    let path = home.join(".config/niwa").join(rel);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, content).unwrap();
-}
+use common::write;
 
 /// A small config with pending file and defaults work.
 fn pending_home() -> tempfile::TempDir {
@@ -235,27 +223,10 @@ fn the_pull_screen_stages_an_unmanaged_package() {
         "{\"installed_on_request\":true}",
     )
     .unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_niwa"))
-        .args(["pull", "--all"])
-        .env_clear()
-        .env("HOME", home.path())
-        .env("HOMEBREW_PREFIX", home.path().join("brew"))
-        .envs(coverage_env())
-        .output()
-        .unwrap();
+    let output = common::niwa(home.path(), &[], &["pull", "--all"]);
     assert_eq!(output.status.code(), Some(0));
     let stdout = String::from_utf8(output.stdout)
         .unwrap()
         .replace(&home.path().display().to_string(), "~");
     insta::assert_snapshot!(stdout);
-}
-
-/// Instrumented builds tell children where to write coverage profiles
-/// through this variable; without it an instrumented child dumps a
-/// `default_*.profraw` into its working directory. Passing it through
-/// keeps coverage collectable and the filesystem clean.
-fn coverage_env() -> impl Iterator<Item = (&'static str, std::ffi::OsString)> {
-    std::env::var_os("LLVM_PROFILE_FILE")
-        .map(|value| ("LLVM_PROFILE_FILE", value))
-        .into_iter()
 }
