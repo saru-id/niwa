@@ -96,9 +96,9 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
         return Ok(ExitCode::SUCCESS);
     };
     Ok(match line.as_str() {
-        "a" => super::apply_verb::run(
+        "a" => super::apply::run(
             out,
-            &super::apply_verb::Options {
+            &super::apply::Options {
                 yes: false,
                 dirty: false,
                 force: crate::model::action::ForceScope::None,

@@ -51,9 +51,9 @@ fn main() -> ExitCode {
             no_privileged,
             only,
             sandbox,
-        } => verbs::apply_verb::run(
+        } => verbs::apply::run(
             &out,
-            &verbs::apply_verb::Options {
+            &verbs::apply::Options {
                 yes,
                 dirty,
                 force: match force {

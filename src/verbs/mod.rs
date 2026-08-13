@@ -2,7 +2,7 @@
 //! the behavior.
 
 pub mod add;
-pub mod apply_verb;
+pub mod apply;
 pub mod check;
 pub mod dashboard;
 pub mod doctor;
