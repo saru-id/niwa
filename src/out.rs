@@ -462,13 +462,18 @@ pub fn ago(timestamp: &str) -> String {
     let Ok(then) = timestamp.parse::<jiff::Timestamp>() else {
         return timestamp.to_string();
     };
-    let seconds = (jiff::Timestamp::now() - then).get_seconds().max(0);
-    match seconds {
+    elapsed_ago((jiff::Timestamp::now() - then).get_seconds())
+}
+
+/// The unit ladder behind `ago`, pure so the boundaries are testable:
+/// a future stamp reads as now, never as a negative age.
+fn elapsed_ago(seconds: i64) -> String {
+    match seconds.max(0) {
         0..=59 => "just now".to_string(),
-        60..=3_599 => format!("{}m ago", seconds / 60),
-        3_600..=86_399 => format!("{}h ago", seconds / 3600),
-        86_400..=604_799 => format!("{}d ago", seconds / 86_400),
-        _ => format!("{}w ago", seconds / 604_800),
+        seconds @ 60..=3_599 => format!("{}m ago", seconds / 60),
+        seconds @ 3_600..=86_399 => format!("{}h ago", seconds / 3600),
+        seconds @ 86_400..=604_799 => format!("{}d ago", seconds / 86_400),
+        seconds => format!("{}w ago", seconds / 604_800),
     }
 }
 
@@ -487,6 +492,21 @@ mod tests {
     #![allow(clippy::unwrap_used, reason = "tests panic loudly by design")]
 
     use super::*;
+
+    #[test]
+    fn ago_switches_units_exactly_at_the_boundaries() {
+        assert_eq!(elapsed_ago(0), "just now");
+        assert_eq!(elapsed_ago(59), "just now");
+        assert_eq!(elapsed_ago(60), "1m ago");
+        assert_eq!(elapsed_ago(3_599), "59m ago");
+        assert_eq!(elapsed_ago(3_600), "1h ago");
+        assert_eq!(elapsed_ago(86_399), "23h ago");
+        assert_eq!(elapsed_ago(86_400), "1d ago");
+        assert_eq!(elapsed_ago(604_799), "6d ago");
+        assert_eq!(elapsed_ago(604_800), "1w ago");
+        assert_eq!(elapsed_ago(-3_600), "just now");
+        assert_eq!(ago("not a time"), "not a time");
+    }
 
     fn plain_out() -> Out {
         Out {

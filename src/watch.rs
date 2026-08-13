@@ -14,12 +14,8 @@ fn plist_path(paths: &Paths) -> PathBuf {
     crate::services::agent_plist(paths, LABEL)
 }
 
-/// Write the watcher's plist and load it. `init` calls this; the
-/// installer's first apply reaches it through init.
-pub fn install(paths: &Paths) -> Result<(), Error> {
-    let binary =
-        std::env::current_exe().map_err(|error| Error::apply("finding the niwa binary", error))?;
-
+/// The job, described: what launchd is asked to run, when.
+fn job(paths: &Paths, binary: &std::path::Path) -> plist::Dictionary {
     let mut dict = plist::Dictionary::new();
     dict.insert("Label".to_string(), plist::Value::String(LABEL.to_string()));
     dict.insert(
@@ -53,7 +49,15 @@ pub fn install(paths: &Paths) -> Result<(), Error> {
         "StartCalendarInterval".to_string(),
         plist::Value::Dictionary(weekly),
     );
+    dict
+}
 
+/// Write the watcher's plist and load it. `init` calls this; the
+/// installer's first apply reaches it through init.
+pub fn install(paths: &Paths) -> Result<(), Error> {
+    let binary =
+        std::env::current_exe().map_err(|error| Error::apply("finding the niwa binary", error))?;
+    let dict = job(paths, &binary);
     let target = plist_path(paths);
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)
@@ -73,4 +77,49 @@ pub fn install(paths: &Paths) -> Result<(), Error> {
 pub fn remove(paths: &Paths) {
     crate::services::bootout(paths, LABEL);
     let _ = std::fs::remove_file(plist_path(paths));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_job_description_carries_the_designed_plist() {
+        let home = tempfile::tempdir().unwrap();
+        let paths = Paths {
+            home: home.path().to_path_buf(),
+            config: home.path().join(".config/niwa"),
+            state: home.path().join(".local/state/niwa"),
+            brew_prefix: home.path().join("brew"),
+            data: home.path().join(".local/share"),
+        };
+        let dict = job(&paths, std::path::Path::new("/opt/niwa/bin/niwa"));
+        let arguments: Vec<&str> = dict["ProgramArguments"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(plist::Value::as_string)
+            .collect();
+        assert_eq!(&arguments[1..], ["check", "--notify"]);
+        let watched: Vec<&str> = dict["WatchPaths"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(plist::Value::as_string)
+            .collect();
+        assert_eq!(
+            watched,
+            [
+                paths.config.display().to_string(),
+                home.path()
+                    .join("Library/Preferences")
+                    .display()
+                    .to_string()
+            ]
+        );
+        assert_eq!(dict["ThrottleInterval"].as_signed_integer(), Some(5));
+        let weekly = dict["StartCalendarInterval"].as_dictionary().unwrap();
+        assert_eq!(weekly["Weekday"].as_signed_integer(), Some(1));
+        assert_eq!(weekly["Hour"].as_signed_integer(), Some(9));
+    }
 }

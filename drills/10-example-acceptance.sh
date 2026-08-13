@@ -24,30 +24,7 @@ cat >"$BIN/scutil" <<'EOF'
 echo "airborne"
 EOF
 
-cat >"$BIN/brew" <<EOF
-#!/bin/sh
-echo "brew \$*" >>"$CALLS"
-case "\$1" in
-install)
-    shift
-    kind="Cellar"
-    for name in "\$@"; do
-        if [ "\$name" = "--cask" ]; then kind="Caskroom"; continue; fi
-        mkdir -p "$HOMEBREW_PREFIX/\$kind/\$name/1.0.0"
-        [ "\$kind" = "Cellar" ] && echo '{"installed_on_request":true}' \
-            >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
-    done
-    ;;
-services)
-    if [ "\$2" = "start" ]; then
-        mkdir -p "$HOME/Library/LaunchAgents"
-        printf '<?xml version="1.0"?><plist version="1.0"><dict/></plist>' \
-            >"$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
-    fi
-    ;;
-esac
-exit 0
-EOF
+stub_brew "$CALLS"
 
 cat >"$BIN/npm" <<EOF
 #!/bin/sh
@@ -203,7 +180,10 @@ check 4 "the example applies clean (exit 0)" test "$STATUS" -eq 0
 # here means nothing else remains pending — no file, package,
 # preference under the home, or service.
 niwa plan
-check 4b "only /Library work and the rosetta run stay pending" \
+check 4a "the plan answers pending, not a crash (exit 2)" test "$STATUS" -eq 2
+check 4b "the pending work is the /Library kind" \
+    grep -Eq 'hosts:|rosetta|login_shell|hostname' "$SANDBOX/stdout"
+check 4c "only /Library work and the rosetta run stay pending" \
     sh -c "! grep -Eq 'zshrc|starship|ghostty|netrc|brew\.formula|brew\.cask|npm:|mise:|service:|lazygit|com\.apple\.dock|com\.apple\.finder|nvim' '$SANDBOX/stdout'"
 
 # --- what the machine now is -----------------------------------------

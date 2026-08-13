@@ -47,6 +47,52 @@ export PATH="$STUBS:/usr/bin:/bin"
 cleanup() { rm -rf "$SANDBOX"; }
 trap cleanup EXIT
 
+# stub_brew [logfile]: the one general-purpose brew. Lays receipts in
+# the sandbox prefix for install (formulae and casks in their own
+# rooms), removes them for uninstall, and answers brew services with
+# an agent plist. Drills proving brew-specific behavior (failure
+# shapes, outdated, slowness) write their own stub instead.
+stub_brew() {
+    _brewlog="${1:-$SANDBOX/brew.log}"
+    BIN="$SANDBOX/bin"
+    mkdir -p "$BIN" "$HOMEBREW_PREFIX/Cellar" "$HOMEBREW_PREFIX/Caskroom"
+    cat >"$BIN/brew" <<BREW_STUB
+#!/bin/sh
+echo "brew \$*" >>"$_brewlog"
+case "\$1" in
+install)
+    shift
+    kind="Cellar"
+    for name in "\$@"; do
+        if [ "\$name" = "--cask" ]; then kind="Caskroom"; continue; fi
+        mkdir -p "$HOMEBREW_PREFIX/\$kind/\$name/1.0.0"
+        [ "\$kind" = "Cellar" ] && echo '{"installed_on_request":true}' \
+            >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
+    done
+    ;;
+uninstall)
+    shift
+    kind="Cellar"
+    for name in "\$@"; do
+        if [ "\$name" = "--cask" ]; then kind="Caskroom"; continue; fi
+        rm -rf "$HOMEBREW_PREFIX/\$kind/\$name"
+    done
+    ;;
+services)
+    if [ "\$2" = "start" ]; then
+        mkdir -p "$HOME/Library/LaunchAgents"
+        printf '<?xml version="1.0"?><plist version="1.0"><dict/></plist>' \
+            >"$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
+    elif [ "\$2" = "stop" ]; then
+        rm -f "$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
+    fi
+    ;;
+esac
+exit 0
+BREW_STUB
+    chmod 755 "$BIN/brew"
+}
+
 # niwa <args...>: run the binary against the sandbox with a hard
 # deadline; the exit code lands in $STATUS without tripping set -e.
 # The deadline is perl's alarm, because macOS ships no timeout tool.

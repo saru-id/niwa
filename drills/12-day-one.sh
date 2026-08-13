@@ -152,22 +152,7 @@ check 11e "a cut-off installer stream installs nothing"     sh -c "! test -e '$F
 # --- from nothing to a governed machine -----------------------------
 export HOMEBREW_PREFIX="$SANDBOX/brew"
 mkdir -p "$HOMEBREW_PREFIX/Cellar"
-cat >"$BIN/brew" <<EOF
-#!/bin/sh
-case "\$1" in
-install)
-    shift
-    for name in "\$@"; do
-        [ "\$name" = "--cask" ] && continue
-        mkdir -p "$HOMEBREW_PREFIX/Cellar/\$name/1.0.0"
-        echo '{"installed_on_request":true}' \
-            >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
-    done
-    ;;
-esac
-exit 0
-EOF
-chmod 755 "$BIN/brew"
+stub_brew
 export PATH="$HOME/.local/bin:$BIN:$STUBS:/usr/bin:/bin"
 
 installed() {

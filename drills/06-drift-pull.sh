@@ -17,29 +17,7 @@ mkdir -p "$HOMEBREW_PREFIX/Cellar" "$HOMEBREW_PREFIX/Caskroom"
 CALLS="$SANDBOX/calls.log"
 BIN="$SANDBOX/bin"
 mkdir -p "$BIN"
-cat >"$BIN/brew" <<EOF
-#!/bin/sh
-echo "brew \$*" >>"$CALLS"
-case "\$1" in
-install)
-    shift
-    for name in "\$@"; do
-        [ "\$name" = "--cask" ] && continue
-        mkdir -p "$HOMEBREW_PREFIX/Cellar/\$name/1.0.0"
-        echo '{"installed_on_request":true}' \
-            >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
-    done
-    ;;
-uninstall)
-    shift
-    for name in "\$@"; do
-        [ "\$name" = "--cask" ] && continue
-        rm -rf "$HOMEBREW_PREFIX/Cellar/\$name"
-    done
-    ;;
-esac
-exit 0
-EOF
+stub_brew "$CALLS"
 cat >"$BIN/osascript" <<EOF
 #!/bin/sh
 echo "osascript \$*" >>"$CALLS"

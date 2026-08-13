@@ -22,4 +22,18 @@ fn the_shipped_types_are_a_valid_luau_module() {
         .unwrap();
     // The module is types plus one cast return; at runtime that is nil.
     assert!(value.is_nil());
+
+    // Syntax alone would pass on a gutted file; the load-bearing
+    // exported types must still be declared by name.
+    for name in [
+        "export type Result",
+        "export type Plist",
+        "export type Secret",
+        "export type Rendered",
+        "export type ReadHandle",
+        "export type ActHandle",
+        "export type Niwa",
+    ] {
+        assert!(source.contains(name), "the shipped types lost `{name}`");
+    }
 }

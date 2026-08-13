@@ -32,22 +32,7 @@ echo '{"installed_on_request":true}' \
 echo '{"installed_on_request":false}' \
     >"$HOMEBREW_PREFIX/Cellar/oniguruma/6.9.9/INSTALL_RECEIPT.json"
 
-cat >"$BIN/brew" <<EOF
-#!/bin/sh
-case "\$1" in
-install)
-    shift
-    for name in "\$@"; do
-        [ "\$name" = "--cask" ] && continue
-        mkdir -p "$HOMEBREW_PREFIX/Cellar/\$name/1.0.0"
-        echo '{"installed_on_request":true}' \
-            >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
-    done
-    ;;
-esac
-exit 0
-EOF
-chmod 755 "$BIN/brew"
+stub_brew
 export PATH="$BIN:$STUBS:/usr/bin:/bin"
 
 # --- init: the starter config describes the machine it scanned ------

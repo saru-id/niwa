@@ -66,8 +66,11 @@ check 10 "explain shows the declaration and its source" \
 check 11 "explain shows the actual value" grep -q "actual" "$SANDBOX/stdout"
 check 12 "explain shows the acknowledgement" grep -q "acknowledged" "$SANDBOX/stdout"
 
-niwa explain nothing-like-this
-check 13 "an unknown target fails with candidates (exit 1)" test "$STATUS" -eq 1
+niwa explain dock
+check 13 "an ambiguous target fails instead of guessing (exit 1)" test "$STATUS" -eq 1
+check 13b "both candidates are offered by name" \
+    sh -c "grep -q 'defaults:com.apple.dock:autohide' '$SANDBOX/stdout' \
+        && grep -q 'defaults:com.apple.dock:tilesize' '$SANDBOX/stdout'"
 
 # --- doctor: the net answers for itself -------------------------------
 niwa doctor --deep
@@ -114,6 +117,8 @@ check 18 "the rename is named, not guessed at" \
 echo "-- an uncommitted edit" >>"$HOME/.config/niwa/init.luau"
 niwa apply --yes
 check 19 "apply --yes refuses a dirty tree (exit 1)" test "$STATUS" -eq 1
+check 19b "the refusal names the uncommitted tree" \
+    grep -q "uncommitted" "$SANDBOX/stderr"
 niwa apply --yes --dirty
 check 20 "--dirty says you truly mean it (exit 0)" test "$STATUS" -eq 0
 

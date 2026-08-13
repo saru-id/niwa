@@ -26,24 +26,7 @@ cat >"$BIN/killall" <<EOF
 echo "killall \$*" >>"$CALLS"
 exit 0
 EOF
-cat >"$BIN/brew" <<EOF
-#!/bin/sh
-echo "brew \$*" >>"$CALLS"
-if [ "\$1" = "services" ] && [ "\$2" = "start" ]; then
-    mkdir -p "$HOME/Library/LaunchAgents"
-    printf '<?xml version="1.0"?><plist version="1.0"><dict/></plist>' \
-        >"$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
-elif [ "\$1" = "services" ] && [ "\$2" = "stop" ]; then
-    rm -f "$HOME/Library/LaunchAgents/homebrew.mxcl.\$3.plist"
-elif [ "\$1" = "install" ]; then
-    shift
-    for name in "\$@"; do
-        mkdir -p "$HOMEBREW_PREFIX/Cellar/\$name/1.0.0"
-        echo '{}' >"$HOMEBREW_PREFIX/Cellar/\$name/1.0.0/INSTALL_RECEIPT.json"
-    done
-fi
-exit 0
-EOF
+stub_brew "$CALLS"
 chmod 755 "$BIN/launchctl" "$BIN/killall" "$BIN/brew"
 export PATH="$BIN:$STUBS:/usr/bin:/bin"
 

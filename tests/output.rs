@@ -316,8 +316,9 @@ fn check_says_plainly_when_the_analyzer_is_missing() {
     let output = niwa(home.path(), &[], &["check"]);
     assert_eq!(output.status.code(), Some(0));
     assert!(
-        stdout(&output).contains("luau-analyze is not installed"),
-        "the skipped analyzer must be named: {}",
+        stdout(&output)
+            .contains("luau-analyze is not installed · deeper type checks were skipped\n"),
+        "the skipped analyzer must be named, in the one agreed voice: {}",
         stdout(&output)
     );
 }
@@ -406,7 +407,20 @@ fn the_command_surface_is_exactly_the_twenty_verbs() {
     let home = tempfile::tempdir().unwrap();
     let output = niwa(home.path(), &[], &["--help"]);
     let text = stdout(&output);
-    for verb in [
+    // Parse the indented rows of the Commands block: the actual set,
+    // so a verb added or lost fails this test either way.
+    let block = text
+        .split_once("Commands:\n")
+        .map(|(_, rest)| rest)
+        .and_then(|rest| rest.split_once("\n\n").map(|(block, _)| block))
+        .unwrap_or_default();
+    let mut listed: Vec<&str> = block
+        .lines()
+        .filter_map(|line| line.split_whitespace().next())
+        .filter(|name| *name != "help")
+        .collect();
+    listed.sort_unstable();
+    let mut expected = [
         "apply",
         "plan",
         "pull",
@@ -426,11 +440,11 @@ fn the_command_surface_is_exactly_the_twenty_verbs() {
         "migrate",
         "seal-key",
         "uninstall",
-    ] {
-        assert!(text.contains(verb), "verb missing from the surface: {verb}");
-    }
+    ];
+    expected.sort_unstable();
     // Nineteen subcommands; plain `niwa` — the dashboard — is the
     // twentieth verb of the contract.
+    assert_eq!(listed, expected);
 }
 
 #[test]

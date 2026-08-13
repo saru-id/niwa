@@ -143,14 +143,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn known_credential_shapes_are_named() {
-        let hits =
-            scan_bytes(b"machine api.github.com password ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345\n");
-        assert_eq!(hits.len(), 1);
-        assert!(hits[0].1.contains("GitHub"), "{}", hits[0].1);
+    fn every_known_credential_shape_is_named() {
+        // One row per shape the gate promises to catch: the token,
+        // and the words the reason must carry.
+        let table: [(&str, &str); 7] = [
+            (
+                "machine api.github.com password ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+                "GitHub personal",
+            ),
+            (
+                "token = github_pat_11AAAAAAA0abcdefghijklmnop",
+                "fine-grained",
+            ),
+            ("aws_access_key_id = AKIAIOSFODNN7EXAMPLE", "AWS"),
+            ("SLACK=xoxb-2222222222-abcdefghijklm", "Slack bot"),
+            ("SLACK=xoxp-1111111111-abcdefghijklm", "Slack user"),
+            (
+                "export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnop",
+                "Anthropic",
+            ),
+            ("-----BEGIN OPENSSH PRIVATE KEY-----", "private key"),
+        ];
+        for (line, expected) in table {
+            let hits = scan_bytes(format!("{line}\n").as_bytes());
+            assert_eq!(hits.len(), 1, "missed: {line}");
+            assert!(hits[0].1.contains(expected), "{line} → {}", hits[0].1);
+        }
+    }
 
-        let hits = scan_bytes(b"-----BEGIN OPENSSH PRIVATE KEY-----\n");
-        assert!(hits[0].1.contains("private key"));
+    #[test]
+    fn scan_repo_skips_secrets_dotfiles_and_the_lockfile() {
+        let dir = tempfile::tempdir().unwrap();
+        let secret = "password ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345\n";
+        std::fs::create_dir_all(dir.path().join("secrets")).unwrap();
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        std::fs::write(dir.path().join("secrets/leaky"), secret).unwrap();
+        std::fs::write(dir.path().join(".git/config"), secret).unwrap();
+        std::fs::write(dir.path().join(".netrc"), secret).unwrap();
+        std::fs::write(dir.path().join("niwa.lock"), secret).unwrap();
+        std::fs::write(dir.path().join("caught.luau"), secret).unwrap();
+        let hits = scan_repo(dir.path());
+        let files: Vec<&str> = hits.iter().map(|hit| hit.file.as_str()).collect();
+        assert_eq!(files, ["caught.luau"]);
     }
 
     #[test]
