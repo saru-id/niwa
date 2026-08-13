@@ -19,8 +19,8 @@ pub struct Facts {
     pub arch: String,
     /// The macOS version; empty when the system will not say.
     pub os: String,
-    /// Machine tags; the `tag` verb will write them, later slices read
-    /// them from the journal.
+    /// Machine tags: the `tag` verb writes them to a plain file
+    /// beside the journal, and this read is the other half.
     pub tags: Vec<String>,
     /// Where Homebrew lives. `HOMEBREW_PREFIX` wins when set, the
     /// architecture default otherwise.

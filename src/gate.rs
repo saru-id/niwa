@@ -31,12 +31,21 @@ fn walk(root: &Path, dir: &Path, hits: &mut Vec<Hit>) {
     for entry in entries.flatten() {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with('.') || name == "secrets" || name == "niwa.lock" {
+        // Only what the design carves out is skipped: sealed files,
+        // the lockfile, and the repo's own machinery. A dot-named
+        // SOURCE (files/.netrc is a dotfile repo's bread) is scanned
+        // like anything else.
+        if name == ".git" || name == "secrets" || name == "niwa.lock" || name == ".luaurc" {
             continue;
         }
-        if path.is_dir() {
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_dir() {
             walk(root, &path, hits);
-        } else if let Ok(bytes) = std::fs::read(&path) {
+        } else if kind.is_file()
+            && let Ok(bytes) = std::fs::read(&path)
+        {
             let relative = path
                 .strip_prefix(root)
                 .unwrap_or(&path)
@@ -183,8 +192,11 @@ mod tests {
         std::fs::write(dir.path().join("niwa.lock"), secret).unwrap();
         std::fs::write(dir.path().join("caught.luau"), secret).unwrap();
         let hits = scan_repo(dir.path());
-        let files: Vec<&str> = hits.iter().map(|hit| hit.file.as_str()).collect();
-        assert_eq!(files, ["caught.luau"]);
+        let mut files: Vec<&str> = hits.iter().map(|hit| hit.file.as_str()).collect();
+        files.sort_unstable();
+        // The dot-named source IS caught; .git, secrets/, and the
+        // lockfile stay out.
+        assert_eq!(files, [".netrc", "caught.luau"]);
     }
 
     #[test]

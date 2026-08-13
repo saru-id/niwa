@@ -64,12 +64,52 @@ fn doctor(out: &Out, deep: bool) -> Result<ExitCode, Error> {
         healthy &= lockfile_check(out, &paths, analysis);
     }
 
-    // The watcher: honest about not being wired yet.
-    let watcher = paths
-        .home
-        .join("Library/LaunchAgents/rs.niwa.watcher.plist");
+    // The watcher: installed, pointing at a binary that exists, and
+    // known to launchd — presence of a plist alone proves nothing.
+    let watcher = crate::services::agent_plist(&paths, crate::watch::LABEL);
     if watcher.is_file() {
-        out.result(Mark::Ok, "the watcher's agent is installed");
+        let binary_ok = plist::Value::from_file(&watcher)
+            .ok()
+            .and_then(|value| {
+                value.as_dictionary().and_then(|dict| {
+                    dict.get("ProgramArguments")
+                        .and_then(plist::Value::as_array)
+                        .and_then(|arguments| arguments.first())
+                        .and_then(plist::Value::as_string)
+                        .map(|program| std::path::Path::new(program).is_file())
+                })
+            })
+            .unwrap_or(false);
+        let loaded =
+            crate::util::proc::bounded_stdout("id", &["-u"], std::time::Duration::from_secs(5))
+                .is_some_and(|uid| {
+                    crate::util::proc::bounded_output(
+                        "launchctl",
+                        &[
+                            "print",
+                            &format!("gui/{}/{}", uid.trim(), crate::watch::LABEL),
+                        ],
+                        std::time::Duration::from_secs(10),
+                    )
+                    .is_some_and(|finished| finished.code == Some(0))
+                });
+        match (binary_ok, loaded) {
+            (true, true) => out.result(Mark::Ok, "the watcher is installed and loaded"),
+            (true, false) => {
+                healthy = false;
+                out.result(
+                    Mark::Failed,
+                    "the watcher's plist exists but launchd does not know it · run niwa init",
+                );
+            }
+            (false, _) => {
+                healthy = false;
+                out.result(
+                    Mark::Failed,
+                    "the watcher's plist points at a binary that is not there · run niwa init",
+                );
+            }
+        }
     } else {
         out.note("the watcher is not installed; niwa init wires it");
     }

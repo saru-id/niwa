@@ -266,8 +266,8 @@ fn declare_mas(lua: &Lua, ctx: &Ctx, apps: &Table) -> mlua::Result<Table> {
     result_table(lua, ctx, &aggregate(&truths))
 }
 
-/// `niwa.mise.tool { node = "lts" }`: versions pin in niwa.lock when
-/// the lockfile lands.
+/// `niwa.mise.tool { node = "lts" }`: the version a spec resolves to
+/// pins in niwa.lock, and the pin wins over the spec ever after.
 fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {

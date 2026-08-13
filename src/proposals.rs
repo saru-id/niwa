@@ -359,6 +359,17 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
             crate::apply::uninstall_package(paths, &parsed)?;
         }
+        Kind::GithubRelease => {
+            let bin = journal.acknowledged(identity).map_or_else(
+                || key.rsplit('/').next().unwrap_or(key).to_string(),
+                |ack| crate::release::bin_of_spec(&ack.spec, key),
+            );
+            let target = crate::release::bin_dir(paths).join(bin);
+            if let Ok(current) = std::fs::read(&target) {
+                crate::apply::archive(&archive_root, identity, &current)?;
+                let _ = std::fs::remove_file(&target);
+            }
+        }
         Kind::Service => {
             crate::services::bootout(paths, key);
             let plist = crate::services::agent_plist(paths, key);

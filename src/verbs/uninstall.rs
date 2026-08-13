@@ -16,6 +16,7 @@ pub fn run(out: &Out, purge: bool) -> ExitCode {
 
 fn uninstall(out: &Out, purge: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
+    let _lock = crate::apply::Lock::take(&paths.state)?;
 
     // The watcher first, so nothing re-launches a binary that is
     // about to vanish.

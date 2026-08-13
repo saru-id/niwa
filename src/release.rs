@@ -96,18 +96,18 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
 /// The binary a release declaration installs: its `bin` field, or
 /// the repo's own name.
 pub fn bin_of(declaration: &Declaration) -> String {
-    if let Value::Map(fields) = &declaration.spec
+    bin_of_spec(&declaration.spec, &declaration.identity.key)
+}
+
+/// The same rule from a bare spec: the `bin` field, or the repo's
+/// tail — orphan handling has the acknowledgement, not a declaration.
+pub fn bin_of_spec(spec: &Value, repo: &str) -> String {
+    if let Value::Map(fields) = spec
         && let Some(Value::Str(bin)) = fields.get("bin")
     {
         return bin.clone();
     }
-    declaration
-        .identity
-        .key
-        .rsplit('/')
-        .next()
-        .unwrap_or(&declaration.identity.key)
-        .to_string()
+    repo.rsplit('/').next().unwrap_or(repo).to_string()
 }
 
 /// Where a prefetched asset waits, named by its locked digest: a

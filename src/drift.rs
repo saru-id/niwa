@@ -384,7 +384,7 @@ fn orphans(
         if declared.contains(&identity) {
             continue;
         }
-        if still_present(paths, &identity) {
+        if still_present(paths, journal, &identity) {
             findings.push(Finding::Orphan { identity });
         } else {
             stale.push(identity);
@@ -393,8 +393,8 @@ fn orphans(
 }
 
 /// Is the thing an acknowledgement describes still on the machine?
-fn still_present(paths: &Paths, identity: &str) -> bool {
-    let identity = crate::model::Identity::parse(identity);
+fn still_present(paths: &Paths, journal: &Journal, raw: &str) -> bool {
+    let identity = crate::model::Identity::parse(raw);
     let key = identity.key.as_str();
     match &identity.kind {
         Kind::File | Kind::Link => paths.expand_home(key).symlink_metadata().is_ok(),
@@ -411,6 +411,12 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
         // are never "gone on both sides", or dropping one would
         // silently re-arm an irreversible body.
         Kind::Run | Kind::Once => true,
+        // A release is present while its binary is; the ack's spec
+        // names the file.
+        Kind::GithubRelease => journal
+            .acknowledged(raw)
+            .map(|ack| crate::release::bin_of_spec(&ack.spec, key))
+            .is_some_and(|bin| crate::release::bin_dir(paths).join(bin).is_file()),
         Kind::Npm => crate::npm::installed(key),
         Kind::Mise => crate::mise::installed(paths, key, None).is_some(),
         Kind::Service => crate::services::agent_plist(paths, key).is_file(),
