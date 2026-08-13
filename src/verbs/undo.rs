@@ -65,13 +65,19 @@ fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {
             .filter(|step| !matches!(step.effect, crate::journal::Effect::Irreversible { .. }))
             .count()
     };
+    let target = journal.last_apply().map(|entry| entry.id);
     let before = journal.last_apply().map_or(0, &reversible);
     let reversed = match reverse_last(&paths, &mut journal) {
         Ok(reversed) => reversed,
         Err(error) => {
             // The machine's state, counted: what came back, what did
             // not, and that running undo again resumes from here.
-            let remaining = journal.last_apply().map_or(0, &reversible);
+            // Only the entry this undo targeted counts: a drained
+            // entry means everything reversible in it came back.
+            let remaining = journal
+                .last_apply()
+                .filter(|entry| Some(entry.id) == target)
+                .map_or(0, &reversible);
             out.error(&error);
             out.result(
                 Mark::Failed,

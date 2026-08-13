@@ -342,9 +342,24 @@ fn unmanaged_packages(
     journal: &Journal,
     findings: &mut Vec<Finding>,
 ) {
+    // A tap-qualified declaration installs under its tail: the
+    // covered set holds every brew identity reduced to its tail, so
+    // the receipt's short name never reads as unmanaged.
+    let covered: std::collections::HashSet<String> = declared
+        .iter()
+        .cloned()
+        .chain(journal.acknowledged_identities())
+        .filter(|identity| identity.starts_with("brew."))
+        .map(|identity| match identity.split_once(':') {
+            Some((kind, key)) => {
+                format!("{kind}:{}", key.rsplit('/').next().unwrap_or(key))
+            }
+            None => identity,
+        })
+        .collect();
     for name in crate::brew::requested_formulae(paths) {
         let identity = format!("brew.formula:{name}");
-        if !declared.contains(&identity) && journal.acknowledged(&identity).is_none() {
+        if !covered.contains(&identity) {
             findings.push(Finding::UnmanagedPackage {
                 kind: Kind::BrewFormula,
                 name,
@@ -353,7 +368,7 @@ fn unmanaged_packages(
     }
     for name in crate::brew::installed_casks(paths) {
         let identity = format!("brew.cask:{name}");
-        if !declared.contains(&identity) && journal.acknowledged(&identity).is_none() {
+        if !covered.contains(&identity) {
             findings.push(Finding::UnmanagedPackage {
                 kind: Kind::BrewCask,
                 name,

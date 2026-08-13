@@ -113,8 +113,27 @@ fn weigh(body: &str) -> (usize, usize, Option<usize>) {
             '"' | '\'' | '`' => in_string = Some(character),
             '-' if body[index..].starts_with("--") => {
                 let after = &body[index + 2..];
-                let open = long_open(after).filter(|level| !after.contains(&closer(*level)));
-                return (opens, closes, open);
+                if let Some(level) = long_open(after) {
+                    if let Some(position) = after.find(&closer(level)) {
+                        // An inline long comment: structure resumes
+                        // after its closer and still counts.
+                        let (rest_opens, rest_closes, rest_long) =
+                            weigh(&after[position + closer(level).len()..]);
+                        let mut opens = opens + rest_opens;
+                        let mut closes_total = closes;
+                        for _ in 0..rest_closes {
+                            if opens > 0 {
+                                opens -= 1;
+                            } else {
+                                closes_total += 1;
+                            }
+                        }
+                        return (opens, closes_total, rest_long);
+                    }
+                    return (opens, closes, Some(level));
+                }
+                // A plain comment eats the rest of the line.
+                return (opens, closes, None);
             }
             '[' => {
                 if let Some(level) = long_open(&body[index..]) {
@@ -168,6 +187,8 @@ mod tests {
         assert_eq!(super::format(source), None);
         let inline = "local t = { [[x]] }\nprint(t)\n";
         assert_eq!(super::format(inline), None);
+        let comment = "local t = { --[[x]] }\nprint(t)\n";
+        assert_eq!(super::format(comment), None);
     }
 
     #[test]
