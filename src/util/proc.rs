@@ -128,7 +128,12 @@ fn wait_deadline(
                 return None;
             }
             Ok(None) => std::thread::sleep(poll),
-            Err(_) => return None,
+            Err(_) => {
+                // Even a failed wait must not leak a running child.
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
         }
     }
 }
@@ -157,6 +162,20 @@ pub fn bounded_output(program: &str, args: &[&str], deadline: Duration) -> Optio
         stderr,
         stderr_tail,
     })
+}
+
+/// Run a quiet program that must see the caller's terminal on its
+/// standard input — stty is the one caller. Output is discarded;
+/// the deadline holds like everywhere else.
+pub fn bounded_tty(program: &str, args: &[&str], deadline: Duration) -> Option<i32> {
+    let mut child = Command::new(resolve(program)?)
+        .args(args)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    wait_deadline(&mut child, deadline, Duration::from_millis(10))?.code()
 }
 
 /// Run a program that owns the terminal — the one shape an $EDITOR

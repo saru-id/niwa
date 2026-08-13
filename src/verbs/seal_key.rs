@@ -11,7 +11,6 @@ use std::time::Duration;
 use crate::error::Error;
 use crate::out::{Mark, Out};
 use crate::paths::Paths;
-use crate::util::proc::bounded_output;
 
 pub fn run(out: &Out, action: &str) -> ExitCode {
     super::finish(out, seal_key(out, action))
@@ -55,12 +54,12 @@ fn read_passphrase(out: &Out, prompt: &str) -> Result<String, Error> {
     let tty = std::io::stdin().is_terminal();
     if tty {
         out.question(prompt);
-        let _ = bounded_output("stty", &["-echo"], Duration::from_secs(5));
+        let _ = crate::util::proc::bounded_tty("stty", &["-echo"], Duration::from_secs(5));
     }
     let mut line = String::new();
     let read = std::io::stdin().read_line(&mut line);
     if tty {
-        let _ = bounded_output("stty", &["echo"], Duration::from_secs(5));
+        let _ = crate::util::proc::bounded_tty("stty", &["echo"], Duration::from_secs(5));
         out.question("\n");
     }
     read.map_err(|error| Error::apply("reading the passphrase", error))?;
