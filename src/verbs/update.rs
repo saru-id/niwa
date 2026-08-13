@@ -18,7 +18,7 @@ fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
     let analysis = super::run_pass(&paths, None)?;
     let mut lock = Lockfile::load(&paths)?;
-    let mut moved = 0usize;
+    let mut rows: Vec<(Mark, String, String)> = Vec::new();
     let wanted = |key: &str| name.is_none_or(|name| key.contains(name));
 
     for declaration in &analysis.effective {
@@ -29,17 +29,7 @@ fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
                 let previous = lock.github_release.insert(repo.clone(), pin.clone());
                 match previous {
                     Some(old) if old == pin => {}
-                    Some(old) => {
-                        moved += 1;
-                        out.result(
-                            Mark::Changed,
-                            &format!("{repo}   {} → {}", old.version, pin.version),
-                        );
-                    }
-                    None => {
-                        moved += 1;
-                        out.result(Mark::Added, &format!("{repo}   pinned at {}", pin.version));
-                    }
+                    other => rows.push(move_row(repo, other.map(|old| old.version), &pin.version)),
                 }
             }
             Kind::Mise if wanted(&declaration.identity.key) => {
@@ -61,17 +51,7 @@ fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
                 let previous = lock.mise.insert(tool.clone(), pin.clone());
                 match previous {
                     Some(old) if old == pin => {}
-                    Some(old) => {
-                        moved += 1;
-                        out.result(
-                            Mark::Changed,
-                            &format!("{tool}   {} → {}", old.version, pin.version),
-                        );
-                    }
-                    None => {
-                        moved += 1;
-                        out.result(Mark::Added, &format!("{tool}   pinned at {}", pin.version));
-                    }
+                    other => rows.push(move_row(tool, other.map(|old| old.version), &pin.version)),
                 }
             }
             Kind::Use if wanted(&declaration.identity.key) => {
@@ -87,34 +67,33 @@ fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
                 let previous = lock.uses.insert(source.clone(), pin.clone());
                 match previous {
                     Some(old) if old == pin => {}
-                    Some(old) => {
-                        moved += 1;
-                        out.result(
-                            Mark::Changed,
-                            &format!("{source}   {} → {}", old.commit, pin.commit),
-                        );
-                    }
-                    None => {
-                        moved += 1;
-                        out.result(Mark::Added, &format!("{source}   pinned at {}", pin.commit));
-                    }
+                    other => rows.push(move_row(source, other.map(|old| old.commit), &pin.commit)),
                 }
             }
             _ => {}
         }
     }
 
-    if moved == 0 {
+    if rows.is_empty() {
         out.result(Mark::Ok, "nothing to update · the lock already agrees");
         return Ok(ExitCode::SUCCESS);
     }
+    out.list(&rows);
     lock.save(&paths)?;
     out.result(
         Mark::Ok,
         &format!(
             "{} moved · review with `git diff niwa.lock`, then commit",
-            count(moved, "pin")
+            count(rows.len(), "pin")
         ),
     );
     Ok(ExitCode::SUCCESS)
+}
+
+/// One aligned row for a pin that moved: what it was, what it is.
+fn move_row(name: &str, old: Option<String>, new: &str) -> (Mark, String, String) {
+    old.map_or_else(
+        || (Mark::Added, name.to_string(), format!("pinned at {new}")),
+        |old| (Mark::Changed, name.to_string(), format!("{old} → {new}")),
+    )
 }
