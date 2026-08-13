@@ -145,6 +145,36 @@ impl Out {
         }
     }
 
+    /// Every byte this module writes leaves through these four
+    /// sinks. A reader that closed the pipe (`niwa check | head`) is
+    /// ordinary, not an error: the writing falls silent and the run
+    /// finishes with its real exit code. A machine-changing verb must
+    /// never abandon work because a pager quit, and a raw panic must
+    /// never reach a person.
+    fn out_line(args: std::fmt::Arguments) {
+        use std::io::Write as _;
+        let _ = writeln!(std::io::stdout().lock(), "{args}");
+    }
+
+    fn out_chunk(args: std::fmt::Arguments) {
+        use std::io::Write as _;
+        let mut stdout = std::io::stdout().lock();
+        let _ = write!(stdout, "{args}");
+        let _ = stdout.flush();
+    }
+
+    fn err_line(args: std::fmt::Arguments) {
+        use std::io::Write as _;
+        let _ = writeln!(std::io::stderr().lock(), "{args}");
+    }
+
+    fn err_chunk(args: std::fmt::Arguments) {
+        use std::io::Write as _;
+        let mut stderr = std::io::stderr().lock();
+        let _ = write!(stderr, "{args}");
+        let _ = stderr.flush();
+    }
+
     fn paint(&self, role: Role, text: &str) -> String {
         if self.color {
             format!("\x1b[{}m{text}\x1b[0m", role.ansi())
@@ -157,9 +187,9 @@ impl Out {
     pub fn result(&self, mark: Mark, text: &str) {
         if self.tty {
             let glyph = self.paint(mark.role(), mark.glyph());
-            println!("{glyph} {text}");
+            Self::out_line(format_args!("{glyph} {text}"));
         } else {
-            println!("{text}");
+            Self::out_line(format_args!("{text}"));
         }
     }
 
@@ -168,9 +198,9 @@ impl Out {
     pub fn group(&self, name: &str) {
         if self.tty {
             let rule_width = 36usize.saturating_sub(name.chars().count() + 2);
-            println!(" {name} {}", "─".repeat(rule_width));
+            Self::out_line(format_args!(" {name} {}", "─".repeat(rule_width)));
         } else {
-            println!("[{name}]");
+            Self::out_line(format_args!("[{name}]"));
         }
     }
 
@@ -238,9 +268,9 @@ impl Out {
     /// machines list, explain) print through here.
     pub fn plain(&self, text: &str) {
         if self.tty {
-            println!(" {text}");
+            Self::out_line(format_args!(" {text}"));
         } else {
-            println!("{text}");
+            Self::out_line(format_args!("{text}"));
         }
     }
 
@@ -248,7 +278,7 @@ impl Out {
     /// written, on any terminal.
     #[expect(clippy::unused_self, reason = "every screen prints through Out")]
     pub fn raw(&self, text: &str) {
-        print!("{text}");
+        Self::out_chunk(format_args!("{text}"));
     }
 
     /// One question, one answer. The question lands on stderr so a
@@ -258,7 +288,7 @@ impl Out {
     /// every caller reads it as a decline.
     #[expect(clippy::unused_self, reason = "every screen prints through Out")]
     pub fn prompt(&self, question: &str) -> Option<String> {
-        eprint!("{question} ");
+        Self::err_chunk(format_args!("{question} "));
         let mut answer = String::new();
         match std::io::stdin().read_line(&mut answer) {
             Ok(0) | Err(_) => None,
@@ -270,7 +300,7 @@ impl Out {
     /// prints here and reads through its echo-off dance.
     #[expect(clippy::unused_self, reason = "every screen prints through Out")]
     pub fn question(&self, text: &str) {
-        eprint!("{text}");
+        Self::err_chunk(format_args!("{text}"));
     }
 
     /// A yes/no question; only an explicit yes is a yes.
@@ -329,7 +359,7 @@ impl Out {
                     }
                     let text = format!("{sign} {}", line.trim_end_matches('\n'));
                     if self.color {
-                        println!(" {}", self.paint(role, &text));
+                        Self::out_line(format_args!(" {}", self.paint(role, &text)));
                     } else {
                         self.plain(&text);
                     }
@@ -343,7 +373,7 @@ impl Out {
     /// callers print plain lines through `plain` instead.
     pub fn progress_line(&self, text: &str) {
         if self.tty {
-            print!("\r {text}\x1b[K");
+            Self::out_chunk(format_args!("\r {text}\x1b[K"));
             let _ = std::io::Write::flush(&mut std::io::stdout());
         }
     }
@@ -351,7 +381,7 @@ impl Out {
     /// Take the progress line back off the screen.
     pub fn progress_clear(&self) {
         if self.tty {
-            print!("\r\x1b[K");
+            Self::out_chunk(format_args!("\r\x1b[K"));
             let _ = std::io::Write::flush(&mut std::io::stdout());
         }
     }
@@ -364,9 +394,9 @@ impl Out {
     /// A quiet, indented note.
     pub fn note(&self, text: &str) {
         if self.tty {
-            println!("  {}", self.paint(Role::Muted, text));
+            Self::out_line(format_args!("  {}", self.paint(Role::Muted, text)));
         } else {
-            println!("{text}");
+            Self::out_line(format_args!("{text}"));
         }
     }
 
@@ -381,14 +411,14 @@ impl Out {
         } else {
             String::new()
         };
-        eprintln!("{mark}{error}");
+        Self::err_line(format_args!("{mark}{error}"));
         for line in error.detail() {
             // Raw stack traces never reach a person; `--debug` keeps
             // one for reports.
             if !self.debug && line.trim_start().starts_with("stack traceback") {
                 break;
             }
-            eprintln!("  {line}");
+            Self::err_line(format_args!("  {line}"));
         }
         self.frame(error);
     }
@@ -413,13 +443,13 @@ impl Out {
             return;
         };
         let indent = line.len() - line.trim_start().len();
-        eprintln!("  --> {file}:{line_number}");
-        eprintln!("   |  {line}");
-        eprintln!(
+        Self::err_line(format_args!("  --> {file}:{line_number}"));
+        Self::err_line(format_args!("   |  {line}"));
+        Self::err_line(format_args!(
             "   |  {}{}",
             " ".repeat(indent),
             self.paint(Role::Bad, &"^".repeat(line.trim().len().max(1)))
-        );
+        ));
     }
 }
 

@@ -9,7 +9,7 @@
 )]
 
 mod common;
-use common::{niwa, stderr, stdout, write};
+use common::{command, niwa, stderr, stdout, write};
 use std::path::Path;
 
 /// One file resource that is pending: the target does not exist yet.
@@ -427,6 +427,30 @@ fn a_mid_merge_tree_refuses_proposals_too() {
     let output = niwa(home.path(), &[], &["pull", "--all"]);
     assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
     assert!(stderr(&output).contains("mid-merge"), "{}", stderr(&output));
+}
+
+#[test]
+fn a_reader_that_walks_away_is_not_a_crash() {
+    // `niwa check | head -1` is ordinary, and the design forbids a
+    // raw stack trace ever reaching a person. When the reader closes
+    // the pipe, niwa stops quietly.
+    let home = tempfile::tempdir().unwrap();
+    pending_config(home.path());
+    let mut child = command(home.path())
+        .arg("check")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    // Close our end of the pipe at once: every later write gets EPIPE.
+    drop(child.stdout.take());
+    let output = child.wait_with_output().unwrap();
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !err.contains("panicked"),
+        "raw panic reached the user: {err}"
+    );
+    assert!(!err.contains("RUST_BACKTRACE"), "{err}");
 }
 
 #[test]
