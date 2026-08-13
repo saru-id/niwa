@@ -162,21 +162,31 @@ pub fn settle_truth(ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Option
 pub fn result_table(lua: &Lua, ctx: &Ctx, truth: &Truth) -> mlua::Result<Table> {
     let state = Rc::clone(&ctx.state);
     let truth = truth.clone();
-    let table = lua.create_table()?;
-    let meta = lua.create_table()?;
     let index = lua.create_function(move |lua, (_, key): (Table, String)| {
         state.borrow_mut().results_read = true;
-        Ok(match key.as_str() {
-            "changed" => mlua::Value::Boolean(truth.changed),
-            "present" => mlua::Value::Boolean(truth.present),
-            "failed" => mlua::Value::Boolean(truth.failed),
-            "version" => match &truth.version {
-                Some(version) => mlua::Value::String(lua.create_string(version)?),
-                None => mlua::Value::Nil,
-            },
-            _ => mlua::Value::Nil,
-        })
+        truth_field(lua, &truth, &key)
     })?;
+    frozen_result(lua, index)
+}
+
+/// The four fields both result tables answer with.
+fn truth_field(lua: &Lua, truth: &Truth, key: &str) -> mlua::Result<mlua::Value> {
+    Ok(match key {
+        "changed" => mlua::Value::Boolean(truth.changed),
+        "present" => mlua::Value::Boolean(truth.present),
+        "failed" => mlua::Value::Boolean(truth.failed),
+        "version" => match &truth.version {
+            Some(version) => mlua::Value::String(lua.create_string(version)?),
+            None => mlua::Value::Nil,
+        },
+        _ => mlua::Value::Nil,
+    })
+}
+
+/// A frozen table whose every read runs `index`.
+fn frozen_result(lua: &Lua, index: mlua::Function) -> mlua::Result<Table> {
+    let table = lua.create_table()?;
+    let meta = lua.create_table()?;
     meta.set("__index", index)?;
     table.set_metatable(Some(meta))?;
     freeze(lua, &table)?;
@@ -212,24 +222,10 @@ fn pending_result(lua: &Lua, ctx: &Ctx, identity: Identity) -> mlua::Result<Tabl
         ));
     };
     let state = Rc::clone(&ctx.state);
-    let table = lua.create_table()?;
-    let meta = lua.create_table()?;
     let index = lua.create_function(move |lua, (_, key): (Table, String)| {
         state.borrow_mut().results_read = true;
         let truth = engine.resolve(&identity).map_err(mlua::Error::external)?;
-        Ok(match key.as_str() {
-            "changed" => mlua::Value::Boolean(truth.changed),
-            "present" => mlua::Value::Boolean(truth.present),
-            "failed" => mlua::Value::Boolean(truth.failed),
-            "version" => match truth.version {
-                Some(version) => mlua::Value::String(lua.create_string(&version)?),
-                None => mlua::Value::Nil,
-            },
-            _ => mlua::Value::Nil,
-        })
+        truth_field(lua, &truth, &key)
     })?;
-    meta.set("__index", index)?;
-    table.set_metatable(Some(meta))?;
-    freeze(lua, &table)?;
-    Ok(table)
+    frozen_result(lua, index)
 }
