@@ -23,6 +23,17 @@ fn the_shipped_types_are_a_valid_luau_module() {
     // The module is types plus one cast return; at runtime that is nil.
     assert!(value.is_nil());
 
+    // The runtime accepts `privileged` on `niwa.run`; the types must
+    // say so, or strict configs that use it fail analysis.
+    let run_options = source
+        .split_once("run: (command")
+        .map(|(_, rest)| rest.split("-> Result").next().unwrap_or(""))
+        .unwrap();
+    assert!(
+        run_options.contains("privileged: boolean?"),
+        "the run options lost `privileged`"
+    );
+
     // Syntax alone would pass on a gutted file; the load-bearing
     // exported types must still be declared by name.
     for name in [

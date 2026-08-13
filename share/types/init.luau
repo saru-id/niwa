@@ -132,6 +132,7 @@ export type Niwa = {
 		creates: string?,
 		timeout: string?,
 		optional: boolean?,
+		privileged: boolean?,
 	}?) -> Result,
 
 	-- Runs exactly once per machine; the journal keeps the marker.
