@@ -136,7 +136,9 @@ fn parse_names(spec: &SpecCtx<'_>, arg: &mlua::Value) -> mlua::Result<Names> {
 }
 
 fn checked_name(spec: &SpecCtx<'_>, name: &str) -> mlua::Result<String> {
-    if name.is_empty() || name.chars().any(char::is_whitespace) {
+    // A leading dash would land in an installer's argv as an option,
+    // never a package.
+    if name.is_empty() || name.starts_with('-') || name.chars().any(char::is_whitespace) {
         return Err(spec.fail(&format!("`{name}` is not a package name")));
     }
     Ok(name.to_string())
@@ -281,6 +283,7 @@ fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
                 "keys are tool names, values are version strings, for example { node = \"lts\" }",
             ));
         };
+        let checked = checked_name(&spec, tool.to_str()?.as_ref())?;
         let mut fields = BTreeMap::new();
         fields.insert(
             "version".to_string(),
@@ -289,7 +292,7 @@ fn declare_mise(lua: &Lua, ctx: &Ctx, tools: &Table) -> mlua::Result<Table> {
         if let Some(truth) = settle_truth(
             ctx,
             &Declaration {
-                identity: Identity::new(Kind::Mise, tool.to_str()?.to_string()),
+                identity: Identity::new(Kind::Mise, checked.clone()),
                 spec: Value::Map(fields),
                 provenance: prov.clone(),
                 unit: unit_of(&prov),

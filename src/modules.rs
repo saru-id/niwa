@@ -77,8 +77,19 @@ pub fn resolve(paths: &Paths, source: &str, reference: &str) -> Result<UsePin, E
         // Staged, then renamed whole: a kill mid-copy must never
         // leave a half-filled cache entry that later loads skip
         // filling and fail against forever.
+        // Any staging leftovers go, this pid's or a killed rival's.
+        if let (Some(parent), Some(stem)) = (cache.parent(), cache.file_name()) {
+            let stem = stem.to_string_lossy();
+            if let Ok(entries) = std::fs::read_dir(parent) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    if name.starts_with(&format!("{stem}.staging-")) {
+                        let _ = std::fs::remove_dir_all(entry.path());
+                    }
+                }
+            }
+        }
         let staging = cache.with_extension(format!("staging-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&staging);
         copy_tree(&checkout, &staging)?;
         std::fs::rename(&staging, &cache)
             .or_else(|error| {

@@ -17,7 +17,6 @@ pub fn parse_duration(text: &str) -> Option<std::time::Duration> {
     Some(std::time::Duration::from_millis(millis))
 }
 
-/// The digest format acknowledgements and checksums use: sha256, hex.
 /// A fresh private directory under the system temp, created
 /// exclusively (0700): no other user can pre-plant a path for a
 /// child process to write through.

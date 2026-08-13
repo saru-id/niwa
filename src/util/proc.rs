@@ -186,7 +186,11 @@ pub fn bounded_tty(program: &str, args: &[&str], deadline: Duration) -> Option<i
 /// session can take. The deadline exists because every child gets
 /// one; a day covers any editing session that is still a session.
 pub fn interactive(program: &str, args: &[&str]) -> Option<i32> {
-    let mut child = Command::new(resolve(program)?).args(args).spawn().ok()?;
+    let mut child = Command::new(resolve(program)?)
+        .args(args)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .spawn()
+        .ok()?;
     wait_deadline(
         &mut child,
         Duration::from_hours(24),

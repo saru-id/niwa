@@ -145,7 +145,11 @@ fn rendered_action(declaration: &Declaration, journal: &Journal, target: &Path) 
             if ack.spec == declaration.spec
                 && ack.bytes.as_deref() == Some(digest(&actual).as_str()) =>
         {
-            Action::InSync
+            // Bytes converged; the mode still answers for itself —
+            // a chmod on a secret-bearing file must read as drift.
+            declaration
+                .fields()
+                .map_or(Action::InSync, |fields| mode_action(fields, target))
         }
         (_, Err(_)) => Action::Create,
         _ => Action::Change {

@@ -41,10 +41,10 @@ coverage, so a report without them reads falsely thin.
 Some territory is uncovered by design, not by neglect. The list, so
 nobody re-derives it:
 
-- **Interactive walks.** The pull review walk, interactive apply,
-  and the dashboard's key dispatch need a person at a terminal.
-  Their piped shapes are tested; the key-driven paths are manual
-  tier.
+- **Interactive walks (residue).** The drills drive the key paths
+  through a pseudo-terminal — the apply walk's answers, the pull
+  review's four answers, the dashboard's keys. What stays manual is
+  the feel of it: editor round-trips and a human watching the screen.
 - **The real machine's providers.** Password prompts under
   privileged apply, the real keychain, the real launchd, and the
   real package managers stay out of every gate by law. Drills prove
