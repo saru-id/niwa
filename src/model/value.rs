@@ -21,6 +21,19 @@ pub enum Value {
 }
 
 impl Value {
+    /// Does any part of this spec reference a secret? The marker is
+    /// the `{ secret = name }` map `niwa.secret` hands out; a spec
+    /// that carries one produced bytes a secret flowed into.
+    pub fn uses_secrets(&self) -> bool {
+        match self {
+            Self::Map(fields) => {
+                fields.contains_key("secret") || fields.values().any(Self::uses_secrets)
+            }
+            Self::List(items) => items.iter().any(Self::uses_secrets),
+            _ => false,
+        }
+    }
+
     /// A stable, exact rendering for keys that must never drift:
     /// declined proposals are remembered under it, so it must not
     /// follow the screen renderer's formatting.

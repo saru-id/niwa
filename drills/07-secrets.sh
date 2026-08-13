@@ -76,6 +76,8 @@ check 13 "the archive really is an age file" \
 niwa undo --yes
 check 14 "undo decrypts the sealed archive and restores the hand edit" \
     grep -q "my-hand-edit" "$HOME/.netrc"
+check 14a "the bytes undo displaced are archived sealed, never in the clear" \
+    sh -c "! grep -rq hunter2 '$HOME/.local/state/niwa/archive'"
 
 # --- a rendered file is one-way: pull refuses, names the template ---
 niwa apply --yes --force

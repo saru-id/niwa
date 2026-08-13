@@ -380,6 +380,22 @@ fn render_content(
     Ok((text.into_bytes(), used_secrets))
 }
 
+/// Archive bytes a reverse displaces: sealed when the spec that
+/// produced them used secrets, plain otherwise.
+fn archive_displaced(
+    paths: &Paths,
+    archive_root: &Path,
+    identity: &str,
+    bytes: &[u8],
+    seal: bool,
+) -> Result<(), Error> {
+    if seal {
+        archive_sealed(paths, archive_root, identity, bytes)
+    } else {
+        archive(archive_root, identity, bytes)
+    }
+}
+
 /// Archive with the content sealed; the file keeps its plaintext
 /// digest for a name, so undo can find it without reading it.
 fn archive_sealed(
@@ -737,7 +753,13 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
         .filter(|entry| entry.id == target)
         .and_then(|entry| entry.steps.last().cloned())
     {
-        reverse_step(&step, paths, &archive_root)?;
+        // The displaced bytes may carry resolved secrets: the spec the
+        // journal acknowledged knows, and the archive seals when it
+        // says so — the design's own consequence, on the undo path too.
+        let seal = journal
+            .acknowledged(&step.identity)
+            .is_some_and(|ack| ack.spec.uses_secrets());
+        reverse_step(&step, paths, &archive_root, seal)?;
         journal.drop_acknowledgement(&step.identity);
         journal.pop_step();
         journal.save(&paths.state)?;
@@ -746,20 +768,20 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
     Ok(reversed)
 }
 
-fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path) -> Result<(), Error> {
+fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path, seal: bool) -> Result<(), Error> {
     match &step.effect {
         Effect::FileWritten { previous } => {
-            reverse_file(step, paths, archive_root, previous.as_deref())
+            reverse_file(step, paths, archive_root, previous.as_deref(), seal)
         }
         Effect::LinkMade { previous } => {
             reverse_link(step, paths, archive_root, previous.as_deref())
         }
         Effect::DefaultsSet { previous } => {
-            reverse_defaults(step, paths, archive_root, previous.as_ref())
+            reverse_defaults(step, paths, archive_root, previous.as_ref(), seal)
         }
         Effect::PackageInstalled => reverse_package(step),
         Effect::ServiceSet { previous } => {
-            reverse_service(step, paths, archive_root, previous.as_deref())
+            reverse_service(step, paths, archive_root, previous.as_deref(), seal)
         }
         Effect::BrewServiceStarted => reverse_brew_service(step),
         Effect::BinaryInstalled { path } => std::fs::remove_file(path)
@@ -775,13 +797,14 @@ fn reverse_file(
     paths: &Paths,
     archive_root: &Path,
     previous: Option<&str>,
+    seal: bool,
 ) -> Result<(), Error> {
     let Some(target) = step.identity.strip_prefix("file:") else {
         return Ok(());
     };
     let target = expand_target(paths, target);
     if let Ok(current) = std::fs::read(&target) {
-        archive(archive_root, &step.identity, &current)?;
+        archive_displaced(paths, archive_root, &step.identity, &current, seal)?;
     }
     match previous {
         Some(digest) => {
@@ -840,6 +863,7 @@ fn reverse_service(
     paths: &Paths,
     archive_root: &Path,
     previous: Option<&str>,
+    seal: bool,
 ) -> Result<(), Error> {
     let Some(label) = step.identity.strip_prefix("service:") else {
         return Ok(());
@@ -847,7 +871,7 @@ fn reverse_service(
     crate::services::bootout(paths, label);
     let target = crate::services::agent_plist(paths, label);
     if let Ok(current) = std::fs::read(&target) {
-        archive(archive_root, &step.identity, &current)?;
+        archive_displaced(paths, archive_root, &step.identity, &current, seal)?;
     }
     match previous {
         Some(digest) => {
@@ -877,6 +901,7 @@ fn reverse_defaults(
     paths: &Paths,
     archive_root: &Path,
     previous: Option<&Value>,
+    seal: bool,
 ) -> Result<(), Error> {
     let Some(rest) = step.identity.strip_prefix("defaults:") else {
         return Ok(());
@@ -886,7 +911,7 @@ fn reverse_defaults(
     };
     let store = crate::defaults::domain_path(paths, domain);
     if let Ok(bytes) = std::fs::read(&store) {
-        archive(archive_root, &step.identity, &bytes)?;
+        archive_displaced(paths, archive_root, &step.identity, &bytes, seal)?;
     }
     let mut root = plist::Value::from_file(&store)
         .ok()
