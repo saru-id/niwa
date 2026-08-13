@@ -145,21 +145,15 @@ pub fn unit_of(provenance: &Provenance) -> Unit {
     Unit::from_chunk(&provenance.file)
 }
 
-/// Check mode's answer: nothing changed, the resource reads present.
-const STUB: Truth = Truth {
-    changed: false,
-    present: true,
-    failed: false,
-    version: None,
-};
-
 /// Record a declaration and let the engine settle it. `None` means
 /// the answer waits behind the batch barrier.
 pub fn settle_truth(ctx: &Ctx, declaration: &Declaration) -> mlua::Result<Option<Truth>> {
     ctx.record(declaration.clone());
-    ctx.engine.as_ref().map_or(Ok(Some(STUB)), |engine| {
-        engine.settle(declaration).map_err(mlua::Error::external)
-    })
+    ctx.engine
+        .as_ref()
+        .map_or(Ok(Some(Truth::UNCHANGED)), |engine| {
+            engine.settle(declaration).map_err(mlua::Error::external)
+        })
 }
 
 /// The frozen result table for a settled truth. Fields answer through

@@ -50,6 +50,17 @@ pub struct Truth {
     pub version: Option<String>,
 }
 
+impl Truth {
+    /// Nothing moved, the resource stands: the answer for work held
+    /// outside a run's scope, and check mode's answer for everything.
+    pub const UNCHANGED: Self = Self {
+        changed: false,
+        present: true,
+        failed: false,
+        version: None,
+    };
+}
+
 /// One resource waiting in the package batch.
 struct Pending {
     declaration: Declaration,
@@ -194,38 +205,9 @@ impl Engine {
                 self.items.borrow_mut().push((declaration.clone(), action));
                 Ok(Some(truth))
             }
-            Mode::Execute {
-                force,
-                skip_privileged,
-                only,
-                declined,
-            } => {
-                if declined.contains(&declaration.identity.to_string())
-                    || only
-                        .as_deref()
-                        .is_some_and(|only| !declaration.unit.is_named(only))
-                {
-                    // Outside the person's choice nothing moves; the
-                    // result reads as the machine stands.
-                    return Ok(Some(Truth {
-                        changed: false,
-                        present: true,
-                        failed: false,
-                        version: None,
-                    }));
-                }
-                if *skip_privileged && declaration.privileged {
-                    // Left exactly as it is, counted, and named in
-                    // the summary — never attempted without rights.
-                    self.privileged_skipped
-                        .borrow_mut()
-                        .push(declaration.identity.to_string());
-                    return Ok(Some(Truth {
-                        changed: false,
-                        present: true,
-                        failed: false,
-                        version: None,
-                    }));
+            Mode::Execute { force, .. } => {
+                if let Some(held) = self.gate(declaration) {
+                    return Ok(Some(held));
                 }
                 if batchable(&declaration.identity.kind) {
                     // Coalescing is per provider: a different kind
@@ -307,40 +289,46 @@ impl Engine {
     pub fn custom_gate(&self, declaration: &Declaration) -> Result<Option<Truth>, Error> {
         match &self.mode {
             Mode::Plan => Ok(None),
-            Mode::Execute {
-                skip_privileged,
-                only,
-                declined,
-                ..
-            } => {
-                if declined.contains(&declaration.identity.to_string())
-                    || only
-                        .as_deref()
-                        .is_some_and(|only| !declaration.unit.is_named(only))
-                {
-                    return Ok(Some(Truth {
-                        changed: false,
-                        present: true,
-                        failed: false,
-                        version: None,
-                    }));
-                }
-                if *skip_privileged && declaration.privileged {
-                    self.privileged_skipped
-                        .borrow_mut()
-                        .push(declaration.identity.to_string());
-                    return Ok(Some(Truth {
-                        changed: false,
-                        present: true,
-                        failed: false,
-                        version: None,
-                    }));
+            Mode::Execute { .. } => {
+                if let Some(held) = self.gate(declaration) {
+                    return Ok(Some(held));
                 }
                 // Program order: pending packages land first.
                 self.flush()?;
                 Ok(None)
             }
         }
+    }
+
+    /// The gauntlet every executing resource passes. Outside the
+    /// person's choice — declined in the walk, or another module under
+    /// `--only` — nothing moves and the result reads as the machine
+    /// stands; privileged work under `--no-privileged` is counted and
+    /// named, never attempted without rights. `None` means proceed.
+    fn gate(&self, declaration: &Declaration) -> Option<Truth> {
+        let Mode::Execute {
+            skip_privileged,
+            only,
+            declined,
+            ..
+        } = &self.mode
+        else {
+            return None;
+        };
+        if declined.contains(&declaration.identity.to_string())
+            || only
+                .as_deref()
+                .is_some_and(|only| !declaration.unit.is_named(only))
+        {
+            return Some(Truth::UNCHANGED);
+        }
+        if *skip_privileged && declaration.privileged {
+            self.privileged_skipped
+                .borrow_mut()
+                .push(declaration.identity.to_string());
+            return Some(Truth::UNCHANGED);
+        }
+        None
     }
 
     /// Plan mode: the kind's own check verdict becomes the plan
@@ -552,12 +540,7 @@ impl Engine {
                 failed: false,
                 version: None,
             },
-            Outcome::InSync | Outcome::Protected | Outcome::Unchecked => Truth {
-                changed: false,
-                present: true,
-                failed: false,
-                version: None,
-            },
+            Outcome::InSync | Outcome::Protected | Outcome::Unchecked => Truth::UNCHANGED,
             Outcome::Failed => Truth {
                 changed: false,
                 present: false,
