@@ -13,7 +13,7 @@ pub enum Error {
     ConfigMissing { dir: PathBuf },
 
     #[error("the config failed to load")]
-    Script { message: String },
+    Script { detail: String },
 
     #[error("declarations conflict")]
     Conflicts(Vec<crate::model::analysis::Conflict>),
@@ -73,7 +73,7 @@ impl From<mlua::Error> for Error {
             return recovered;
         }
         Self::Script {
-            message: error.to_string(),
+            detail: error.to_string(),
         }
     }
 }
@@ -140,7 +140,7 @@ impl Error {
                 "run `niwa init` to scan this machine into a starter config".to_string(),
                 format!("or clone your config repo to {}", dir.display()),
             ],
-            Self::Script { message } => message.lines().map(str::to_string).collect(),
+            Self::Script { detail } => detail.lines().map(str::to_string).collect(),
             Self::Conflicts(conflicts) => {
                 let mut lines = Vec::new();
                 for conflict in conflicts {

@@ -184,9 +184,9 @@ LUAU
 niwa apply --yes
 /usr/bin/plutil -replace cachetoken -string "a$(date +%s)"     "$HOME/Library/Preferences/com.example.churner.plist" 2>/dev/null || true
 niwa pull --all
-check 24 "an ungoverned key churning stays silence"     sh -c "! grep -q cachetoken '$SANDBOX/stdout'"
+check 26 "an ungoverned key churning stays silence"     sh -c "! grep -q cachetoken '$SANDBOX/stdout'"
 /usr/bin/plutil -replace theme -string "light"     "$HOME/Library/Preferences/com.example.churner.plist"
 niwa pull --all
-check 25 "the governed key moving still proposes"     grep -q "theme" "$SANDBOX/stdout"
+check 27 "the governed key moving still proposes"     grep -q "theme" "$SANDBOX/stdout"
 
 echo "drill: drift and pull · all checks passed"

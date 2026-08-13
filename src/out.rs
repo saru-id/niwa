@@ -390,10 +390,10 @@ impl Out {
     /// line quoted, underlined, under its `file:line`. Best effort —
     /// a file that cannot be read gets no frame, never a wrong one.
     fn frame(&self, error: &Error) {
-        let Error::Script { message } = error else {
+        let Error::Script { detail } = error else {
             return;
         };
-        let Some((file, line_number)) = locate_frame(message) else {
+        let Some((file, line_number)) = locate_frame(detail) else {
             return;
         };
         let Ok(paths) = crate::paths::Paths::resolve() else {

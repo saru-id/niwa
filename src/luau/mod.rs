@@ -147,10 +147,10 @@ mod tests {
         let error = runtime.run_entry().unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(5));
         assert!(error.to_string().contains("config failed to load"));
-        let Error::Script { message } = error else {
+        let Error::Script { detail } = error else {
             panic!("expected a script error");
         };
-        assert!(message.contains("time limit"), "{message}");
+        assert!(detail.contains("time limit"), "{detail}");
     }
 
     #[test]
@@ -163,9 +163,9 @@ mod tests {
         };
         let runtime = Runtime::new(&paths_in(dir.path()), &limits, Lua::create_table).unwrap();
         let error = runtime.run_entry().unwrap_err();
-        let Error::Script { message } = error else {
+        let Error::Script { detail } = error else {
             panic!("expected a script error");
         };
-        assert!(message.contains("memory"), "{message}");
+        assert!(detail.contains("memory"), "{detail}");
     }
 }

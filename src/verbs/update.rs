@@ -10,16 +10,16 @@ use crate::model::{Kind, Value};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
-pub fn run(out: &Out, only: Option<&str>) -> ExitCode {
-    super::finish(out, update(out, only))
+pub fn run(out: &Out, name: Option<&str>) -> ExitCode {
+    super::finish(out, update(out, name))
 }
 
-fn update(out: &Out, only: Option<&str>) -> Result<ExitCode, Error> {
+fn update(out: &Out, name: Option<&str>) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
     let analysis = super::run_pass(&paths, None)?;
     let mut lock = Lockfile::load(&paths)?;
     let mut moved = 0usize;
-    let wanted = |name: &str| only.is_none_or(|only| name.contains(only));
+    let wanted = |key: &str| name.is_none_or(|name| key.contains(name));
 
     for declaration in &analysis.effective {
         match &declaration.identity.kind {

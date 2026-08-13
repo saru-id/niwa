@@ -1,3 +1,6 @@
+//! The binary: parse the command line, build the screen, hand
+//! the verb its run.
+
 mod api;
 mod apply;
 mod brew;
