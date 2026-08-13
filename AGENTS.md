@@ -65,3 +65,26 @@ These apply to the README, doc comments, help text, and error messages.
 - Do not add telemetry or any network call the user did not ask for.
 - Do not commit process artifacts: plans, notes, and ledgers live
   outside this repository.
+
+## The site
+
+The documentation site lives in `site/` and is built with pnpm. Run
+`make site-check` for its gate and `make site-dev` for its dev server.
+Its packages are recorded in `docs/dependencies.md` like every other
+dependency, and each one is pinned exactly.
+
+`site-check` is separate from `check` on purpose: a tool commit must
+never require building the site.
+
+The site tells the truth about the tool and nothing else.
+
+- Documentation never invents output. Every screen comes from a
+  snapshot fixture in `tests/snapshots/` or from the real binary.
+- Every Luau snippet type checks against the shipped types in
+  `share/types/`.
+- The reference pages are generated from typed data modules, and the
+  build fails when they disagree with the code.
+- The prose rules above apply to every word on the site.
+
+`install.sh` at the repository root is the only copy. The site build
+copies it into its output. Never add a second copy under `site/public/`.
