@@ -317,9 +317,16 @@ fn tempdir_file(repo: &str) -> Result<PathBuf, Error> {
     ))
 }
 
-/// Drop one scratch file and the private directory around it.
+/// Drop one scratch file and the private directory around it. A
+/// cache hit hands in a path under the prefetch cache instead; that
+/// one stays — the cache is the point of it.
 fn discard(temp: &std::path::Path) {
-    if let Some(parent) = temp.parent() {
+    let scratch = temp
+        .parent()
+        .and_then(|parent| parent.file_name())
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("niwa-release-"));
+    if scratch && let Some(parent) = temp.parent() {
         let _ = std::fs::remove_dir_all(parent);
     }
 }

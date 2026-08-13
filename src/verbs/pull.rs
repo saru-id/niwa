@@ -217,13 +217,15 @@ fn accept(
 /// what lands.
 fn edited_statement(statement: &str) -> Option<String> {
     let editor = std::env::var("EDITOR").ok()?;
-    let dir = std::env::temp_dir();
-    let path = dir.join(format!("niwa-proposal-{}.luau", std::process::id()));
+    // An exclusively created scratch dir: the proposal file cannot be
+    // a path someone else pre-planted.
+    let dir = crate::util::scratch_dir("niwa-proposal").ok()?;
+    let path = dir.join("proposal.luau");
     std::fs::write(&path, format!("{statement}\n")).ok()?;
     let path_text = path.display().to_string();
     let status = crate::util::proc::interactive(&editor, &[&path_text]);
     let edited = std::fs::read_to_string(&path).ok();
-    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_dir_all(&dir);
     if status != Some(0) {
         return None;
     }

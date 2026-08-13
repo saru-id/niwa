@@ -18,6 +18,28 @@ pub fn parse_duration(text: &str) -> Option<std::time::Duration> {
 }
 
 /// The digest format acknowledgements and checksums use: sha256, hex.
+/// A fresh private directory under the system temp, created
+/// exclusively (0700): no other user can pre-plant a path for a
+/// child process to write through.
+pub fn scratch_dir(prefix: &str) -> std::io::Result<std::path::PathBuf> {
+    use std::os::unix::fs::PermissionsExt as _;
+    let base = std::env::temp_dir();
+    for attempt in 0..1024u32 {
+        let dir = base.join(format!("{prefix}-{}-{attempt}", std::process::id()));
+        match std::fs::create_dir(&dir) {
+            Ok(()) => {
+                let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+                return Ok(dir);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Err(std::io::Error::other(
+        "no free scratch directory under the system temp",
+    ))
+}
+
 /// The newest version directory under an installs root, by name:
 /// how both Homebrew and mise answer "is this installed, and as
 /// what". Dotfiles are housekeeping, never versions.

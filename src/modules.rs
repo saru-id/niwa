@@ -30,12 +30,11 @@ pub fn cache_dir(paths: &Paths, sha256: &str) -> PathBuf {
 pub fn resolve(paths: &Paths, source: &str, reference: &str) -> Result<UsePin, Error> {
     let repo = source.strip_prefix("github:").unwrap_or(source);
     let url = format!("https://github.com/{repo}.git");
-    let checkout = std::env::temp_dir().join(format!(
-        "niwa-use-{}-{}",
-        repo.replace('/', "-"),
-        std::process::id()
-    ));
-    let _ = std::fs::remove_dir_all(&checkout);
+    // An exclusively created scratch dir: nobody can pre-plant the
+    // checkout and swap files between the hash and the copy.
+    let scratch = crate::util::scratch_dir("niwa-use")
+        .map_err(|error| Error::apply(format!("resolving {source}"), error))?;
+    let checkout = scratch.join("checkout");
     let checkout_text = checkout.display().to_string();
 
     let cloned = bounded_output(
@@ -77,7 +76,7 @@ pub fn resolve(paths: &Paths, source: &str, reference: &str) -> Result<UsePin, E
         })?;
         copy_tree(&checkout, &cache)?;
     }
-    let _ = std::fs::remove_dir_all(&checkout);
+    let _ = std::fs::remove_dir_all(&scratch);
 
     Ok(UsePin {
         reference: reference.to_string(),

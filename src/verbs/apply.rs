@@ -291,8 +291,10 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
 /// empty prefix and are counted, never installed. The real machine
 /// is not touched, which is the whole point.
 fn sandbox_rehearsal(out: &Out, real: &Paths) -> Result<ExitCode, Error> {
-    let scratch = std::env::temp_dir().join(format!("niwa-sandbox-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&scratch);
+    // An exclusively created scratch home: the rehearsal resolves
+    // real secrets into it, so nobody else may own the directory.
+    let scratch = crate::util::scratch_dir("niwa-sandbox")
+        .map_err(|error| Error::apply("building the sandbox", error))?;
     let paths = real.sandboxed(&scratch);
     for dir in [&paths.home, &paths.state, &paths.brew_prefix, &paths.data] {
         std::fs::create_dir_all(dir)

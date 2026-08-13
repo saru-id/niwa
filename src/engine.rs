@@ -587,6 +587,17 @@ impl Engine {
     pub fn finish(&self) -> Result<(), Error> {
         self.flush()?;
         self.screen.progress_clear();
+        self.settle_restarts();
+        if let Some(id) = self.apply_id {
+            self.journal.borrow_mut().discard_empty_apply(id);
+        }
+        self.journal.borrow().save(&self.paths.state)
+    }
+
+    /// The restart debt of this run's preference writes, paid on the
+    /// way out — on failure too, or a landed write would sit invisible
+    /// behind cfprefsd's cache with no later run to flush it.
+    fn settle_restarts(&self) {
         // cfprefsd caches preference domains; a plist written behind
         // its back can be ignored or reverted from the cache. One
         // invalidation per run makes the writes real, before any app
@@ -609,10 +620,6 @@ impl Engine {
                 self.restarted.borrow_mut().push(target);
             }
         }
-        if let Some(id) = self.apply_id {
-            self.journal.borrow_mut().discard_empty_apply(id);
-        }
-        self.journal.borrow().save(&self.paths.state)
     }
 
     /// A defaults write asks for its process restart; the queue keeps
@@ -655,6 +662,7 @@ impl Engine {
     /// Close a failed execute pass: keep what landed for undo, but
     /// never keep an empty entry.
     pub fn abort(&self) {
+        self.settle_restarts();
         if let Some(id) = self.apply_id {
             self.journal.borrow_mut().discard_empty_apply(id);
         }

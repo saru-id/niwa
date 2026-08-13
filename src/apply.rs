@@ -51,18 +51,17 @@ impl Lock {
             Ok(lock) => Ok((lock, false)),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
                 if Self::holder_is_dead(&path) {
-                    let _ = std::fs::remove_file(&path);
-                    let lock = Self::try_stamp(&path)
-                        .map_err(|error| apply_error("taking the apply lock", &error))?;
-                    // Two reclaimers can interleave remove and stamp;
-                    // the file's final pid is the referee. Whoever
-                    // reads someone else's pid lost and backs off.
-                    let ours = std::fs::read_to_string(&path)
-                        .is_ok_and(|text| text.trim() == std::process::id().to_string());
-                    if !ours {
-                        std::mem::forget(lock);
+                    // Reclaim by renaming the stale file aside: rename
+                    // is atomic, so exactly one reclaimer wins it. The
+                    // loser's rename fails and reads as held — its
+                    // next take sees the winner's fresh stamp.
+                    let aside = path.with_extension(format!("stale-{}", std::process::id()));
+                    if std::fs::rename(&path, &aside).is_err() {
                         return Err(Error::ApplyLocked { path });
                     }
+                    let _ = std::fs::remove_file(&aside);
+                    let lock = Self::try_stamp(&path)
+                        .map_err(|error| apply_error("taking the apply lock", &error))?;
                     return Ok((lock, true));
                 }
                 Err(Error::ApplyLocked { path })
