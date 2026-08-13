@@ -124,16 +124,28 @@ fn key_path(paths: &Paths) -> PathBuf {
 /// owner-only permissions.
 pub fn identity(paths: &Paths) -> Result<age::x25519::Identity, Error> {
     let path = key_path(paths);
-    if let Ok(text) = std::fs::read_to_string(&path) {
-        for line in text.lines() {
-            if let Ok(identity) = line.trim().parse::<age::x25519::Identity>() {
-                return Ok(identity);
+    match std::fs::read_to_string(&path) {
+        Ok(text) => {
+            for line in text.lines() {
+                if let Ok(identity) = line.trim().parse::<age::x25519::Identity>() {
+                    return Ok(identity);
+                }
             }
+            return Err(Error::Apply {
+                doing: "reading the sealing key".to_string(),
+                detail: format!("{} does not hold an age identity", path.display()),
+            });
         }
-        return Err(Error::Apply {
-            doing: "reading the sealing key".to_string(),
-            detail: format!("{} does not hold an age identity", path.display()),
-        });
+        // Only a key that is truly absent may be generated. Any
+        // other failure must surface: regenerating over an unreadable
+        // key would orphan every archive and secret sealed to it.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(Error::Apply {
+                doing: "reading the sealing key".to_string(),
+                detail: format!("{}: {error}", path.display()),
+            });
+        }
     }
     let identity = age::x25519::Identity::generate();
     std::fs::create_dir_all(&paths.state)
