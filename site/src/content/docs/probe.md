@@ -56,3 +56,14 @@ command: niwa plan
 | --- | --- |
 | `--dry-run` | Shows the plan and changes nothing. |
 | `--config` | Reads the configuration from another path. |
+
+## A structure
+
+```tree
+label: ~/.config/niwa
+init.luau — the config that runs
+.luaurc — editor and analyzer settings
+modules/dev.luau
+files/zshrc
+secrets/
+```

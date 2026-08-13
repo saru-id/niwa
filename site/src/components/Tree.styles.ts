@@ -29,7 +29,10 @@ export const styles = stylex.create({
     '--trees-font-family-override': 'var(--font-mono)',
     '--trees-font-size-override': 'var(--text-nav)',
     backgroundColor: 'var(--surface)',
-    border: '1px solid var(--border)',
+    // Longhands: StyleX drops the `border` shorthand silently.
+    borderColor: 'var(--border)',
+    borderStyle: 'solid',
+    borderWidth: 1,
     borderRadius: '6px',
     paddingBlock: '0.5rem',
   },
@@ -38,4 +41,27 @@ export const styles = stylex.create({
   host: (height: number) => ({
     height: `${String(height)}px`,
   }),
+  // The purposes beside the tree, when the fence carries them: the path in
+  // the chrome face, its purpose in prose, one line each.
+  notes: {
+    marginBlock: '0.75rem 0',
+  },
+  noteRow: {
+    columnGap: '0.75rem',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(6rem, max-content) minmax(0, 1fr)',
+    marginBlock: '0.15rem',
+  },
+  notePath: {
+    color: 'var(--ink-strong)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-meta)',
+    margin: 0,
+  },
+  noteText: {
+    color: 'var(--ink-muted)',
+    fontSize: 'var(--text-table)',
+    lineHeight: 1.5,
+    margin: 0,
+  },
 })

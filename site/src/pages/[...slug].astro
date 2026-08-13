@@ -1,6 +1,6 @@
 ---
 import { getCollection } from 'astro:content'
-import DocsPage from '../../components/DocsPage.astro'
+import DocsPage from '../components/DocsPage.astro'
 
 export async function getStaticPaths() {
   const docs = await getCollection('docs')

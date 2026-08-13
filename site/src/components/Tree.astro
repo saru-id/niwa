@@ -1,56 +1,24 @@
 ---
 /* A directory structure, server rendered.
  *
- * `preloadFileTree` returns declarative shadow DOM: the HTML parser attaches
- * the shadow root and the rows are on the page before any script runs. The
- * script that follows only makes folders open and arrow keys work.
+ * A thin wrapper: `TreeBlock` renders the figure and the SSR payload, and
+ * this file adds the loader that hydrates a tree when it approaches the
+ * viewport. Markdown `tree` fences render `TreeBlock` through the pipeline
+ * instead, and the docs template carries the loader for them.
  */
-import { FILE_TREE_DEFAULT_ITEM_HEIGHT } from '@pierre/trees'
-import { preloadFileTree, serializeFileTreeSsrPayload } from '@pierre/trees/ssr'
-import * as stylex from '@stylexjs/stylex'
 import type { PreparedTree } from '../lib/tree'
-import { treeOptions } from '../lib/tree-options'
-import { styles } from './Tree.styles'
+import { TreeBlock } from './TreeBlock'
 
 interface Props {
   tree: PreparedTree
   /** The root the tree hangs from, for example `~/.config/niwa`. */
   label: string
-  /** The tree's id, unique on the page. The browser reads it back off the
-   * element, so it only has to be unique, not guessable. */
+  /** The tree's id, unique on the page. */
   id?: string
 }
 
-/** Twenty rows is 600 pixels, which still fits beside prose on the short
- * side of a laptop window. A taller tree loses its top while its bottom is
- * read, so past twenty rows the tree scrolls instead of growing. */
-const MAX_ROWS = 20
-
-const { tree, label } = Astro.props
-const id = Astro.props.id ?? `tree-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-
-const payload = preloadFileTree({ ...treeOptions(tree.preparedInput), id })
-const height = Math.min(tree.rowCount, MAX_ROWS) * FILE_TREE_DEFAULT_ITEM_HEIGHT
+const { tree, label, id } = Astro.props
 ---
 
-{
-  /* The library gives its `role="tree"` no name and offers no way to set one
-    from outside the shadow root, so the figure carries the name instead: a
-    caption is a figure's accessible name, and it is read before the rows. */
-}
-<figure {...stylex.props(styles.figure)} data-tree>
-  <figcaption {...stylex.props(styles.caption)}>{label}</figcaption>
-  <div {...stylex.props(styles.frame)}>
-    <div {...stylex.props(styles.host(height))}>
-      <Fragment set:html={serializeFileTreeSsrPayload(payload)} />
-    </div>
-  </div>
-  {/* Data, not code. `is:inline` keeps the bundler's hands off it. */}
-  <script
-    is:inline
-    type="application/json"
-    data-tree-paths
-    set:html={JSON.stringify(tree.paths)}
-  />
-</figure>
+<TreeBlock tree={tree} label={label} id={id} />
 <script src="./Tree.loader.ts"></script>

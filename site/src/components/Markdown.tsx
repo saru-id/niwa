@@ -10,6 +10,8 @@ import * as stylex from '@stylexjs/stylex'
 import type { ComponentPropsWithoutRef } from 'react'
 
 import { luau } from '../lib/luau'
+import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
+import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
 
 // One highlighter for the whole build. It is synchronous and holds no state
@@ -207,15 +209,88 @@ function screen(body: string, file: string): ComponentNode {
   }
 }
 
+/* The tree fence.
+ *
+ * A fence whose info string is `tree` is a directory structure, rendered by
+ * the tree component the rest of the site uses. Two bodies are legal:
+ *
+ *     ```tree
+ *     label: ~/.config/niwa
+ *     init.luau — the config that runs
+ *     modules/dev.luau
+ *     ```
+ *
+ *     ```tree
+ *     label: the example config
+ *     root: tests/fixtures/example
+ *     ```
+ *
+ * The first line is always `label:`, the caption. A `root:` second line
+ * names a directory from the repository root and the structure shown is the
+ * structure on disk, read at build time. Otherwise every following line is a
+ * path (a trailing `/` marks an empty directory), optionally followed by
+ * ` — ` and its one-line purpose, which renders beside the tree, never
+ * inside it.
+ */
+function badTree(file: string, problem: string): never {
+  throw new Error(
+    `Reading a tree fence in ${file}. ${problem} The first line names the ` +
+      'caption as `label: <caption>`; then either `root: <directory>` or ' +
+      'one path per line, each optionally followed by the em dash and its ' +
+      'purpose. The site did not build.',
+  )
+}
+
+function treeFence(body: string, file: string): ComponentNode {
+  const lines = body.trim().split('\n')
+  const label = field(lines[0] ?? '', 'label')
+  if (label === null) {
+    badTree(file, `Its first line is "${lines[0] ?? ''}", which names no label.`)
+  }
+  const rest = lines.slice(1)
+  const root = rest.length === 1 ? field(rest[0] ?? '', 'root') : null
+  let entries: TreeEntry[]
+  if (root !== null) {
+    entries = readTree(root)
+  } else {
+    if (rest.length === 0) badTree(file, 'It names no paths and no root.')
+    entries = rest.map((line) => {
+      const split = line.split(' — ')
+      const path = (split[0] ?? '').trim()
+      if (path === '') badTree(file, 'It carries an empty path line.')
+      const note = split.slice(1).join(' — ').trim()
+      return note === '' ? { path } : { path, note }
+    })
+  }
+  return {
+    type: 'component',
+    name: 'tree',
+    attributes: {},
+    children: [],
+    tagName: 'tree',
+    // Properties carry strings, so the entries travel serialized.
+    properties: { label, spec: JSON.stringify(entries) },
+  }
+}
+
+/** The `tree` component the fence above becomes. */
+function TreeFence({ label, spec }: { label: string; spec: string }) {
+  const entries = JSON.parse(spec) as TreeEntry[]
+  return <TreeBlock tree={prepareTree(entries)} label={label} />
+}
+
 /** The fence gate, bound to the file whose name a failure has to carry. */
 function screenFences(file: string): MarkdownExtension {
   return {
     name: 'screen',
     transformDocument: (document) => ({
       ...document,
-      children: document.children.map((node) =>
-        node.type === 'code' && node.lang === 'screen' ? screen(node.value, file) : node,
-      ),
+      children: document.children.map((node) => {
+        if (node.type !== 'code') return node
+        if (node.lang === 'screen') return screen(node.value, file)
+        if (node.lang === 'tree') return treeFence(node.value, file)
+        return node
+      }),
     }),
   }
 }
@@ -240,7 +315,7 @@ export function Markdown({
 }) {
   return (
     <TanStackMarkdown
-      components={{ pre: CodeBlock, screen: Screen, table: ScrollableTable }}
+      components={{ pre: CodeBlock, screen: Screen, table: ScrollableTable, tree: TreeFence }}
       extensions={[screenFences(file)]}
       headingAnchors={{ ariaHidden: false, tabIndex: 0 }}
       headingIds
