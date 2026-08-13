@@ -50,13 +50,23 @@ impl Lock {
         match Self::try_stamp(&path) {
             Ok(lock) => Ok((lock, false)),
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                if Self::holder_is_dead(&path) {
+                if let Some(dead) = Self::dead_holder(&path) {
                     // Reclaim by renaming the stale file aside: rename
-                    // is atomic, so exactly one reclaimer wins it. The
-                    // loser's rename fails and reads as held — its
-                    // next take sees the winner's fresh stamp.
+                    // is atomic, so exactly one reclaimer wins it —
+                    // and the aside's content must still name the dead
+                    // pid that was probed. A slow probe can otherwise
+                    // rename a rival's fresh stamp aside; that one is
+                    // restored (link fails harmlessly if the rival
+                    // already re-stamped) and reads as held.
                     let aside = path.with_extension(format!("stale-{}", std::process::id()));
                     if std::fs::rename(&path, &aside).is_err() {
+                        return Err(Error::ApplyLocked { path });
+                    }
+                    let same = std::fs::read_to_string(&aside)
+                        .is_ok_and(|text| text.trim() == dead.to_string());
+                    if !same {
+                        let _ = std::fs::hard_link(&aside, &path);
+                        let _ = std::fs::remove_file(&aside);
                         return Err(Error::ApplyLocked { path });
                     }
                     let _ = std::fs::remove_file(&aside);
@@ -85,13 +95,10 @@ impl Lock {
     /// Only a lock that names a pid, and whose pid no longer runs,
     /// reads as dead. An empty or garbled lock is treated as held —
     /// it may be mid-write by a live process.
-    fn holder_is_dead(path: &Path) -> bool {
-        let Some(pid) = std::fs::read_to_string(path)
+    fn dead_holder(path: &Path) -> Option<u32> {
+        let pid = std::fs::read_to_string(path)
             .ok()
-            .and_then(|text| text.trim().parse::<u32>().ok())
-        else {
-            return false;
-        };
+            .and_then(|text| text.trim().parse::<u32>().ok())?;
         let probe = crate::util::proc::bounded_output(
             "ps",
             &["-p", &pid.to_string()],
@@ -99,7 +106,7 @@ impl Lock {
         );
         // ps answers 0 for a live pid, 1 for a dead one. No answer at
         // all (ps unreachable) reads as held: never steal on a guess.
-        matches!(probe, Some(finished) if finished.code == Some(1))
+        matches!(probe, Some(finished) if finished.code == Some(1)).then_some(pid)
     }
 }
 
@@ -449,7 +456,8 @@ pub fn prune_archives(paths: &Paths, journal: &Journal) {
         .filter_map(|step| match &step.effect {
             Effect::FileWritten { previous, .. }
             | Effect::LinkMade { previous }
-            | Effect::ServiceSet { previous } => previous.clone(),
+            | Effect::ServiceSet { previous }
+            | Effect::BinaryInstalled { previous, .. } => previous.clone(),
             _ => None,
         })
         .collect();
@@ -584,6 +592,10 @@ fn apply_file(
             reason = "validation bounds the mode to 0..=0o7777"
         )]
         write_atomic_mode(&target, &declared, *mode as u32)?;
+    } else if sealed_archives {
+        // Resolved secrets never land world-readable: without a
+        // declared mode, a secret-bearing file defaults private.
+        write_atomic_mode(&target, &declared, 0o600)?;
     } else {
         write_atomic(&target, &declared)?;
     }
@@ -726,7 +738,13 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
             let live = std::fs::read(target).ok();
             match (&live, declared_file_bytes(paths, declaration)) {
                 (Some(live), Some(declared)) if *live == declared => {}
-                (_, None) => {}
+                // Rendered content is unknowable here: keep the prior
+                // acknowledgement whole rather than adopting whatever
+                // bytes are live — an edit in the gap must stay the
+                // person's, never become niwa's to overwrite.
+                (_, None) => {
+                    return;
+                }
                 _ => return,
             }
             live.map(|bytes| digest(&bytes))
@@ -807,8 +825,30 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
         let seal = journal
             .acknowledged(&step.identity)
             .is_some_and(|ack| ack.spec.uses_secrets());
-        reverse_step(&step, paths, &archive_root, seal)?;
+        let restored_sealed = reverse_step(&step, paths, &archive_root, seal)?;
         journal.drop_acknowledgement(&step.identity);
+        if restored_sealed {
+            // The restored bytes came out of a sealed archive: they
+            // carry secrets, and the journal must remember that so a
+            // later displacement seals again instead of leaking. The
+            // digest is the restored copy's, so a matching overwrite
+            // stays a free update.
+            let restored = match &step.effect {
+                Effect::FileWritten { previous, .. }
+                | Effect::LinkMade { previous }
+                | Effect::ServiceSet { previous } => previous.clone(),
+                _ => None,
+            };
+            let mut fields = std::collections::BTreeMap::new();
+            fields.insert(
+                "secret".to_string(),
+                Value::Str("restored from a sealed archive".to_string()),
+            );
+            journal.acknowledge(
+                step.identity.clone(),
+                Acknowledgement::new(Value::Map(fields), restored),
+            );
+        }
         journal.pop_step();
         journal.save(&paths.state)?;
         reversed += 1;
@@ -816,7 +856,12 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
     Ok(reversed)
 }
 
-fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path, seal: bool) -> Result<(), Error> {
+fn reverse_step(
+    step: &Step,
+    paths: &Paths,
+    archive_root: &Path,
+    seal: bool,
+) -> Result<bool, Error> {
     match &step.effect {
         Effect::FileWritten {
             previous,
@@ -830,28 +875,42 @@ fn reverse_step(step: &Step, paths: &Paths, archive_root: &Path, seal: bool) -> 
             seal,
         ),
         Effect::LinkMade { previous } => {
-            reverse_link(step, paths, archive_root, previous.as_deref())
+            reverse_link(step, paths, archive_root, previous.as_deref()).map(|()| false)
         }
         Effect::DefaultsSet { previous } => {
-            reverse_defaults(step, paths, archive_root, previous.as_ref(), seal)
+            reverse_defaults(step, paths, archive_root, previous.as_ref(), seal).map(|()| false)
         }
-        Effect::PackageInstalled => reverse_package(step),
+        Effect::PackageInstalled => reverse_package(step).map(|()| false),
         Effect::ServiceSet { previous } => {
             reverse_service(step, paths, archive_root, previous.as_deref(), seal)
         }
-        Effect::BrewServiceStarted => reverse_brew_service(step),
-        Effect::BinaryInstalled { path, previous } => match previous {
-            Some(digest) => {
-                let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
-                crate::util::write_atomic(std::path::Path::new(path), &bytes, Some(0o755), false)
-                    .map_err(|error| apply_error("restoring the previous binary", &error))
+        Effect::BrewServiceStarted => reverse_brew_service(step).map(|()| false),
+        Effect::BinaryInstalled { path, previous } => {
+            // Undo is a write like any other: the binary being
+            // displaced is archived first, whichever branch runs.
+            if let Ok(current) = std::fs::read(path) {
+                archive_displaced(paths, archive_root, &step.identity, &current, seal)?;
             }
-            None => std::fs::remove_file(path)
-                .map_err(|error| apply_error("removing the installed binary", &error)),
-        },
+            match previous {
+                Some(digest) => {
+                    let (bytes, _) =
+                        read_archived_sealed(paths, archive_root, &step.identity, digest)?;
+                    crate::util::write_atomic(
+                        std::path::Path::new(path),
+                        &bytes,
+                        Some(0o755),
+                        false,
+                    )
+                    .map_err(|error| apply_error("restoring the previous binary", &error))
+                }
+                None => std::fs::remove_file(path)
+                    .map_err(|error| apply_error("removing the installed binary", &error)),
+            }
+            .map(|()| false)
+        }
         // Irreversible steps are reversed by nobody; the undo verb
         // names them before this point.
-        Effect::Irreversible { .. } => Ok(()),
+        Effect::Irreversible { .. } => Ok(false),
     }
 }
 
@@ -862,9 +921,9 @@ fn reverse_file(
     previous: Option<&str>,
     previous_mode: Option<u32>,
     seal: bool,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let Some(target) = step.identity.strip_prefix("file:") else {
-        return Ok(());
+        return Ok(false);
     };
     let target = paths.expand_home(target);
     if let Ok(current) = std::fs::read(&target) {
@@ -872,7 +931,8 @@ fn reverse_file(
     }
     match previous {
         Some(digest) => {
-            let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
+            let (bytes, sealed) =
+                read_archived_sealed(paths, archive_root, &step.identity, digest)?;
             // The previous world, whole: its bytes and the mode they
             // wore, not the umask of the moment.
             previous_mode.map_or_else(
@@ -881,10 +941,12 @@ fn reverse_file(
                     crate::util::write_atomic(&target, &bytes, Some(mode), false)
                         .map_err(|error| apply_error("restoring the previous file", &error))
                 },
-            )
+            )?;
+            Ok(sealed)
         }
         None => std::fs::remove_file(&target)
-            .map_err(|error| apply_error("removing the created file", &error)),
+            .map_err(|error| apply_error("removing the created file", &error))
+            .map(|()| false),
     }
 }
 
@@ -902,7 +964,7 @@ fn reverse_link(
         std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
     }
     if let Some(digest) = previous {
-        let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
+        let (bytes, _) = read_archived_sealed(paths, archive_root, &step.identity, digest)?;
         write_atomic(&target, &bytes)?;
     }
     Ok(())
@@ -936,26 +998,24 @@ fn reverse_service(
     archive_root: &Path,
     previous: Option<&str>,
     seal: bool,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let Some(label) = step.identity.strip_prefix("service:") else {
-        return Ok(());
+        return Ok(false);
     };
     crate::services::bootout(paths, label);
     let target = crate::services::agent_plist(paths, label);
     if let Ok(current) = std::fs::read(&target) {
         archive_displaced(paths, archive_root, &step.identity, &current, seal)?;
     }
-    match previous {
-        Some(digest) => {
-            let bytes = read_archived(paths, archive_root, &step.identity, digest)?;
-            write_atomic(&target, &bytes)?;
-            crate::services::bootstrap(paths, label, false);
-        }
-        None => {
-            let _ = std::fs::remove_file(&target);
-        }
+    if let Some(digest) = previous {
+        let (bytes, sealed) = read_archived_sealed(paths, archive_root, &step.identity, digest)?;
+        write_atomic(&target, &bytes)?;
+        crate::services::bootstrap(paths, label, false);
+        Ok(sealed)
+    } else {
+        let _ = std::fs::remove_file(&target);
+        Ok(false)
     }
-    Ok(())
 }
 
 fn reverse_brew_service(step: &Step) -> Result<(), Error> {
@@ -995,18 +1055,20 @@ fn reverse_defaults(
     })
 }
 
-fn read_archived(
+/// Read one archived copy back, saying whether it was sealed — the
+/// caller may need to remember that the bytes carry secrets.
+fn read_archived_sealed(
     paths: &Paths,
     archive_root: &Path,
     identity: &str,
     digest: &str,
-) -> Result<Vec<u8>, Error> {
+) -> Result<(Vec<u8>, bool), Error> {
     let path = archive_root.join(sanitize(identity)).join(digest);
     let bytes = std::fs::read(&path).map_err(|error| {
         apply_error(&format!("reading the archived copy for {identity}"), &error)
     })?;
     if crate::secrets::is_sealed(&bytes) {
-        return crate::secrets::unseal(paths, &bytes);
+        return Ok((crate::secrets::unseal(paths, &bytes)?, true));
     }
-    Ok(bytes)
+    Ok((bytes, false))
 }
