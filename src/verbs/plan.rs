@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use crate::error::Error;
 use crate::model::action::{Action, Plan};
-use crate::model::{Kind, Unit, Value};
+use crate::model::{Kind, Unit};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
@@ -210,19 +210,10 @@ pub fn render_item_diff(out: &Out, paths: &Paths, item: &crate::model::action::I
     if item.declaration.identity.kind != Kind::File {
         return;
     }
-    let Value::Map(fields) = &item.declaration.spec else {
+    let Some(declared) = crate::apply::declared_file_bytes(paths, &item.declaration) else {
         return;
     };
-    let declared = match (fields.get("source"), fields.get("content")) {
-        (Some(Value::Str(source)), _) => source
-            .strip_prefix("@self/")
-            .and_then(|rest| std::fs::read_to_string(paths.config.join(rest)).ok()),
-        (_, Some(Value::Str(content))) => Some(content.clone()),
-        _ => None,
-    };
-    let Some(declared) = declared else {
-        return;
-    };
+    let declared = String::from_utf8_lossy(&declared).into_owned();
     let target = &item.declaration.identity.key;
     let live = std::fs::read_to_string(paths.expand_home(target)).unwrap_or_default();
     if live == declared {

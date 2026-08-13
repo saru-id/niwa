@@ -106,16 +106,10 @@ fn compare_file(declaration: &Declaration, paths: &Paths, journal: &Journal) -> 
     // What should the bytes be? A plain source or content is known
     // now. Rendered content resolves at apply time, so the plan leans
     // on the journal: same spec, same bytes on disk, nothing to do.
-    let declared: Option<Vec<u8>> = match (fields.get("source"), fields.get("content")) {
-        (Some(Value::Str(source)), _) => source
-            .strip_prefix("@self/")
-            .and_then(|rest| std::fs::read(paths.config.join(rest)).ok()),
-        (_, Some(Value::Str(content))) => Some(content.clone().into_bytes()),
-        (_, Some(Value::Map(_))) => {
-            return rendered_action(declaration, journal, &target);
-        }
-        _ => None,
-    };
+    if matches!(fields.get("content"), Some(Value::Map(_))) {
+        return rendered_action(declaration, journal, &target);
+    }
+    let declared = crate::apply::declared_file_bytes(paths, declaration);
     let Some(declared) = declared else {
         return Action::Change {
             detail: "source unreadable".to_string(),

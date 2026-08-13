@@ -156,27 +156,26 @@ pub fn plan_pass(
 pub fn plan_of(engine: Rc<Engine>) -> crate::model::action::Plan {
     let items = Rc::try_unwrap(engine).map_or_else(|_| Vec::new(), Engine::into_items);
     let mut order: Vec<crate::model::Identity> = Vec::new();
-    let mut chosen: std::collections::HashMap<crate::model::Identity, crate::model::action::Item> =
-        std::collections::HashMap::new();
+    let mut groups: std::collections::HashMap<
+        crate::model::Identity,
+        Vec<crate::model::action::Item>,
+    > = std::collections::HashMap::new();
     for item in items {
         let identity = item.declaration.identity.clone();
-        match chosen.entry(identity.clone()) {
-            std::collections::hash_map::Entry::Vacant(slot) => {
-                order.push(identity);
-                slot.insert(item);
-            }
-            std::collections::hash_map::Entry::Occupied(mut slot) => {
-                // Later host declarations win; everything else keeps
-                // its first appearance.
-                if item.declaration.unit.is_host() {
-                    slot.insert(item);
-                }
-            }
+        if !groups.contains_key(&identity) {
+            order.push(identity.clone());
         }
+        groups.entry(identity).or_default().push(item);
     }
+    // The model owns the precedence rule; this fold only applies it.
     let items = order
         .into_iter()
-        .filter_map(|identity| chosen.remove(&identity))
+        .filter_map(|identity| {
+            let mut group = groups.remove(&identity)?;
+            let index =
+                crate::model::analysis::wins(group.iter().map(|item| &item.declaration.unit))?;
+            Some(group.swap_remove(index))
+        })
         .collect();
     crate::model::action::Plan { items }
 }

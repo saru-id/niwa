@@ -34,6 +34,19 @@ pub struct Conflict {
     pub locations: Vec<Provenance>,
 }
 
+/// The one precedence rule for a shared identity, stated once: the
+/// last host declaration wins; without one, the first appearance
+/// stands. Returns the winning position in declaration order.
+pub fn wins<'a, I: IntoIterator<Item = &'a super::Unit>>(units: I) -> Option<usize> {
+    let mut winner = None;
+    for (index, unit) in units.into_iter().enumerate() {
+        if winner.is_none() || unit.is_host() {
+            winner = Some(index);
+        }
+    }
+    winner
+}
+
 pub fn analyze(declarations: &[Declaration]) -> Analysis {
     let mut order: Vec<&Identity> = Vec::new();
     let mut groups: HashMap<&Identity, Vec<&Declaration>> = HashMap::new();
@@ -81,12 +94,7 @@ pub fn analyze(declarations: &[Declaration]) -> Analysis {
         .iter()
         .map(|identity| {
             let group = &groups[*identity];
-            group
-                .iter()
-                .rfind(|d| d.unit.is_host())
-                .or_else(|| group.first())
-                .copied()
-                .cloned()
+            wins(group.iter().map(|d| &d.unit)).map(|index| group[index].clone())
         })
         .collect::<Option<Vec<_>>>()
         .unwrap_or_default();

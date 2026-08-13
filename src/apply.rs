@@ -700,7 +700,7 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
 /// The bytes a file declaration means, when they are knowable
 /// without an apply: inline content, or an `@self/` source. Rendered
 /// content resolves at apply time and answers `None`.
-fn declared_file_bytes(paths: &Paths, declaration: &Declaration) -> Option<Vec<u8>> {
+pub fn declared_file_bytes(paths: &Paths, declaration: &Declaration) -> Option<Vec<u8>> {
     let Value::Map(fields) = &declaration.spec else {
         return None;
     };
