@@ -7,17 +7,8 @@
 
 import { NAV } from '../nav'
 
-/* The probe is scaffolding, not a page. It proves this template on one file
- * and wears its own label. It is the only file the inventory lets through,
- * and it goes when the documentation replaces it: delete this constant, the
- * branch below, and `src/content/docs/probe.md` together.
- */
-const PROBE = 'probe'
-
 /** The area a page belongs to: the label of its group in the sidebar. */
 export function areaOf(id: string, file: string): string {
-  if (id === PROBE) return 'Probe'
-
   const path = `/${id}`
   for (const group of NAV) {
     if (group.entries.some((entry) => entry.path === path)) {
