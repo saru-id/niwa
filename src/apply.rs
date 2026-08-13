@@ -489,8 +489,13 @@ fn sanitize(identity: &str) -> String {
     if mapped.len() <= 120 {
         mapped
     } else {
-        let head: String = mapped.chars().take(64).collect();
-        format!("{head}-{}", &digest(identity.as_bytes())[..16])
+        // The head is cut by bytes, on a char boundary, so the stub
+        // stays under the 255-byte name cap for any alphabet.
+        let mut cut = 64.min(mapped.len());
+        while !mapped.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        format!("{}-{}", &mapped[..cut], &digest(identity.as_bytes())[..16])
     }
 }
 

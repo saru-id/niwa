@@ -165,7 +165,7 @@ impl Journal {
             detail: error.to_string(),
         })?;
         let path = state.join(FILE);
-        let raw = serde_json::to_vec_pretty(self).map_err(|error| Error::JournalUnreadable {
+        let raw = serde_json::to_vec_pretty(self).map_err(|error| Error::JournalUnwritable {
             detail: error.to_string(),
         })?;
         // Synced before the rename: the journal is the one ledger a

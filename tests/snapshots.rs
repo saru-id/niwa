@@ -26,7 +26,7 @@ fn niwa(home: &Path, args: &[&str], force_color: bool) -> Run {
     let redact = |raw: &[u8]| {
         String::from_utf8(raw.to_vec())
             .unwrap()
-            .replace(&home.display().to_string(), "~")
+            .replace(&home.display().to_string(), "[home]")
     };
     Run {
         stdout: redact(&output.stdout),
@@ -227,6 +227,6 @@ fn the_pull_screen_stages_an_unmanaged_package() {
     assert_eq!(output.status.code(), Some(0));
     let stdout = String::from_utf8(output.stdout)
         .unwrap()
-        .replace(&home.path().display().to_string(), "~");
+        .replace(&home.path().display().to_string(), "[home]");
     insta::assert_snapshot!(stdout);
 }

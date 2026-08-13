@@ -135,11 +135,22 @@ impl Error {
     pub fn detail(&self) -> Vec<String> {
         match self {
             Self::NoHome => vec!["set HOME and run niwa again".to_string()],
-            Self::ConfigMissing { dir } => vec![
-                format!("looked in {}", dir.display()),
-                "run `niwa init` to scan this machine into a starter config".to_string(),
-                format!("or clone your config repo to {}", dir.display()),
-            ],
+            Self::ConfigMissing { dir } => {
+                // The voice rules contract paths under home to `~/`.
+                let shown = std::env::var("HOME")
+                    .ok()
+                    .and_then(|home| {
+                        dir.strip_prefix(&home)
+                            .ok()
+                            .map(|rest| format!("~/{}", rest.display()))
+                    })
+                    .unwrap_or_else(|| dir.display().to_string());
+                vec![
+                    format!("looked in {shown}"),
+                    "run `niwa init` to scan this machine into a starter config".to_string(),
+                    format!("or clone your config repo to {shown}"),
+                ]
+            }
             Self::Script { detail } => detail.lines().map(str::to_string).collect(),
             Self::Conflicts(conflicts) => {
                 let mut lines = Vec::new();

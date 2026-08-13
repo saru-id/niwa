@@ -32,8 +32,26 @@ pub fn newest_version_dir(
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
         .filter(|name| !name.starts_with('.'))
         .collect();
-    versions.sort();
+    versions.sort_by(|a, b| version_order(a, b));
     versions.pop()
+}
+
+/// Compare version-ish names numerically where both sides are
+/// numbers, so 10.2.0 outranks 9.0.1 the way plain sorting cannot.
+fn version_order(a: &str, b: &str) -> std::cmp::Ordering {
+    let split =
+        |text: &str| -> Vec<String> { text.split(['.', '_', '-']).map(str::to_string).collect() };
+    let (a, b) = (split(a), split(b));
+    for pair in a.iter().zip(b.iter()) {
+        let ordering = match (pair.0.parse::<u64>(), pair.1.parse::<u64>()) {
+            (Ok(left), Ok(right)) => left.cmp(&right),
+            _ => pair.0.cmp(pair.1),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    a.len().cmp(&b.len())
 }
 
 /// The digest format acknowledgements and checksums use: sha256, hex.
@@ -108,6 +126,14 @@ pub fn write_atomic(
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn versions_order_numerically_not_lexically() {
+        use std::cmp::Ordering;
+        assert_eq!(version_order("9.0.1", "10.2.0"), Ordering::Less);
+        assert_eq!(version_order("1.7.1", "1.7.1_1"), Ordering::Less);
+        assert_eq!(version_order("2.0.0", "2.0.0"), Ordering::Equal);
+    }
 
     #[test]
     fn durations_parse_with_their_units() {
