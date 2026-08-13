@@ -54,8 +54,14 @@ impl Lock {
             .truncate(false)
             .open(&path)
             .map_err(|error| apply_error("taking the apply lock", &error))?;
-        if file.try_lock().is_err() {
-            return Err(Error::ApplyLocked { path });
+        match file.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => {
+                return Err(Error::ApplyLocked { path });
+            }
+            Err(std::fs::TryLockError::Error(error)) => {
+                return Err(apply_error("taking the apply lock", &error));
+            }
         }
         let _ = file.set_len(0);
         {
@@ -336,7 +342,10 @@ fn render_content(
         Some(Value::Map(values)) => values,
         _ => &empty,
     };
-    let mut text = template.clone();
+    // Resolve every value first, then substitute in one scan of the
+    // template: a value that itself contains a literal `{name}` is
+    // bytes, never a second round of substitution.
+    let mut resolved: std::collections::BTreeMap<&str, String> = std::collections::BTreeMap::new();
     let mut used_secrets = false;
     for (name, value) in values {
         let replacement = match value {
@@ -358,8 +367,24 @@ fn render_content(
             }
             other => crate::plan::render_value(other),
         };
-        text = text.replace(&format!("{{{name}}}"), &replacement);
+        resolved.insert(name.as_str(), replacement);
     }
+    let mut text = String::with_capacity(template.len());
+    let mut rest = template.as_str();
+    while let Some(start) = rest.find('{') {
+        text.push_str(&rest[..start]);
+        let after = &rest[start..];
+        if let Some(end) = after.find('}')
+            && let Some(replacement) = resolved.get(&after[1..end])
+        {
+            text.push_str(replacement);
+            rest = &after[end + 1..];
+        } else {
+            text.push('{');
+            rest = &after[1..];
+        }
+    }
+    text.push_str(rest);
     Ok((text.into_bytes(), used_secrets))
 }
 
@@ -599,7 +624,22 @@ fn apply_link(
             if !may_overwrite(declaration, journal, &current, force) {
                 return Ok((Outcome::Protected, None));
             }
-            archive(archive_root, &declaration.identity.to_string(), &current)?;
+            // The bytes in the way may have been rendered from
+            // secrets under the file identity of the same target:
+            // either identity's acknowledgement decides the seal.
+            let seal = journal
+                .acknowledged(&declaration.identity.to_string())
+                .is_some_and(|ack| ack.spec.uses_secrets())
+                || journal
+                    .acknowledged(&format!("file:{}", declaration.identity.key))
+                    .is_some_and(|ack| ack.spec.uses_secrets());
+            archive_displaced(
+                paths,
+                archive_root,
+                &declaration.identity.to_string(),
+                &current,
+                seal,
+            )?;
             previous = Some(digest(&current));
             std::fs::remove_file(&target)
                 .map_err(|error| apply_error("moving the old file aside", &error))?;
@@ -815,7 +855,10 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
         }
         journal.pop_step();
         journal.save(&paths.state)?;
-        reversed += 1;
+        // What could not be taken back is named, never counted.
+        if !matches!(step.effect, Effect::Irreversible { .. }) {
+            reversed += 1;
+        }
     }
     Ok(reversed)
 }
@@ -936,8 +979,14 @@ fn reverse_link(
         std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
     }
     if let Some(digest) = previous {
-        let (bytes, _) = read_archived_sealed(paths, archive_root, &step.identity, digest)?;
-        write_atomic(&target, &bytes)?;
+        let (bytes, sealed) = read_archived_sealed(paths, archive_root, &step.identity, digest)?;
+        // Secret-bearing bytes never come back world-readable.
+        if sealed {
+            crate::util::write_atomic(&target, &bytes, Some(0o600), false)
+                .map_err(|error| apply_error("restoring the previous file", &error))?;
+        } else {
+            write_atomic(&target, &bytes)?;
+        }
     }
     Ok(())
 }
