@@ -780,27 +780,37 @@ pub fn reverse_last(paths: &Paths, journal: &mut Journal) -> Result<usize, Error
             .acknowledged(&step.identity)
             .is_some_and(|ack| ack.spec.uses_secrets());
         let restored_sealed = reverse_step(&step, paths, &archive_root, seal)?;
-        journal.drop_acknowledgement(&step.identity);
-        if restored_sealed {
-            // The restored bytes came out of a sealed archive: they
-            // carry secrets, and the journal must remember that so a
-            // later displacement seals again instead of leaking. The
-            // digest is the restored copy's, so a matching overwrite
-            // stays a free update.
-            let restored = match &step.effect {
-                Effect::FileWritten { previous, .. }
-                | Effect::LinkMade { previous }
-                | Effect::ServiceSet { previous } => previous.clone(),
-                _ => None,
+        // An irreversible step was not taken back: its marker is the
+        // truth about the world and must stand, or the next apply
+        // would silently run a once body a second time.
+        if !matches!(step.effect, Effect::Irreversible { .. }) {
+            journal.drop_acknowledgement(&step.identity);
+        }
+        // What undo restored is niwa's own write: acknowledged, so a
+        // re-apply stays a free update instead of demanding --force
+        // for bytes niwa itself put there. Sealed restores carry the
+        // secret marker so a later displacement seals again.
+        let restored = match &step.effect {
+            Effect::FileWritten { previous, .. }
+            | Effect::LinkMade { previous }
+            | Effect::ServiceSet { previous }
+            | Effect::BinaryInstalled { previous, .. } => previous.clone(),
+            _ => None,
+        };
+        if let Some(digest) = restored {
+            let spec = if restored_sealed {
+                let mut fields = std::collections::BTreeMap::new();
+                fields.insert(
+                    "secret".to_string(),
+                    Value::Str("restored from a sealed archive".to_string()),
+                );
+                Value::Map(fields)
+            } else {
+                Value::Map(std::collections::BTreeMap::new())
             };
-            let mut fields = std::collections::BTreeMap::new();
-            fields.insert(
-                "secret".to_string(),
-                Value::Str("restored from a sealed archive".to_string()),
-            );
             journal.acknowledge(
                 step.identity.clone(),
-                Acknowledgement::new(Value::Map(fields), restored),
+                Acknowledgement::new(spec, Some(digest)),
             );
         }
         journal.pop_step();
@@ -834,7 +844,7 @@ fn reverse_step(
         Effect::DefaultsSet { previous } => {
             reverse_defaults(step, paths, archive_root, previous.as_ref(), seal).map(|()| false)
         }
-        Effect::PackageInstalled => reverse_package(step).map(|()| false),
+        Effect::PackageInstalled => reverse_package(step, paths).map(|()| false),
         Effect::ServiceSet { previous } => {
             reverse_service(step, paths, archive_root, previous.as_deref(), seal)
         }
@@ -931,15 +941,28 @@ fn reverse_link(
     }
     Ok(())
 }
-fn reverse_package(step: &Step) -> Result<(), Error> {
-    uninstall_package(&crate::model::Identity::parse(&step.identity))
+fn reverse_package(step: &Step, paths: &Paths) -> Result<(), Error> {
+    uninstall_package(paths, &crate::model::Identity::parse(&step.identity))
 }
 
 /// The one package-uninstall dispatch: undo and orphan removal both
 /// route through it. Kinds no installer owns reverse to nothing.
-pub fn uninstall_package(identity: &crate::model::Identity) -> Result<(), Error> {
+pub fn uninstall_package(paths: &Paths, identity: &crate::model::Identity) -> Result<(), Error> {
     let deadline = std::time::Duration::from_mins(10);
     let name = &identity.key;
+    // Already gone is already reversed: undo must never wedge on a
+    // package someone removed by hand.
+    let present = match &identity.kind {
+        Kind::BrewFormula | Kind::BrewCask => {
+            crate::brew::installed(paths, &identity.kind, name).is_some()
+        }
+        Kind::Npm => crate::npm::installed(name),
+        Kind::Mise => crate::mise::installed(paths, name, None).is_some(),
+        _ => return Ok(()),
+    };
+    if !present {
+        return Ok(());
+    }
     let result = match &identity.kind {
         Kind::BrewFormula | Kind::BrewCask => {
             crate::brew::uninstall(&identity.kind, name, deadline)

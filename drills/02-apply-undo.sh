@@ -110,6 +110,24 @@ niwa undo --yes
 check 19 "the un-reversed step is still known" \
     grep -q "undo would reverse 1 change" "$SANDBOX/stdout"
 
+# --- undo never re-arms what could not be taken back ----------------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.once("mark-once", function()
+    niwa.run("echo ran >>" .. niwa.home .. "/.once-log")
+end)
+niwa.file("~/.beside-once", { content = "beside\n" })
+LUAU
+niwa apply --yes
+check 19b "the once body ran (exit 0)" \
+    sh -c "test $STATUS -eq 0 && test \"\$(wc -l <'$HOME/.once-log' | tr -d ' ')\" = '1'"
+niwa undo --yes
+check 19c "undo reverses the file and leaves the marker" \
+    sh -c "! test -e '$HOME/.beside-once'"
+niwa apply --yes
+check 19d "the once body did not run again" \
+    test "$(wc -l <"$HOME/.once-log" | tr -d ' ')" = "1"
+
 # --- prompts hear any case, and a closed stdin declines --------------
 cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
 local niwa = require("@niwa")

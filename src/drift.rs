@@ -407,6 +407,10 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
         Kind::BrewFormula | Kind::BrewCask => {
             crate::brew::installed(paths, &identity.kind, key).is_some()
         }
+        // A marker's world is the marker itself: run and once acks
+        // are never "gone on both sides", or dropping one would
+        // silently re-arm an irreversible body.
+        Kind::Run | Kind::Once => true,
         Kind::Npm => crate::npm::installed(key),
         Kind::Mise => crate::mise::installed(paths, key, None).is_some(),
         Kind::Service => crate::services::agent_plist(paths, key).is_file(),
