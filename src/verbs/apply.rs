@@ -237,8 +237,12 @@ fn summarize(
         out.result(Mark::Restarted, &format!("{target} restarted (once)"));
     }
     for identity in &protected {
+        // The key is quoted because it is meant to be pasted: a bare
+        // `~/.zshrc` reaches niwa as an absolute path, and force
+        // compares the declared target, so an unquoted note would
+        // name a target nothing declares.
         out.note(&format!(
-            "{identity} holds edits niwa never wrote: pull them home, or apply --force {}",
+            "{identity} holds edits niwa never wrote: pull them home, or apply --force '{}'",
             crate::model::Identity::parse(identity).key
         ));
         // The diff apply refused to guess about, shown instead.

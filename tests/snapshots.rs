@@ -189,6 +189,22 @@ fn the_apply_screen_shows_the_work_then_the_summary() {
 }
 
 #[test]
+fn the_protected_screen_offers_a_force_the_shell_cannot_rewrite() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.prot-a\", { content = \"niwa a\\n\" })\n",
+    );
+    std::fs::write(home.path().join(".prot-a"), "hand a\n").unwrap();
+    let run = niwa(home.path(), &["apply", "--yes", "--dirty"], false);
+    assert_eq!(run.code, 0, "{}", run.stderr);
+    insta::with_settings!({filters => vec![(r"\d+\.\d+s", "[t]")]}, {
+        insta::assert_snapshot!("apply_protected_piped", run.stdout);
+    });
+}
+
+#[test]
 fn the_conflict_screen_names_both_locations() {
     let home = tempfile::tempdir().unwrap();
     write(

@@ -1,0 +1,12 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+[init]
+~/.prot-a   content differs
+1 checked · 0 changed · 1 protected · [t]
+file:~/.prot-a holds edits niwa never wrote: pull them home, or apply --force '~/.prot-a'
+
+[~/.prot-a]
+- hand a
++ niwa a
