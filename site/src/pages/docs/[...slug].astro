@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content'
+import { Markdown } from '../../components/Markdown'
 import '../../styles/app.css'
 
 export async function getStaticPaths() {
@@ -20,9 +21,14 @@ const { entry } = Astro.props
   <body>
     <main>
       <h1>{entry.data.title}</h1>
-      <!-- The raw body is what the rendering pipeline will read. Showing it
-        here proves the loader reaches it. -->
-      <pre>{entry.body}</pre>
+      <article>
+        <!-- No client directive. React renders this once, during the build,
+          and none of it reaches the browser. -->
+        <Markdown source={entry.body ?? ''} />
+      </article>
     </main>
+    <script>
+      import '../../scripts/copy'
+    </script>
   </body>
 </html>

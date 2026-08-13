@@ -44,6 +44,30 @@
   --role-bad: oklch(0.48 0.16 25);
   --role-accent: oklch(0.46 0.179 273.8);
   --role-muted: var(--ink-muted);
+
+  --th-token: #24292f;
+  --th-attr: #0550ae;
+  --th-code-inline: #953800;
+  --th-command: #8250df;
+  --th-comment: #6e7781;
+  --th-deleted: #cf222e;
+  --th-function: #8250df;
+  --th-heading: #0550ae;
+  --th-inserted: #1a7f37;
+  --th-keyword: #cf222e;
+  --th-link: #0969da;
+  --th-literal: #0550ae;
+  --th-meta: #57606a;
+  --th-number: #0550ae;
+  --th-operator: #8250df;
+  --th-property: #0550ae;
+  --th-selector: #116329;
+  /* GitHub Light sets strings navy, which sits on top of the accent. This
+   * teal is the one deliberate departure from the vendored values. */
+  --th-string: #0a7f64;
+  --th-tag: #116329;
+  --th-type: #953800;
+  --th-variable: #953800;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,6 +86,28 @@
     --role-bad: oklch(0.82 0.1 25);
     --role-accent: oklch(0.8 0.1 278.4);
     --role-muted: var(--ink-muted);
+
+    --th-token: #c9d1d9;
+    --th-attr: #79c0ff;
+    --th-code-inline: #ffa657;
+    --th-command: #d2a8ff;
+    --th-comment: #8b949e;
+    --th-deleted: #ff7b72;
+    --th-function: #d2a8ff;
+    --th-heading: #79c0ff;
+    --th-inserted: #7ee787;
+    --th-keyword: #ff7b72;
+    --th-link: #58a6ff;
+    --th-literal: #79c0ff;
+    --th-meta: #8b949e;
+    --th-number: #79c0ff;
+    --th-operator: #d2a8ff;
+    --th-property: #79c0ff;
+    --th-selector: #7ee787;
+    --th-string: #a5d6ff;
+    --th-tag: #7ee787;
+    --th-type: #ffa657;
+    --th-variable: #ffa657;
   }
 }
 
@@ -82,6 +128,28 @@
   --role-bad: oklch(0.82 0.1 25);
   --role-accent: oklch(0.8 0.1 278.4);
   --role-muted: var(--ink-muted);
+
+  --th-token: #c9d1d9;
+  --th-attr: #79c0ff;
+  --th-code-inline: #ffa657;
+  --th-command: #d2a8ff;
+  --th-comment: #8b949e;
+  --th-deleted: #ff7b72;
+  --th-function: #d2a8ff;
+  --th-heading: #79c0ff;
+  --th-inserted: #7ee787;
+  --th-keyword: #ff7b72;
+  --th-link: #58a6ff;
+  --th-literal: #79c0ff;
+  --th-meta: #8b949e;
+  --th-number: #79c0ff;
+  --th-operator: #d2a8ff;
+  --th-property: #79c0ff;
+  --th-selector: #7ee787;
+  --th-string: #a5d6ff;
+  --th-tag: #7ee787;
+  --th-type: #ffa657;
+  --th-variable: #ffa657;
 }
 
 :root.theme-light {
@@ -89,12 +157,99 @@
 }
 
 /* ---- Syntax tokens -----------------------------------------------------
- * The twenty-one `--th-*` variables per theme, and the `.th-*` rules that
- * read them, are transcribed by hand from the GitHub themes. They arrive
- * with the highlighting pipeline and belong in the three theme blocks
- * above. Keep `.th-token` first among the rules: it and `.th-keyword` have
- * equal specificity, and only source order makes the second one win.
+ * The twenty-one `--th-*` variables per theme, declared in the three theme
+ * blocks above, are transcribed by hand from the GitHub themes. They stay
+ * hex: they are vendored artwork we do not tune, and converting them would
+ * spend forty-two chances to drift a hue for no design control gained.
+ *
+ * The highlighter gives a classed token two classes, `th-token` and
+ * `th-<class>`. The two have equal specificity, so `.th-token` must come
+ * first: only source order makes the second one win.
  */
+
+.th-token {
+  color: var(--th-token);
+}
+
+.th-attr {
+  color: var(--th-attr);
+}
+
+.th-code-inline {
+  color: var(--th-code-inline);
+}
+
+.th-command {
+  color: var(--th-command);
+}
+
+.th-comment {
+  color: var(--th-comment);
+}
+
+.th-deleted {
+  color: var(--th-deleted);
+}
+
+.th-function {
+  color: var(--th-function);
+}
+
+.th-heading {
+  color: var(--th-heading);
+}
+
+.th-inserted {
+  color: var(--th-inserted);
+}
+
+.th-keyword {
+  color: var(--th-keyword);
+}
+
+.th-link {
+  color: var(--th-link);
+}
+
+.th-literal {
+  color: var(--th-literal);
+}
+
+.th-meta {
+  color: var(--th-meta);
+}
+
+.th-number {
+  color: var(--th-number);
+}
+
+.th-operator {
+  color: var(--th-operator);
+}
+
+.th-property {
+  color: var(--th-property);
+}
+
+.th-selector {
+  color: var(--th-selector);
+}
+
+.th-string {
+  color: var(--th-string);
+}
+
+.th-tag {
+  color: var(--th-tag);
+}
+
+.th-type {
+  color: var(--th-type);
+}
+
+.th-variable {
+  color: var(--th-variable);
+}
 
 /* ---- Type --------------------------------------------------------------
  * System faces. The tool wears the reader's terminal theme; the site wears

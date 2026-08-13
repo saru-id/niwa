@@ -1,6 +1,6 @@
-import react from '@astrojs/react'
 import stylex from '@stylexjs/unplugin'
 import { defineConfig } from 'astro/config'
+import { buildOnlyReact } from './integrations/build-only-react'
 import { installScript } from './integrations/install-script'
 
 export default defineConfig({
@@ -11,7 +11,7 @@ export default defineConfig({
   // its highlighter would only cost build time. Turning it off also keeps the
   // markdown processor Astro 7 ships irrelevant to this build.
   markdown: { syntaxHighlight: false },
-  integrations: [react(), installScript()],
+  integrations: [buildOnlyReact(), installScript()],
   vite: {
     // StyleX must transform sources before the React plugin the integration
     // adds, so it is declared here rather than through the integration, which

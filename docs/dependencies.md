@@ -196,6 +196,33 @@ packages are alpha or beta and treat a minor as breaking.
   time only.
 - License: MIT.
 
+### @tanstack/markdown
+
+- Does: parses the documentation markdown and renders it to HTML at build
+  time, including heading ids, heading anchors, and the hook the
+  highlighter plugs into.
+- Why not our own: a markdown parser is a specification, not a weekend. It
+  has no dependencies, its tree is plain data, and the design site already
+  proved it on this content.
+- Maintenance and weight: alpha, and pinned exactly for that reason — the
+  package is 0.0.x, its announcement says the contract can still move, and
+  every class name the stylesheet targets is an implementation detail.
+  Build time only, no dependencies.
+- License: MIT.
+
+### @tanstack/highlight
+
+- Does: turns a code fence into coloured spans at build time. It ships the
+  shell, TOML and JSON grammars, takes the site's own Luau grammar, and
+  bridges to the markdown renderer.
+- Why not our own: it is synchronous, has no dependencies and no WASM, and
+  its grammars are plain scanning functions, which is what let the Luau
+  grammar be written by hand at all.
+- Maintenance and weight: alpha, and pinned exactly for that reason — 0.0.x
+  with the same warning as the markdown package. Build time only, no
+  dependencies.
+- License: MIT.
+
 ### @stylexjs/stylex
 
 - Does: component styles, compiled to atomic CSS at build time, reading
