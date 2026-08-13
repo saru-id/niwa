@@ -66,7 +66,7 @@ enforces the license and source policy in `deny.toml`.
 ### sha2
 
 - Does: SHA-256 digests, for acknowledging file bytes in the journal
-  and verifying release checksums later.
+  and verifying release checksums.
 - Why not our own: rewriting a cryptographic hash is how tools get
   quietly wrong hashes.
 - Maintenance: RustCrypto team, current.

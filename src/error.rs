@@ -137,14 +137,7 @@ impl Error {
             Self::NoHome => vec!["set HOME and run niwa again".to_string()],
             Self::ConfigMissing { dir } => {
                 // The voice rules contract paths under home to `~/`.
-                let shown = std::env::var("HOME")
-                    .ok()
-                    .and_then(|home| {
-                        dir.strip_prefix(&home)
-                            .ok()
-                            .map(|rest| format!("~/{}", rest.display()))
-                    })
-                    .unwrap_or_else(|| dir.display().to_string());
+                let shown = crate::paths::contract_home(dir);
                 vec![
                     format!("looked in {shown}"),
                     "run `niwa init` to scan this machine into a starter config".to_string(),

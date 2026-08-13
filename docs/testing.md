@@ -13,7 +13,7 @@ carve-out is documented here.
   stub executables stand in for system tools.
 - **Drills** (`drills/`) are
   hermetic end-to-end scenarios with numbered, self-checking steps.
-  They assert on files, never by evaluating captured output.
+  They assert on files first, and on captured output where the screen is the contract.
 - **Snapshots** cover every screen the design mocks, through the one
   output layer.
 - **Simulations** run property-based converge, drift, and undo cycles

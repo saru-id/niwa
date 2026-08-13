@@ -70,8 +70,8 @@ impl Mark {
     const fn role(self) -> Role {
         match self {
             Self::Ok | Self::Added => Role::Good,
-            Self::Changed | Self::Removed => Role::Warn,
-            Self::Failed => Role::Bad,
+            Self::Changed => Role::Warn,
+            Self::Failed | Self::Removed => Role::Bad,
             Self::Restarted => Role::Muted,
             Self::Busy | Self::Waiting => Role::Accent,
         }

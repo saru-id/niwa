@@ -38,6 +38,8 @@ pub struct RunState {
     /// Memoised queries: the whole run sees one consistent world.
     pub exists_cache: HashMap<String, bool>,
     pub command_cache: HashMap<String, bool>,
+    /// Custom checks' exec answers, memoised per run by command line.
+    pub exec_cache: HashMap<String, (String, Option<i32>)>,
     /// Every `niwa.secret` the run asked for, for `doctor`.
     pub secrets_used: Vec<(String, Option<String>)>,
     /// Has the config read any result yet? A branch on `.changed` is

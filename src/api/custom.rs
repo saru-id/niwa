@@ -155,10 +155,12 @@ fn declare_custom(
     }
 
     let described: String = handlers.describe.call(resource_spec.clone())?;
-    // Both passes ask the kind's own check, through the handle.
+    // Both passes ask the kind's own check, through the read handle:
+    // its reads are memoised like every query, so one run sees one
+    // consistent world. The acting handle never caches — effects run.
     let in_sync: bool = handlers
         .check
-        .call((exec_handle(lua)?, resource_spec.clone()))?;
+        .call((read_handle(lua, ctx)?, resource_spec.clone()))?;
 
     let truth = if engine.is_planning() {
         engine.custom_planned(&declaration, in_sync, &described)
@@ -179,6 +181,48 @@ fn declare_custom(
 /// The handle a kind's handlers receive. Its whole surface is
 /// `exec`: run a command under the deadline, get `{ stdout, code }`
 /// back. `code` is nil when the deadline killed the command.
+/// The query handle a `check` receives: the same exec surface, with
+/// every answer memoised per run keyed by the command line.
+fn read_handle(lua: &Lua, ctx: &Ctx) -> mlua::Result<Table> {
+    let handle = lua.create_table()?;
+    let state = std::rc::Rc::clone(&ctx.state);
+    handle.set(
+        "exec",
+        lua.create_function(move |lua, command: String| {
+            if let Some((stdout, code)) = state.borrow().exec_cache.get(&command).cloned() {
+                let result = lua.create_table()?;
+                result.set("stdout", stdout)?;
+                if let Some(code) = code {
+                    result.set("code", code)?;
+                }
+                return Ok(result);
+            }
+            let finished = crate::util::proc::bounded_output(
+                "/bin/sh",
+                &["-c", &command],
+                Duration::from_mins(10),
+            )
+            .ok_or_else(|| {
+                mlua::Error::RuntimeError(format!(
+                    "`{command}` did not start or ran past its deadline"
+                ))
+            })?;
+            state
+                .borrow_mut()
+                .exec_cache
+                .insert(command, (finished.stdout.clone(), finished.code));
+            let result = lua.create_table()?;
+            result.set("stdout", finished.stdout)?;
+            if let Some(code) = finished.code {
+                result.set("code", code)?;
+            }
+            Ok(result)
+        })?,
+    )?;
+    freeze(lua, &handle)?;
+    Ok(handle)
+}
+
 fn exec_handle(lua: &Lua) -> mlua::Result<Table> {
     let handle = lua.create_table()?;
     handle.set(

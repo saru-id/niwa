@@ -93,3 +93,16 @@ fn xdg_dir(home: &Path, var: &str, default: &str) -> PathBuf {
         .filter(|p| p.is_absolute())
         .unwrap_or_else(|| home.join(default))
 }
+
+/// A path shown to a person: contracted to `~/` when it sits under
+/// the home directory. Lives here so the one-HOME-reader rule holds.
+pub fn contract_home(path: &std::path::Path) -> String {
+    std::env::var("HOME")
+        .ok()
+        .and_then(|home| {
+            path.strip_prefix(&home)
+                .ok()
+                .map(|rest| format!("~/{}", rest.display()))
+        })
+        .unwrap_or_else(|| path.display().to_string())
+}
