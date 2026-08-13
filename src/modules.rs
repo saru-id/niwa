@@ -74,7 +74,23 @@ pub fn resolve(paths: &Paths, source: &str, reference: &str) -> Result<UsePin, E
                 detail: error.to_string(),
             }
         })?;
-        copy_tree(&checkout, &cache)?;
+        // Staged, then renamed whole: a kill mid-copy must never
+        // leave a half-filled cache entry that later loads skip
+        // filling and fail against forever.
+        let staging = cache.with_extension(format!("staging-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&staging);
+        copy_tree(&checkout, &staging)?;
+        std::fs::rename(&staging, &cache)
+            .or_else(|error| {
+                // A rival filled the same content-addressed entry first:
+                // identical bytes, so losing the race is convergence.
+                let _ = std::fs::remove_dir_all(&staging);
+                if cache.exists() { Ok(()) } else { Err(error) }
+            })
+            .map_err(|error| Error::Apply {
+                doing: format!("caching {source}"),
+                detail: error.to_string(),
+            })?;
     }
     let _ = std::fs::remove_dir_all(&scratch);
 

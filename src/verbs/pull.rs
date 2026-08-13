@@ -216,14 +216,21 @@ fn accept(
 /// `[e]dit`: the proposed lines open in $EDITOR, and what you save is
 /// what lands.
 fn edited_statement(statement: &str) -> Option<String> {
-    let editor = std::env::var("EDITOR").ok()?;
+    let editor_value = std::env::var("EDITOR").ok()?;
+    // The variable may carry arguments ("code --wait"); the first
+    // word is the program, the rest travel ahead of the file.
+    let mut editor_words = editor_value.split_whitespace();
+    let editor = editor_words.next()?.to_string();
+    let editor_args: Vec<&str> = editor_words.collect();
     // An exclusively created scratch dir: the proposal file cannot be
     // a path someone else pre-planted.
     let dir = crate::util::scratch_dir("niwa-proposal").ok()?;
     let path = dir.join("proposal.luau");
     std::fs::write(&path, format!("{statement}\n")).ok()?;
     let path_text = path.display().to_string();
-    let status = crate::util::proc::interactive(&editor, &[&path_text]);
+    let mut arguments = editor_args;
+    arguments.push(&path_text);
+    let status = crate::util::proc::interactive(&editor, &arguments);
     let edited = std::fs::read_to_string(&path).ok();
     let _ = std::fs::remove_dir_all(&dir);
     if status != Some(0) {

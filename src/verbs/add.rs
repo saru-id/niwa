@@ -34,6 +34,14 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
         }
     };
 
+    // The loader's own name rule runs first: a name check would
+    // refuse must never be written into the config.
+    if name.is_empty() || name.chars().any(char::is_whitespace) {
+        return Err(Error::apply(
+            format!("adding {name}"),
+            format!("`{name}` is not a package name"),
+        ));
+    }
     let paths = Paths::resolve()?;
     super::refuse_mid_merge(&paths, "adding")?;
     let (_lock, reclaimed) = crate::apply::Lock::take(&paths.state)?;

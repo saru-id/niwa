@@ -197,7 +197,10 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
         Kind::File | Kind::Link => declaration.map_or_else(
             || "unknown".to_string(),
             |declaration| {
-                let journal = Journal::default();
+                // The real journal: rendered files compare through
+                // their acknowledgement, and an empty stand-in would
+                // call a converged file changed.
+                let journal = Journal::load(&paths.state).unwrap_or_default();
                 let lock = crate::lockfile::Lockfile::load(paths).unwrap_or_default();
                 match crate::plan::compare(declaration, paths, &journal, &lock) {
                     crate::model::action::Action::InSync => "matches the config".to_string(),

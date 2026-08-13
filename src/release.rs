@@ -134,22 +134,25 @@ pub fn prefetch(paths: &Paths, repo: &str, pin: &ReleasePin) {
         return;
     };
     if download(&asset_url, &temp).is_err() {
+        discard(&temp);
         return;
     }
     let Ok(bytes) = std::fs::read(&temp) else {
+        discard(&temp);
         return;
     };
     if digest(&bytes) != pin.sha256 {
         discard(&temp);
         return;
     }
-    let Some(parent) = target.parent() else {
-        return;
-    };
-    // The rename is the atom: a torn prefetch never becomes a hit.
-    if std::fs::create_dir_all(parent).is_ok() {
+    // The rename is the atom: a torn prefetch never becomes a hit;
+    // the scratch directory leaves with the asset either way.
+    if let Some(parent) = target.parent()
+        && std::fs::create_dir_all(parent).is_ok()
+    {
         let _ = std::fs::rename(&temp, &target);
     }
+    discard(&temp);
 }
 
 /// One fetch of the latest-release document, shared by every

@@ -1,8 +1,12 @@
 //! mise toolchains, read through mise's install directories.
 //!
-//! A tool counts as present when any version of it is installed; which
-//! version a spec like `lts` resolves to is the lockfile's business.
-//! mise itself is invoked only to change things.
+//! A tool counts as present when its install directory exists (the
+//! pinned version's, when the lock names one); which version a spec
+//! like `lts` resolves to is the lockfile's business. mise itself is
+//! invoked only to change things. One asymmetry is accepted: undo's
+//! `unuse` keeps the installed versions on disk, so a re-apply reads
+//! present without re-activating — presence is by filesystem, per
+//! the model's own rule, and downloads are never deleted.
 
 use std::path::PathBuf;
 use std::time::Duration;

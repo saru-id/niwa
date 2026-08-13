@@ -242,7 +242,7 @@ fn summarize(
     for identity in &protected {
         out.note(&format!(
             "{identity} holds edits niwa never wrote: pull them home, or apply --force {}",
-            identity.strip_prefix("file:").unwrap_or(identity)
+            crate::model::Identity::parse(identity).key
         ));
         // The diff apply refused to guess about, shown instead.
         if let Some(item) = intent
