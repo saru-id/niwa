@@ -75,6 +75,9 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     if pending == 0 {
         let line = format!("{} · nothing to do", count(intent.items.len(), "resource"));
         out.result(Mark::Ok, &line);
+        let mut journal = Journal::load(&paths.state)?;
+        crate::apply::adopt(&intent.items, &paths, &mut journal);
+        journal.save(&paths.state)?;
         close_run(out, &paths, intent.items.len());
         return Ok(ExitCode::SUCCESS);
     }

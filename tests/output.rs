@@ -9,7 +9,7 @@
 )]
 
 mod common;
-use common::{niwa, stdout, write};
+use common::{niwa, stderr, stdout, write};
 use std::path::Path;
 
 /// One file resource that is pending: the target does not exist yet.
@@ -307,6 +307,72 @@ fn a_profile_managed_key_fails_naming_the_owner() {
         &["check"],
     );
     assert_eq!(output.status.code(), Some(0));
+}
+
+#[test]
+fn what_is_already_true_is_adopted_silently() {
+    let home = tempfile::tempdir().unwrap();
+    write(home.path(), "files/zshrc", "export EDITOR=nvim\n");
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.zshrc\", { source = \"@self/files/zshrc\" })\n",
+    );
+    std::fs::write(home.path().join(".zshrc"), "export EDITOR=nvim\n").unwrap();
+
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stdout(&output).contains("nothing to do"),
+        "{}",
+        stdout(&output)
+    );
+    // The silent half: the journal now acknowledges the identity
+    // even though the apply touched nothing.
+    assert!(
+        acknowledged(home.path()).contains(&"file:~/.zshrc".to_string()),
+        "adoption must acknowledge"
+    );
+}
+
+/// The identities the journal acknowledges, parsed, so history
+/// entries cannot masquerade as acknowledgements.
+fn acknowledged(home: &Path) -> Vec<String> {
+    let text =
+        std::fs::read_to_string(home.join(".local/state/niwa/journal.json")).unwrap_or_default();
+    let value: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    value["acknowledged"]
+        .as_object()
+        .map(|map| map.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
+#[test]
+fn an_acknowledgement_gone_on_both_sides_is_dropped() {
+    let home = tempfile::tempdir().unwrap();
+    write(home.path(), "files/zshrc", "export EDITOR=nvim\n");
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nniwa.file(\"~/.zshrc\", { source = \"@self/files/zshrc\" })\n",
+    );
+    let output = niwa(home.path(), &[], &["apply", "--yes", "--dirty"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+
+    // The declaration and the file both vanish: the ○○● row.
+    write(home.path(), "init.luau", "");
+    std::fs::remove_file(home.path().join(".zshrc")).unwrap();
+    let output = niwa(home.path(), &[], &["pull", "--all"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(
+        stdout(&output).contains("nothing to pull"),
+        "{}",
+        stdout(&output)
+    );
+    assert!(
+        !acknowledged(home.path()).contains(&"file:~/.zshrc".to_string()),
+        "the stale acknowledgement survived"
+    );
 }
 
 #[test]

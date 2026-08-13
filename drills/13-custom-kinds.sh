@@ -120,4 +120,32 @@ niwa apply --yes
 check 14 "a full apply lands the privileged kind (exit 0)" \
     sh -c "test $STATUS -eq 0 && test -f '$HOME/rooted-deep'"
 
+# --- queries are memoised: the run sees one consistent world --------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+local before = niwa.exists("~/.memo-probe")
+local probe = niwa.resource("drill.probe", {
+    check = function(read, spec)
+        return read.exec("test -f $HOME/.memo-probe").code == 0
+    end,
+    apply = function(act, spec)
+        act.exec("touch $HOME/.memo-probe")
+    end,
+    reverse = false,
+    describe = function(spec)
+        return `probe {spec.name}`
+    end,
+})
+probe { name = "one" }
+assert(niwa.exists("~/.memo-probe") == before,
+    "the run must see one consistent world")
+LUAU
+git -C "$HOME/.config/niwa" -c user.name=d -c user.email=d@t \
+    -c commit.gpgsign=false add -A
+git -C "$HOME/.config/niwa" -c user.name=d -c user.email=d@t \
+    -c commit.gpgsign=false commit -qm probe
+niwa apply --yes
+check 15 "an apply's own effect stays invisible to this run's queries" \
+    sh -c "test $STATUS -eq 0 && test -f '$HOME/.memo-probe'"
+
 echo "drill: custom kinds · all checks passed"

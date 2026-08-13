@@ -168,4 +168,15 @@ check 17 "undo succeeds (exit 0)" test "$STATUS" -eq 0
 check 18 "undo uninstalled the package this run installed" \
     test ! -d "$HOMEBREW_PREFIX/Cellar/hyperfine"
 
+# --- consecutive singles coalesce into one invocation ---------------
+: >"$BREWLOG"
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.brew.formula "fzf"
+niwa.brew.formula "zoxide"
+LUAU
+niwa apply --yes
+check 19 "two consecutive singles land as one invocation" \
+    sh -c "test $STATUS -eq 0 && test \"\$(wc -l <'$BREWLOG' | tr -d ' ')\" = '1'"
+
 echo "drill: brew batching · all checks passed"

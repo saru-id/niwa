@@ -641,6 +641,17 @@ fn apply_defaults(
     Ok((Outcome::Done, Some(Effect::DefaultsSet { previous })))
 }
 
+/// The ●●○ sweep for a run with nothing to do: the execute pass
+/// never starts, so what is already true is adopted here instead —
+/// silently, exactly as `perform` would have.
+pub fn adopt(items: &[crate::model::action::Item], paths: &Paths, journal: &mut Journal) {
+    for item in items {
+        if matches!(item.action, crate::model::action::Action::InSync) {
+            acknowledge_current(&item.declaration, paths, journal);
+        }
+    }
+}
+
 /// Row two of the truth table: declared and already actual, not yet
 /// acknowledged. Acknowledge silently so the baseline exists.
 fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut Journal) {
