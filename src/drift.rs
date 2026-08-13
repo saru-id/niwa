@@ -408,7 +408,7 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
             crate::brew::installed(paths, &identity.kind, key).is_some()
         }
         Kind::Npm => crate::npm::installed(key),
-        Kind::Mise => crate::mise::installed(paths, key).is_some(),
+        Kind::Mise => crate::mise::installed(paths, key, None).is_some(),
         Kind::Service => crate::services::agent_plist(paths, key).is_file(),
         Kind::BrewService => crate::services::brew_service_plist(paths, key).is_file(),
         _ => false,

@@ -42,10 +42,19 @@ pub fn compare(
                 Action::Create
             }
         }
-        Kind::Mise => match crate::mise::installed(paths, &declaration.identity.key) {
-            Some(_) => Action::InSync,
-            None => Action::Create,
-        },
+        Kind::Mise => {
+            let pinned = lock
+                .mise
+                .get(&declaration.identity.key)
+                .map(|pin| pin.version.as_str());
+            match crate::mise::installed(paths, &declaration.identity.key, pinned) {
+                Some(_) => Action::InSync,
+                None if pinned.is_some() => Action::Change {
+                    detail: format!("pinned {} waits", pinned.unwrap_or_default()),
+                },
+                None => Action::Create,
+            }
+        }
         Kind::Service => match crate::services::agent_in_sync(paths, declaration) {
             Some(true) => Action::InSync,
             Some(false) => Action::Change {

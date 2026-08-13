@@ -507,7 +507,14 @@ impl Engine {
     fn installed(&self, declaration: &Declaration) -> Option<String> {
         match &declaration.identity.kind {
             Kind::Npm => crate::npm::installed(&declaration.identity.key).then(String::new),
-            Kind::Mise => crate::mise::installed(&self.paths, &declaration.identity.key),
+            Kind::Mise => crate::mise::installed(
+                &self.paths,
+                &declaration.identity.key,
+                self.lock
+                    .mise
+                    .get(&declaration.identity.key)
+                    .map(|pin| pin.version.as_str()),
+            ),
             _ => brew::installed(
                 &self.paths,
                 &declaration.identity.kind,

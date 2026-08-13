@@ -213,7 +213,7 @@ fn actual_of(paths: &Paths, identity: &str, declaration: Option<&Declaration>) -
             "absent"
         }
         .to_string(),
-        Kind::Mise => crate::mise::installed(paths, key).map_or_else(
+        Kind::Mise => crate::mise::installed(paths, key, None).map_or_else(
             || "absent".to_string(),
             |version| format!("installed ({version})"),
         ),

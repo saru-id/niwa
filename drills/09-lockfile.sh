@@ -66,7 +66,9 @@ elif [ "\$1" = "use" ]; then
     shift; shift
     for request in "\$@"; do
         tool="\${request%%@*}"
-        mkdir -p "$HOME/.local/share/mise/installs/\$tool/1.0.0"
+        version="\${request#*@}"
+        [ "\$version" = "\$request" ] && version="1.0.0"
+        mkdir -p "$HOME/.local/share/mise/installs/\$tool/\$version"
     done
 fi
 exit 0

@@ -14,10 +14,21 @@ fn installs(paths: &Paths) -> PathBuf {
     paths.data.join("mise/installs")
 }
 
-/// Is any version of this tool installed? Returns the newest install
-/// directory's name when one is.
-pub fn installed(paths: &Paths, tool: &str) -> Option<String> {
-    crate::util::newest_version_dir(&installs(paths).join(tool), |_| true)
+/// Is this tool installed, as far as the lock cares? With a pinned
+/// version only that version's install dir counts — the lockfile's
+/// charter is your versions, not whatever is newest. Unpinned, any
+/// version answers, newest named.
+pub fn installed(paths: &Paths, tool: &str, pinned: Option<&str>) -> Option<String> {
+    pinned.map_or_else(
+        || crate::util::newest_version_dir(&installs(paths).join(tool), |_| true),
+        |version| {
+            installs(paths)
+                .join(tool)
+                .join(version)
+                .is_dir()
+                .then(|| version.to_string())
+        },
+    )
 }
 
 /// The `tool@version` argument one declaration asks for. A locked
