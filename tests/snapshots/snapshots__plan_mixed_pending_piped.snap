@@ -1,0 +1,15 @@
+---
+source: tests/snapshots.rs
+expression: run.stdout
+---
+[init]
+brew.formula:fd
+brew.formula:ripgrep
+brew.formula:jq
+com.apple.dock autohide                 false → true
+~/.zshrc
+brew.formula:neovim
+~/.config/nvim
+run:nvim --headless '+Lazy! sync' +qa
+9 checked · 8 would change
+results read past the first change are predictions until apply

@@ -73,6 +73,58 @@ fn pending_home() -> tempfile::TempDir {
     home
 }
 
+/// The config the design's overview opens with: a formula batch, a
+/// dock setting, a file, a link, and a run behind `changed` results.
+/// The text is the documentation site's own excerpt, byte for byte.
+/// The sandbox brew prefix holds no Cellar, so every formula reads as
+/// absent; a plan reads receipts and never invokes brew.
+fn mixed_pending_home() -> tempfile::TempDir {
+    let home = tempfile::tempdir().unwrap();
+    write(home.path(), "files/zshrc", "export EDITOR=nvim\n");
+    write(
+        home.path(),
+        "files/nvim/init.lua",
+        "vim.g.mapleader = \" \"\n",
+    );
+    write(
+        home.path(),
+        "init.luau",
+        r#"--!strict
+local niwa = require("@niwa")
+
+niwa.brew.formula { "fd", "ripgrep", "jq" }
+
+niwa.dock {
+  autohide = true,
+  tilesize = 48,
+}
+
+niwa.file("~/.zshrc", { source = "@self/files/zshrc" })
+
+local nvim = niwa.brew.formula "neovim"
+local cfg  = niwa.link("~/.config/nvim", { to = "@self/files/nvim" })
+if nvim.changed or cfg.changed then
+  niwa.run("nvim --headless '+Lazy! sync' +qa", { timeout = "5m" })
+end
+"#,
+    );
+    // The dock plist disagrees on autohide and already agrees on
+    // tilesize, so the plan shows one change and one create.
+    let preferences = home.path().join("Library/Preferences");
+    std::fs::create_dir_all(&preferences).unwrap();
+    std::fs::write(
+        preferences.join("com.apple.dock.plist"),
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
+         <plist version=\"1.0\"><dict>\n\
+         <key>autohide</key><false/>\n\
+         <key>tilesize</key><integer>48</integer>\n\
+         </dict></plist>\n",
+    )
+    .unwrap();
+    home
+}
+
 #[test]
 fn the_plan_screen_groups_by_module() {
     let home = pending_home();
@@ -87,6 +139,22 @@ fn the_plan_screen_wears_marks_and_color_on_a_terminal() {
     let run = niwa(home.path(), &["plan"], true);
     assert_eq!(run.code, 2, "{}", run.stderr);
     insta::assert_snapshot!("plan_pending_color", run.stdout);
+}
+
+#[test]
+fn the_plan_screen_holds_every_kind_the_surface_declares() {
+    let home = mixed_pending_home();
+    let run = niwa(home.path(), &["plan"], false);
+    assert_eq!(run.code, 2, "{}", run.stderr);
+    insta::assert_snapshot!("plan_mixed_pending_piped", run.stdout);
+}
+
+#[test]
+fn the_mixed_plan_wears_marks_and_color_on_a_terminal() {
+    let home = mixed_pending_home();
+    let run = niwa(home.path(), &["plan"], true);
+    assert_eq!(run.code, 2, "{}", run.stderr);
+    insta::assert_snapshot!("plan_mixed_pending_color", run.stdout);
 }
 
 #[test]
