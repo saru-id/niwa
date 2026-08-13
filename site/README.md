@@ -15,6 +15,12 @@ Inside this directory the same commands are `pnpm run check` and
 `pnpm run dev`. Use pnpm. Every dependency is pinned to an exact version,
 because several of them are alpha or beta and treat a minor as breaking.
 
+Search is built by the build. Pagefind indexes the finished pages and
+writes the index, its runtime and its stylesheet into `dist/pagefind/`,
+and the dev server serves that directory as it stands. So search in dev
+answers from the last build: run one before you rely on it, and run
+another after changing what a page says.
+
 The installer at the repository root is the only copy of `install.sh`. The
 build copies it into the output, and fails if it is not there. Never add a
 second copy under `public/`.
