@@ -70,6 +70,19 @@
   --th-variable: #953800;
 }
 
+/* The two deliberate departures from the vendored values, both in the dark
+ * theme, both repeated in the two blocks below.
+ *
+ * GitHub Dark sets comments and meta `#8b949e`, which is APCA Lc 43.6 on the
+ * code surface: under the Lc 45 floor that applies even to text the reader is
+ * not meant to read closely. `#99a3ad` measures Lc 51.3 there, and stays the
+ * dimmest ink in a fence — the next weakest token is `--th-keyword` at Lc
+ * 52.6.
+ *
+ * `--th-string` is the other one, and its reason is written beside the light
+ * value above.
+ */
+
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light) {
     --ground: oklch(0.145 0 0);
@@ -78,7 +91,7 @@
     --border-strong: oklch(0.36 0 0);
     --ink-strong: oklch(0.965 0 0);
     --ink: oklch(0.9 0 0);
-    --ink-muted: oklch(0.78 0 0);
+    --ink-muted: oklch(0.84 0 0);
     --accent: oklch(0.704 0.157 278.4);
     --link: oklch(0.86 0.06 278.4);
     --role-good: oklch(0.84 0.15 148);
@@ -91,7 +104,7 @@
     --th-attr: #79c0ff;
     --th-code-inline: #ffa657;
     --th-command: #d2a8ff;
-    --th-comment: #8b949e;
+    --th-comment: #99a3ad;
     --th-deleted: #ff7b72;
     --th-function: #d2a8ff;
     --th-heading: #79c0ff;
@@ -99,7 +112,7 @@
     --th-keyword: #ff7b72;
     --th-link: #58a6ff;
     --th-literal: #79c0ff;
-    --th-meta: #8b949e;
+    --th-meta: #99a3ad;
     --th-number: #79c0ff;
     --th-operator: #d2a8ff;
     --th-property: #79c0ff;
@@ -120,7 +133,7 @@
   --border-strong: oklch(0.36 0 0);
   --ink-strong: oklch(0.965 0 0);
   --ink: oklch(0.9 0 0);
-  --ink-muted: oklch(0.78 0 0);
+  --ink-muted: oklch(0.84 0 0);
   --accent: oklch(0.704 0.157 278.4);
   --link: oklch(0.86 0.06 278.4);
   --role-good: oklch(0.84 0.15 148);
@@ -133,7 +146,7 @@
   --th-attr: #79c0ff;
   --th-code-inline: #ffa657;
   --th-command: #d2a8ff;
-  --th-comment: #8b949e;
+  --th-comment: #99a3ad;
   --th-deleted: #ff7b72;
   --th-function: #d2a8ff;
   --th-heading: #79c0ff;
@@ -141,7 +154,7 @@
   --th-keyword: #ff7b72;
   --th-link: #58a6ff;
   --th-literal: #79c0ff;
-  --th-meta: #8b949e;
+  --th-meta: #99a3ad;
   --th-number: #79c0ff;
   --th-operator: #d2a8ff;
   --th-property: #79c0ff;
@@ -385,9 +398,10 @@ pagefind-results mark {
   --text-kicker: 0.6875rem;
 
   /* Prose only. Code, output, tables and trees run the full column and
-   * scroll past it. 36rem lands near seventy-three rendered characters in
-   * the system sans; verify by counting a real line before changing it. */
-  --measure: 36rem;
+   * scroll past it. 31rem lands at seventy-one rendered characters on the
+   * longest line of `/concepts/model` in the system sans, counted character
+   * by character; verify by counting a real line before changing it. */
+  --measure: 31rem;
 }
 
 /* ---- Base --------------------------------------------------------------- */
@@ -412,6 +426,16 @@ body {
   font-size: var(--text-body);
   line-height: 1.65;
   overflow-wrap: break-word;
+}
+
+/* The measure, applied to the reading. The page furniture carries it through
+ * its own styles; the markdown body is written by the renderer, which has no
+ * class of ours to hang it on, so it is named by element here. These four
+ * elements and no others, because a table, a figure, a fence, a tree and the
+ * nav all run the full column on purpose. Two type selectors lose to any
+ * class, so a component that sets a width of its own still wins. */
+article :is(p, ul, ol, blockquote) {
+  max-width: var(--measure);
 }
 
 /* Meaning never travels by color alone, so a prose link is underlined at
@@ -463,8 +487,15 @@ samp {
 
 .anchor-heading {
   color: var(--ink-muted);
-  margin-inline-start: 0.35em;
+  /* One character is a target of about 15 by 28 pixels on an h2 and smaller
+   * on an h4, under the 24 pixel minimum either way. Padding grows the box;
+   * on an inline box the block padding costs the line no height, and the
+   * negative start margin gives back the space the inline padding took, so
+   * the glyph sits where it sat. */
+  margin-inline-start: calc(0.35em - 8px);
   opacity: 0;
+  padding-block: 5px;
+  padding-inline: 8px;
   text-decoration: none;
   transition: opacity 120ms ease;
 }

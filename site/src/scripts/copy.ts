@@ -6,6 +6,14 @@
 // letters and short enough that a second copy still gets an answer.
 const SETTLE_MS = 1500
 
+/** Say what happened, then go back to the offer. */
+function say(label: Element, word: string): void {
+  label.textContent = word
+  setTimeout(() => {
+    label.textContent = 'Copy'
+  }, SETTLE_MS)
+}
+
 document.addEventListener('click', (event) => {
   const target = event.target
   if (!(target instanceof Element)) return
@@ -16,10 +24,22 @@ document.addEventListener('click', (event) => {
   const code = control.closest('[data-code-block]')?.querySelector('code')
   if (!code) return
 
-  void navigator.clipboard.writeText(code.textContent ?? '').then(() => {
-    control.textContent = 'copied'
-    setTimeout(() => {
-      control.textContent = 'copy'
-    }, SETTLE_MS)
-  })
+  const label = control.querySelector('[data-copy-label]') ?? control
+
+  // Off a secure context the clipboard is not there at all, and where it is
+  // there the write can still be refused. Both end with nothing on the
+  // clipboard, so both say so.
+  const written = navigator.clipboard?.writeText(code.textContent ?? '')
+  if (written === undefined) {
+    say(label, 'Copy failed')
+    return
+  }
+  void written.then(
+    () => {
+      say(label, 'Copied')
+    },
+    () => {
+      say(label, 'Copy failed')
+    },
+  )
 })

@@ -11,15 +11,26 @@ interface Props {
    * is displayed at any width, so only one is ever in the accessibility tree.
    */
   variant: 'rail' | 'disclosure'
+  /**
+   * A disclosure on a page that renders no rail. It stays displayed above
+   * the layout's first breakpoint, because nothing else there navigates.
+   * Setting it on a page that also renders a rail would put two navigation
+   * landmarks on one page.
+   */
+  atEveryWidth?: boolean
 }
 
-const { pathname, variant } = Astro.props
+const { pathname, variant, atEveryWidth = false } = Astro.props
 const here = currentPath(pathname)
 ---
 
 <nav
   aria-label="Site"
-  {...stylex.props(styles.nav, variant === 'rail' ? styles.rail : styles.panel)}
+  {...stylex.props(
+    styles.nav,
+    variant === 'rail' ? styles.rail : styles.panel,
+    atEveryWidth && styles.panelAtEveryWidth,
+  )}
 >
   {
     NAV.map((group) => (

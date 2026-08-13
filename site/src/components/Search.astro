@@ -41,6 +41,11 @@ const placeholder = `<li class="${cls(styles.placeholder)}" aria-hidden="true"><
 <pagefind-config bundle-path={bundlePath}></pagefind-config>
 <pagefind-modal>
   <pagefind-modal-header>
+    {
+      /* The name of the field is set by the script, not here: the element
+        replaces its own contents with an input it builds, and no attribute
+        written on this tag reaches it. */
+    }
     <pagefind-input placeholder="Search the documentation"></pagefind-input>
   </pagefind-modal-header>
   <pagefind-modal-body>
@@ -55,7 +60,13 @@ const placeholder = `<li class="${cls(styles.placeholder)}" aria-hidden="true"><
     </pagefind-results>
   </pagefind-modal-body>
   <pagefind-modal-footer>
-    <pagefind-keyboard-hints></pagefind-keyboard-hints>
+    {
+      /* The site's own hints, in place of `<pagefind-keyboard-hints>`. The
+        component's strings call Escape "clear" where Escape closes the
+        dialog and leaves the term in the field, and they never name Enter.
+        These three are what the dialog actually does. */
+    }
+    <p {...stylex.props(styles.hints)}>↑↓ navigate · enter opens · esc closes</p>
   </pagefind-modal-footer>
 </pagefind-modal>
 <script src="../scripts/search.ts"></script>

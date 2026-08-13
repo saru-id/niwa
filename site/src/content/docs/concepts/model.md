@@ -36,8 +36,9 @@ than a consequence, so niwa carries none.
 
 Two states would be enough to make a machine match a file, but not enough to
 tell one kind of difference from another. Without a record of what the last
-apply did, a package niwa has not installed yet and a package you installed on
-purpose look the same, and the only safe reading is that the machine is wrong.
+apply did, two packages look the same: one niwa has not installed yet, and one
+you installed on purpose. The only safe reading is then that the machine is
+wrong.
 
 Acknowledged separates them. A difference niwa has not applied is pending work.
 A difference a person made is drift, and drift earns a proposal rather than a
@@ -92,19 +93,19 @@ niwa.defaults("com.apple.dock", { autohide = true })
 
 Duplicates follow from it. Two declarations with the same identity and the same
 spec fold into one. The same identity with a different spec is a lint error
-naming both source locations, unless one side is a host file, which is the
-per-machine override working as intended.
+naming both source locations. A host file on one side is the exception, and
+that is the per-machine override working as intended.
 
 ## The journal, and its one appendix
 
 Declared lives in the config repo and nowhere else, so a line the CLI wrote for
-you is declared only because the CLI wrote it into the script. Actual is read
-from the system when it is needed. Acknowledged is a journal under
+you is declared only because the CLI wrote it into the script. niwa reads
+actual from the system when it needs it. Acknowledged is a journal under
 `~/.local/state/niwa`: per machine, never committed, because it holds the byte
 archives that make `undo` work.
 
 The journal carries one named appendix: proposals you answered never. A refusal
 has to be remembered somewhere, or niwa would ask again every day. It is neither
-declared, actual, nor acknowledged, so it is named as an appendix rather than
-added as a fourth state. The verb `explain` prints the three states for one
+declared, actual, nor acknowledged, so niwa names it an appendix rather than
+adding a fourth state. The verb `explain` prints the three states for one
 resource, with the source location of every declaration and the one that wins.

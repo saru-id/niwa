@@ -25,10 +25,14 @@ export const styles = stylex.create({
     marginBlockStart: '2.5rem',
   },
   // A URL already is the feature, so the link says what it is and stops.
+  // It stands alone in its paragraph rather than inside a sentence, so the
+  // 24 pixel target minimum applies to it with no inline exception. Block
+  // padding on an inline box costs the line no height.
   twin: {
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-meta)',
+    paddingBlock: '6px',
     textDecorationColor: 'var(--border-strong)',
   },
 })

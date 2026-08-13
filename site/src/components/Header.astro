@@ -8,9 +8,15 @@ import ThemeControl from './ThemeControl.astro'
 
 interface Props {
   pathname: string
+  /**
+   * The page renders no rail, so the header carries the navigation at every
+   * width instead of handing it over above 1024. Only a page without a rail
+   * may set it: two navigation landmarks on one page is one too many.
+   */
+  carriesNavigation?: boolean
 }
 
-const { pathname } = Astro.props
+const { pathname, carriesNavigation = false } = Astro.props
 ---
 
 <header {...stylex.props(styles.header)}>
@@ -45,8 +51,10 @@ const { pathname } = Astro.props
       }
     </style>
   </noscript>
-  <details {...stylex.props(styles.disclosure)}>
+  <details
+    {...stylex.props(styles.disclosure, carriesNavigation && styles.disclosureAtEveryWidth)}
+  >
     <summary {...stylex.props(shell.column, styles.disclosureLabel)}>Navigation</summary>
-    <Sidebar pathname={pathname} variant="disclosure" />
+    <Sidebar pathname={pathname} variant="disclosure" atEveryWidth={carriesNavigation} />
   </details>
 </header>

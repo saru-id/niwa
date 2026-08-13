@@ -13,9 +13,9 @@ next:
     why: every verb prints in the vocabulary fixed here
 ---
 
-The terminal is the whole interface, so it is designed rather than logged. One
-vocabulary serves every verb, which means learning one screen is learning them
-all.
+The terminal is the whole interface, so niwa designs its output rather than
+logging it. One vocabulary serves every verb, which means learning one screen
+is learning them all.
 
 ## The marks
 
@@ -71,8 +71,8 @@ fixture: plan_mixed_pending_piped
 command: niwa plan
 ```
 
-**Asked directly.** Three variables are honored as the community defined them,
-with no house interpretation.
+**Asked directly.** niwa honors three variables exactly as the community
+defined them, with no house interpretation.
 
 | Variable | Effect |
 | --- | --- |

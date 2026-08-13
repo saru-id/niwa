@@ -19,6 +19,15 @@ export const styles = stylex.create({
     },
     borderStyle: 'none',
     borderRadius: '4px',
+    // The pressed pill is `--ground` on a `--surface` group, which is 1.04:1
+    // in light and 1.05:1 in dark: no edge a reader can see. The rule is the
+    // accent, which measures 5.63:1 and 7.27:1 against the pill it sits on,
+    // and it is the mark the rail and the table of contents already use for
+    // the entry you are standing in. Inset, so pressing shifts nothing.
+    boxShadow: {
+      default: null,
+      ':is([aria-pressed="true"])': 'inset 0 -2px 0 0 var(--accent)',
+    },
     color: {
       default: 'var(--ink-muted)',
       ':is([aria-pressed="true"])': 'var(--ink-strong)',
@@ -29,7 +38,9 @@ export const styles = stylex.create({
     fontSize: 'var(--text-kicker)',
     fontWeight: 500,
     letterSpacing: '0.06em',
-    paddingBlock: '0.3rem',
+    // Three buttons that touch, so the spacing exception does not apply and
+    // each one has to reach 24 pixels on its own.
+    paddingBlock: '0.4rem',
     paddingInline: '0.5rem',
     textTransform: 'uppercase',
     transitionDuration: '120ms',

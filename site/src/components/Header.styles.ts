@@ -33,10 +33,13 @@ export const styles = stylex.create({
     flexWrap: 'wrap',
     rowGap: '0.5rem',
   },
+  // A control's own boundary, so it is drawn in the stronger of the two
+  // border tokens. `--border` is the hairline between blocks, and at 1.26:1
+  // it is not an edge a reader can find.
   search: {
     alignItems: 'center',
     backgroundColor: 'var(--surface)',
-    borderColor: { default: 'var(--border)', ':hover': 'var(--border-strong)' },
+    borderColor: 'var(--border-strong)',
     borderRadius: '5px',
     borderStyle: 'solid',
     borderWidth: '1px',
@@ -62,6 +65,11 @@ export const styles = stylex.create({
     color: { default: 'var(--ink-muted)', ':hover': 'var(--ink-strong)' },
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-meta)',
+    // Twelve pixel type draws a box under the 24 pixel target minimum. The
+    // padding grows the box and the equal negative margin keeps the margin
+    // box the size the bar measured, so the bar's height does not move.
+    marginBlock: '-0.25rem',
+    paddingBlock: '0.25rem',
     textDecoration: 'none',
     transitionDuration: '120ms',
     transitionProperty: 'color',
@@ -74,6 +82,13 @@ export const styles = stylex.create({
     borderBlockStartStyle: 'solid',
     borderBlockStartWidth: '1px',
     display: { default: 'block', '@media (min-width: 1024px)': 'none' },
+  },
+  // A page with no rail has no other navigation, so the disclosure is the
+  // navigation at every width. The condition is repeated rather than
+  // dropped: StyleX keys a conditional value by its at-rule, so only the
+  // same at-rule overrides the one above.
+  disclosureAtEveryWidth: {
+    display: { default: 'block', '@media (min-width: 1024px)': 'block' },
   },
   disclosureLabel: {
     color: { default: 'var(--ink-muted)', ':hover': 'var(--ink-strong)' },

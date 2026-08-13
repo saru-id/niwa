@@ -61,11 +61,15 @@ const styles = stylex.create({
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
     letterSpacing: '0.1em',
+    // Eleven pixel type draws a box under the 24 pixel target minimum. The
+    // padding grows the box and the equal negative margin gives the space
+    // back to the layout, so the label sits where it always sat.
+    margin: '-6px',
     opacity: {
       default: 'var(--copy-shown)',
       ':focus-visible': 1,
     },
-    padding: 0,
+    padding: '6px',
     textTransform: 'uppercase',
   },
   pre: {
@@ -118,14 +122,22 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
         {lang && lang !== 'plaintext' ? (
           <span {...stylex.props(styles.badge)}>{lang}</span>
         ) : null}
+        {/* The label is its own element so the swap `copy.ts` makes has a
+          live region to announce from. The button's name is still its
+          contents, so the name changes with the label. */}
         <button data-copy="" type="button" {...stylex.props(styles.copy)}>
-          copy
+          <span data-copy-label="" role="status">
+            Copy
+          </span>
         </button>
       </div>
+      {/* A fence wider than its column scrolls sideways, and the tab stop is
+        what lets a keyboard reach the part that is off screen. */}
       <pre
         {...rest}
         className={classes(className, frame.className)}
         style={frame.style}
+        tabIndex={0}
       >
         {children}
       </pre>
@@ -137,13 +149,44 @@ function ScrollableTable({ className, ...rest }: ComponentPropsWithoutRef<'table
   const framed = stylex.props(styles.table)
 
   return (
-    <div {...stylex.props(styles.tableFrame)}>
+    // The wrapper is the scroll container, so the wrapper takes the tab stop.
+    <div {...stylex.props(styles.tableFrame)} tabIndex={0}>
       <table
         {...rest}
         className={classes(className, framed.className)}
         style={framed.style}
       />
     </div>
+  )
+}
+
+/* Every link the renderer builds or the author wrote.
+ *
+ * One of them is not the author's: the heading anchor, whose text is `#`.
+ * A reader listening to a list of links gets no destination from that, and
+ * Pagefind indexes it into the heading it sits in. The label names the
+ * anchor and the ignore keeps it out of the index.
+ */
+function Anchor({ children, className, ...rest }: ComponentPropsWithoutRef<'a'>) {
+  if (className === undefined || !className.includes('anchor-heading')) {
+    return (
+      <a className={className} {...rest}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <a
+      className={className}
+      {...rest}
+      aria-label="Link to this section"
+      data-pagefind-ignore=""
+    >
+      {/* The anchor is a child of the heading, so its glyph would otherwise
+        join the heading's name. Hidden, the heading keeps its own words and
+        the link keeps the label above. */}
+      <span aria-hidden="true">{children}</span>
+    </a>
   )
 }
 
@@ -315,7 +358,13 @@ export function Markdown({
 }) {
   return (
     <TanStackMarkdown
-      components={{ pre: CodeBlock, screen: Screen, table: ScrollableTable, tree: TreeFence }}
+      components={{
+        a: Anchor,
+        pre: CodeBlock,
+        screen: Screen,
+        table: ScrollableTable,
+        tree: TreeFence,
+      }}
       extensions={[screenFences(file)]}
       headingAnchors={{ ariaHidden: false, tabIndex: 0 }}
       headingIds

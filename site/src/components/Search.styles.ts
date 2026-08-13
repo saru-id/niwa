@@ -49,6 +49,18 @@ export const styles = stylex.create({
     marginBlock: 0,
     paddingBlockEnd: '0.75rem',
   },
+  // The keyboard hints, written here rather than taken from the component.
+  // Its own string calls Escape "clear", and Escape closes; it never names
+  // Enter at all. Pagefind's elements reset `all`, so the row states its own
+  // face, size and ink instead of inheriting them.
+  hints: {
+    color: 'var(--ink-muted)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-meta)',
+    letterSpacing: '0.02em',
+    lineHeight: 1.4,
+    marginBlock: 0,
+  },
   // The row that is not there yet. It holds the height its result will take,
   // so the list does not jump when the excerpt arrives. It does not shimmer:
   // nothing on this site loops.

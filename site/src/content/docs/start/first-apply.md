@@ -14,8 +14,8 @@ niwa plan
 ```
 
 `plan` runs your config with every effect suppressed. Guards still read the
-machine, so every branch is evaluated. Resources report what they would do and
-do nothing.
+machine, so niwa evaluates every branch. Resources report what they would do
+and do nothing.
 
 ```screen
 fixture: plan_mixed_pending_color
@@ -33,9 +33,9 @@ Four things to read there.
 - The last line counts what was checked against what would change.
 
 The dim line under the count is the honest part. plan runs the script once and
-apply runs it again, so a guard that branches on a change further up the file
-can resolve differently once that change is real. The plan marks where
-prediction begins rather than claiming to know.
+apply runs it again. A guard that branches on a change further up the file can
+resolve differently once that change is real. The plan marks where prediction
+begins rather than claiming to know.
 
 `niwa plan --diff` renders the full file diffs, highlighted word by word.
 
@@ -59,7 +59,7 @@ niwa apply
 
 apply is three phases: plan, confirm, execute. It prints the plan you just
 read, then the manual steps only a person can do, then the steps that need
-administrator rights, and then it asks once. Answer `y` and it runs, in program
+administrator rights. Then it asks once. Answer `y` and it runs, in program
 order.
 
 - `--yes` skips the question. Unattended it refuses a config tree with

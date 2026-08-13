@@ -49,6 +49,14 @@ async function open(): Promise<void> {
   ready ??= load()
   await ready
   document.querySelector<Modal>('pagefind-modal')?.open?.()
+  // The component builds the field itself and names it from its own
+  // translation table, which calls this site something it is not. The name
+  // is the placeholder a reader sees, and the placeholder is gone the moment
+  // they type. There is no input to name before the element has built one,
+  // so this is the first moment it can be set.
+  document
+    .querySelector('pagefind-input input')
+    ?.setAttribute('aria-label', 'Search the documentation')
 }
 
 document.querySelector('[data-search-open]')?.addEventListener('click', () => {

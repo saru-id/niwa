@@ -74,8 +74,10 @@ const PLAN = 'plan_mixed_pending_color'
   <body>
     <a href="#main" {...stylex.props(shell.skip)}>Skip to content</a>
 
-    {/* Band 1. The site header, unchanged. */}
-    <Header pathname={pathname} />
+    {/* Band 1. The site header. The landing renders no rail, so its header
+      keeps the navigation disclosure at every width; a docs page hands that
+      job to the rail above 1024. */}
+    <Header pathname={pathname} carriesNavigation />
 
     <main id="main" data-pagefind-body>
       {/* Band 2. Kicker, the statement, one hairline, and what follows from it. */}

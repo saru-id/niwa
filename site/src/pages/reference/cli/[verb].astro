@@ -57,7 +57,7 @@ const next = [
         <h2 id="arguments" {...stylex.props(styles.h2)}>
           Arguments
         </h2>
-        <div {...stylex.props(styles.tableFrame)}>
+        <div {...stylex.props(styles.tableFrame)} tabindex="0">
           <table {...stylex.props(styles.table)}>
             <thead>
               <tr>
@@ -100,7 +100,7 @@ const next = [
         <h2 id="flags" {...stylex.props(styles.h2)}>
           Flags
         </h2>
-        <div {...stylex.props(styles.tableFrame)}>
+        <div {...stylex.props(styles.tableFrame)} tabindex="0">
           <table {...stylex.props(styles.table)}>
             <thead>
               <tr>
@@ -151,7 +151,7 @@ const next = [
           Global flags
         </h2>
         <p {...stylex.props(styles.p)}>Every verb takes these two.</p>
-        <div {...stylex.props(styles.tableFrame)}>
+        <div {...stylex.props(styles.tableFrame)} tabindex="0">
           <table {...stylex.props(styles.table)}>
             <thead>
               <tr>
@@ -190,7 +190,8 @@ const next = [
         <code {...stylex.props(styles.code)}>-v</code>,{' '}
         <code {...stylex.props(styles.code)}>--verbose</code> and{' '}
         <code {...stylex.props(styles.code)}>--debug</code> are global and this verb takes
-        them too. They are tabled on <a href="/reference/cli/niwa#global-flags">niwa</a>.
+        them too. <a href="/reference/cli/niwa#global-flags">The global flags table</a> lists
+        them.
       </p>
     )
   }
@@ -201,7 +202,7 @@ const next = [
         <h2 id="exit-codes" {...stylex.props(styles.h2)}>
           Exit codes
         </h2>
-        <div {...stylex.props(styles.tableFrame)}>
+        <div {...stylex.props(styles.tableFrame)} tabindex="0">
           <table {...stylex.props(styles.table)}>
             <thead>
               <tr>

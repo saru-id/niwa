@@ -75,8 +75,8 @@ downloads the asset, hashes it, and refuses anything else.
 Apply then records two facts: the digest of the binary it installed, and
 the pin it came from. A later plan reads both back. Same pin and same
 bytes is in sync. The same pin with different bytes means a person
-replaced the binary, so apply protects it until `apply --force <target>`
-says otherwise, and what force replaces is archived first. A different
+replaced the binary. apply protects it until `apply --force <target>`
+says otherwise, and force archives what it replaces first. A different
 pin means the lockfile moved, and the new version is pending.
 
 ## When a package may fail

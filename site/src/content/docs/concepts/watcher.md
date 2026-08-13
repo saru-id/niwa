@@ -80,10 +80,10 @@ niwa.service {
 }
 ```
 
-The difference between a tool that quietly applies behind your back and this
-block is who decided, where it is written down, and how it is turned off. niwa
-will not converge on its own, and it will not stop you from asking for exactly
-that in code you can read.
+This block differs from an apply nobody asked for in three ways: who decided,
+where the decision is written down, and how it is turned off. niwa will not
+converge on its own, and it will not stop you from asking for exactly that in
+code you can read.
 
 ## Where it lives
 

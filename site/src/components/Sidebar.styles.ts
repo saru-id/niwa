@@ -15,10 +15,22 @@ export const styles = stylex.create({
     paddingBlock: '2.5rem',
     position: 'sticky',
   },
+  // Open, the panel is about 1400 pixels of links, which buried the page
+  // under two viewport heights and put the summary that closes it out of
+  // reach. It scrolls in its own box instead, the way the rail does.
+  // 10.5rem is everything above it at its tallest: the bar wraps to three
+  // rows at 320 and with the summary measures 167 pixels there, against 139
+  // at 375. The taller of the two is the one that has to fit.
   panel: {
     display: { default: 'block', '@media (min-width: 1024px)': 'none' },
+    maxHeight: 'calc(100dvh - 10.5rem)',
+    overflowY: 'auto',
     paddingBlock: '0 1.25rem',
     paddingInline: '1.25rem',
+  },
+  // Shown at every width, for a page with no rail to hand navigation to.
+  panelAtEveryWidth: {
+    display: { default: 'block', '@media (min-width: 1024px)': 'block' },
   },
   group: {
     marginBlockStart: '1.25rem',
