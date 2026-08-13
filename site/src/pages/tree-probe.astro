@@ -1,0 +1,54 @@
+---
+// A probe. It proves the tree component draws a real directory structure and
+// that the purposes read beside it, not inside it. It goes when the other
+// placeholders go.
+//
+// It wears the site's own layout, because that is where a tree will live: the
+// StyleX sheet, and with it the `--trees-*` bridge into the shadow root,
+// reaches a page through the layout and not through the component.
+import Layout from '../components/Layout.astro'
+import Tree from '../components/Tree.astro'
+import { prepareTree, readTree } from '../lib/tree'
+
+// The structure is the one on disk. Adding a file to the fixture adds a row
+// here, so the tree the docs show cannot drift from the tree that exists.
+const purposes = new Map([
+  ['init.luau', 'niwa reads this first. It requires the modules, in the order they run.'],
+  ['.luaurc', 'Points the Luau tools at niwa’s shipped types and at the repo itself.'],
+  ['niwa.lock', 'The versions niwa resolved. A second machine resolves to the same ones.'],
+  ['modules/', 'The declarations, grouped by subject. Every machine loads all of them.'],
+  ['hosts/', 'One file per machine, loaded last. Later declaration wins, merged per key.'],
+  ['files/', 'The files niwa copies or links into place.'],
+  ['secrets/', 'Values encrypted with age. niwa reads them when it applies.'],
+  ['state/', 'niwa writes one stamp per machine here after every apply.'],
+])
+
+const tree = prepareTree(
+  readTree('tests/fixtures/example').map((entry) => ({
+    ...entry,
+    note: purposes.get(entry.path),
+  })),
+)
+---
+
+<Layout title="Tree probe" description="The example config repo, drawn from the directory that ships with the tool.">
+  <h1>Tree probe</h1>
+  <p>
+    The example config repo, read from <code>tests/fixtures/example</code> at build
+    time. Every directory it holds is a row.
+  </p>
+  <Tree tree={tree} label="~/.config/niwa" />
+  <h2>What each part is for</h2>
+  <dl>
+    {
+      tree.notes.map((entry) => (
+        <>
+          <dt>
+            <code>{entry.path}</code>
+          </dt>
+          <dd>{entry.note}</dd>
+        </>
+      ))
+    }
+  </dl>
+</Layout>
