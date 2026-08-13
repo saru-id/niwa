@@ -76,8 +76,13 @@ impl Ctx {
     }
 
     /// Expand `~/` against the home directory; absolute paths pass
-    /// through untouched.
+    /// through as written. Dot-dot never does: a target that walks
+    /// upward could leave home behind niwa's back — and leave a
+    /// sandbox rehearsal, whose whole promise is staying inside.
     pub fn target_path(&self, target: &str) -> Option<PathBuf> {
+        if target.split('/').any(|part| part == "..") {
+            return None;
+        }
         target
             .strip_prefix("~/")
             .map(|rest| self.paths.home.join(rest))

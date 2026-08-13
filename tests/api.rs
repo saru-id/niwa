@@ -185,6 +185,20 @@ fn an_unguarded_run_is_rejected_with_the_three_guards() {
 }
 
 #[test]
+fn a_target_walking_out_of_home_is_refused() {
+    for target in ["~/../outside", "~/a/../../outside", "/tmp/../etc/hosts2"] {
+        let home = tempfile::tempdir().unwrap();
+        write(
+            home.path(),
+            "init.luau",
+            &config(&format!("niwa.file(\"{target}\", {{ content = \"x\" }})\n")),
+        );
+        let err = check_fails(home.path());
+        assert!(err.contains(".."), "{target}: {err}");
+    }
+}
+
+#[test]
 fn a_dock_app_list_beyond_empty_is_refused_plainly() {
     let home = tempfile::tempdir().unwrap();
     write(
