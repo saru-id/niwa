@@ -89,7 +89,9 @@ fn the_example_config_checks_clean_as_each_host() {
 fn the_host_overrides_change_the_count_not_the_verdict() {
     let plain = {
         let home = example_home();
-        String::from_utf8(check(home.path(), None).stdout).unwrap()
+        let output = check(home.path(), None);
+        assert_eq!(output.status.code(), Some(0));
+        String::from_utf8(output.stdout).unwrap()
     };
     let as_airborne = {
         let home = example_home();

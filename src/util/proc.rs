@@ -11,10 +11,12 @@
 //! the deadline takes what has arrived and walks away.
 //!
 //! Programs resolve through the `PATH` variable here, explicitly,
-//! never through the exec fallback path. That one rule is load
-//! bearing for the sandbox: a test or drill that clears `PATH` has
-//! taken away every tool, and nothing this module spawns can reach
-//! the real machine behind its back.
+//! never through the exec fallback path — and every child is spawned
+//! with `PATH` pinned to the parent's (empty when unset), so even a
+//! shell child cannot substitute its compiled-in default. That rule
+//! is load bearing for the sandbox: a test or drill that clears
+//! `PATH` has taken away every tool, and nothing spawned here can
+//! reach the real machine behind its back.
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -143,6 +145,7 @@ fn wait_deadline(
 pub fn bounded_output(program: &str, args: &[&str], deadline: Duration) -> Option<Finished> {
     let mut child = Command::new(resolve(program)?)
         .args(args)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -170,6 +173,7 @@ pub fn bounded_output(program: &str, args: &[&str], deadline: Duration) -> Optio
 pub fn bounded_tty(program: &str, args: &[&str], deadline: Duration) -> Option<i32> {
     let mut child = Command::new(resolve(program)?)
         .args(args)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .stdin(Stdio::inherit())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -197,6 +201,7 @@ pub fn interactive(program: &str, args: &[&str]) -> Option<i32> {
 pub fn bounded_stdout(program: &str, args: &[&str], deadline: Duration) -> Option<String> {
     let mut child = Command::new(resolve(program)?)
         .args(args)
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

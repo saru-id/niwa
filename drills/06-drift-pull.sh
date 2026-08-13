@@ -115,7 +115,8 @@ echo '{"installed_on_request":true}' \
 { sleep 1; printf 's\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/ask.log" \
     sh -c "'$NIWA_BIN' pull >'$SANDBOX/ask-stdout' 2>/dev/null" || true
 check 14b "the answers are offered on stderr, not the screen" \
-    sh -c "! grep -q 'a.pply' '$SANDBOX/ask-stdout'"
+    sh -c "grep -q 'fd' '$SANDBOX/ask-stdout' \
+        && ! grep -q 'a.pply' '$SANDBOX/ask-stdout'"
 
 # --- skip returns; never is remembered ------------------------------
 { sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/skip-return.log" \
@@ -193,7 +194,8 @@ LUAU
 niwa apply --yes
 /usr/bin/plutil -replace cachetoken -string "a$(date +%s)"     "$HOME/Library/Preferences/com.example.churner.plist" 2>/dev/null || true
 niwa pull --all
-check 26 "an ungoverned key churning stays silence"     sh -c "! grep -q cachetoken '$SANDBOX/stdout'"
+check 26 "an ungoverned key churning stays silence" \
+    sh -c "test $STATUS -eq 0 && ! grep -q cachetoken '$SANDBOX/stdout'"
 /usr/bin/plutil -replace theme -string "light"     "$HOME/Library/Preferences/com.example.churner.plist"
 niwa pull --all
 check 27 "the governed key moving still proposes"     grep -q "theme" "$SANDBOX/stdout"

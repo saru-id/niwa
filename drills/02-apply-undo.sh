@@ -123,7 +123,7 @@ check 21 "an uppercase YES is a yes to undo" sh -c "! test -e '$HOME/.walk-case'
 { sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/walk-eof.log" \
     "$NIWA_BIN" apply --interactive >/dev/null 2>&1 || true
 check 22 "a closed stdin quits the walk, changing nothing" \
-    sh -c "! test -e '$HOME/.walk-case'"
+    sh -c "! test -e '$HOME/.walk-case' && grep -q 'canceled' '$SANDBOX/walk-eof.log'"
 
 # --- attended apply asks once; --interactive steps ------------------
 { sleep 1; printf 'n\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/once-no.log" \

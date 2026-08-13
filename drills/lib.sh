@@ -53,6 +53,31 @@ done
 printf '#!/bin/sh\necho "security $*" >>"%s/system.log"\nexit 44\n' \
     "$SANDBOX" >"$STUBS/security"
 chmod 755 "$STUBS/security"
+# curl fails fast: no drill reaches the network unless it stubs its
+# own. git passes through to the real binary for local work but
+# refuses remote clones the same way.
+printf '#!/bin/sh\necho "curl $*" >>"%s/system.log"\nexit 22\n' \
+    "$SANDBOX" >"$STUBS/curl"
+chmod 755 "$STUBS/curl"
+cat >"$STUBS/git" <<'GIT_STUB'
+#!/bin/sh
+if [ "$1" = "clone" ]; then
+    for arg in "$@"; do
+        case "$arg" in
+        http://* | https://* | git@* | ssh://*)
+            echo "drill git: remote clone refused: $arg" >&2
+            exit 128
+            ;;
+        esac
+    done
+fi
+exec /usr/bin/git "$@"
+GIT_STUB
+chmod 755 "$STUBS/git"
+# scutil answers with a fixed name, so stamps and host files never
+# carry the developer machine's real hostname.
+printf '#!/bin/sh\necho "drillhost"\n' >"$STUBS/scutil"
+chmod 755 "$STUBS/scutil"
 export PATH="$STUBS:/usr/bin:/bin"
 
 cleanup() { rm -rf "$SANDBOX"; }

@@ -126,7 +126,8 @@ check 12b "the failure line carries the honest counts" \
     grep -q "not reached · re-run to continue" "$SANDBOX/stdout"
 niwa apply --yes
 check 12c "the re-run skips the package that already landed" \
-    sh -c "! sed -n '2p' '$BREWLOG' | grep -q jq"
+    sh -c "test $STATUS -eq 1 && sed -n '2p' '$BREWLOG' | grep -q broken \
+        && ! sed -n '2p' '$BREWLOG' | grep -q jq"
 mkdir -p "$HOMEBREW_PREFIX/Cellar/broken/1.0.0"
 echo '{"installed_on_request":true}' \
     >"$HOMEBREW_PREFIX/Cellar/broken/1.0.0/INSTALL_RECEIPT.json"

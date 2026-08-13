@@ -268,6 +268,7 @@ fn a_ticked_step_stays_ticked_until_the_world_moves() {
     };
     std::fs::write(state.join("journal.json"), journal("macos ")).unwrap();
     let ticked = niwa(home.path(), &[], &[]);
+    assert_eq!(ticked.status.code(), Some(0), "{}", stderr(&ticked));
     assert!(
         !stdout(&ticked).contains("checklist"),
         "a ticked step must not count: {}",
