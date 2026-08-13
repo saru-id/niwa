@@ -10,13 +10,15 @@
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "test": "vitest run",
     "typecheck": "node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json",
+    "check:theme": "astryx theme build --check src/theme/niwa.theme.ts",
     "check:snippets": "node ./scripts/check-luau-snippets.mjs",
     "check:verbs": "node ./scripts/check-verbs.mjs",
     "check:links": "node ./scripts/check-links.mjs",
-    "check": "export ASTRO_TELEMETRY_DISABLED=1; astro sync && astro check && node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json && node ./scripts/check-luau-snippets.mjs && node ./scripts/check-verbs.mjs && vitest run && astro build && node ./scripts/check-links.mjs"
+    "check": "export ASTRO_TELEMETRY_DISABLED=1; astro sync && astro check && astryx theme build --check src/theme/niwa.theme.ts && node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json && node ./scripts/check-luau-snippets.mjs && node ./scripts/check-verbs.mjs && vitest run && astro build && node ./scripts/check-links.mjs"
   },
   "dependencies": {
     "@astrojs/react": "6.0.2",
+    "@astryxdesign/core": "0.3.0",
     "@pierre/trees": "1.0.0-beta.6",
     "@stylexjs/stylex": "0.19.0",
     "@tanstack/highlight": "0.0.10",
@@ -29,6 +31,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.10",
+    "@astryxdesign/cli": "0.3.0",
     "@stylexjs/unplugin": "0.19.0",
     "@types/node": "26.2.0",
     "@types/react": "19.2.18",

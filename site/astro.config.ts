@@ -1,8 +1,9 @@
+import react from '@astrojs/react'
 import stylex from '@stylexjs/unplugin'
 import { defineConfig } from 'astro/config'
 import pagefind from 'astro-pagefind'
-import { buildOnlyReact } from './integrations/build-only-react'
 import { installScript } from './integrations/install-script'
+import { pruneOrphanScripts } from './integrations/prune-orphan-scripts'
 
 export default defineConfig({
   site: 'https://niwa.rs',
@@ -15,7 +16,11 @@ export default defineConfig({
   // Pagefind reads the built pages after they are written, so its index is a
   // fact about the output rather than a second description of the content. In
   // dev it serves whatever the last build indexed.
-  integrations: [buildOnlyReact(), installScript(), pagefind()],
+  // React is registered whole, so a `client:*` directive works where a
+  // component needs the browser. Nothing on the site hydrates today, and
+  // the last integration deletes the renderer's client entrypoint after the
+  // build because no page names it. Its comment carries the reasoning.
+  integrations: [react(), installScript(), pagefind(), pruneOrphanScripts()],
   vite: {
     // StyleX must transform sources before the React plugin the integration
     // adds, so it is declared here rather than through the integration, which

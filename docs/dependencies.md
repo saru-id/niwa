@@ -325,3 +325,34 @@ packages are alpha or beta and treat a minor as breaking.
 - Maintenance and weight: beta, released steadily, pinned exactly for
   that reason.
 - License: Apache-2.0.
+
+### @astryxdesign/core
+
+- Does: the design system the site's interface is built from. It ships
+  155 React components, one pre-compiled stylesheet for all of them, and
+  the theme compiler the site's own theme is written against. The
+  components render to HTML during the build; the theme compiles to a
+  static stylesheet.
+- Why not our own: the site needs tables, headings, dividers and, later,
+  the controls that carry state. Every one of those has keyboard
+  behavior, an accessible name and two colour modes to get right, and
+  the theme compiler is what lets the site's measured OKLCH tokens drive
+  all of it from one place.
+- Maintenance and weight: 0.3.0, released weekly, pinned exactly for
+  that reason. One runtime dependency. The stylesheet is 138 KB and is
+  not split by component, so every page carries all of it.
+- License: MIT.
+
+### @astryxdesign/cli
+
+- Does: compiles `src/theme/niwa.theme.ts` into the stylesheet and the
+  built theme object the site loads, and answers questions about the
+  component API while the site is being written. `pnpm run check:theme`
+  runs it in check mode, so a theme edited without a rebuild fails the
+  gate.
+- Why not our own: it is the compiler for the package above and the only
+  supported way to reach the static output an SSR build needs.
+- Maintenance and weight: 0.3.0, released with the core package and
+  pinned to the same version, which its themes require. Four
+  dependencies, build time only.
+- License: MIT.

@@ -3,6 +3,10 @@
 
 # Both ship a platform binary and need their install script to place it.
 allowBuilds:
+  # The design system and its CLI place compiled stylesheets and token
+  # CSS at install time.
+  '@astryxdesign/cli': true
+  '@astryxdesign/core': true
   esbuild: true
   workerd: true
 
