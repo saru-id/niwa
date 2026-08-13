@@ -1,7 +1,8 @@
 /* The reference pages' furniture.
  *
- * The generated pages build their own headings, tables and lists, so they
- * carry the type scale the markdown renderer applies to written pages. One
+ * The generated pages build their own headings and lists, so they carry the
+ * type scale the markdown renderer applies to written pages. Their tables
+ * are the design system's, and `components/DataTable.tsx` holds them. One
  * module, because twenty-nine pages wear the same clothes. The leading
  * underscore keeps Astro from routing this file.
  */
@@ -95,53 +96,5 @@ export const styles = stylex.create({
     paddingInline: '1rem',
     whiteSpace: 'pre-wrap',
     wordBreak: 'normal',
-  },
-  // Tables are framed, not striped: a container border, and hairlines
-  // under the rows.
-  tableFrame: {
-    borderColor: 'var(--border)',
-    borderRadius: 8,
-    borderStyle: 'solid',
-    borderWidth: 1,
-    marginBlock: '1.5rem',
-    overflowX: 'auto',
-  },
-  table: {
-    borderCollapse: 'collapse',
-    fontSize: 'var(--text-table)',
-    fontVariantNumeric: 'tabular-nums',
-    lineHeight: 1.55,
-    width: '100%',
-  },
-  th: {
-    borderBottomColor: 'var(--border)',
-    borderBottomStyle: 'solid',
-    borderBottomWidth: 1,
-    color: 'var(--ink-muted)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-meta)',
-    fontWeight: 500,
-    paddingBlock: '0.6rem',
-    paddingInline: '1rem',
-    textAlign: 'start',
-    whiteSpace: 'nowrap',
-  },
-  td: {
-    borderBottomColor: 'var(--border)',
-    borderBottomStyle: 'solid',
-    borderBottomWidth: 1,
-    paddingBlock: '0.6rem',
-    paddingInline: '1rem',
-    verticalAlign: 'top',
-  },
-  // The last row's hairline would double the frame's own line.
-  lastRow: {
-    borderBottomWidth: 0,
-  },
-  // Flag names, arguments and exit codes are code, and they never wrap.
-  cell: {
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-inline-code)',
-    whiteSpace: 'nowrap',
   },
 })

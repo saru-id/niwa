@@ -1,3 +1,4 @@
+import type { TableColumnAlign } from '@astryxdesign/core/Table'
 import { createHighlighter } from '@tanstack/highlight/core'
 import { json } from '@tanstack/highlight/languages/json'
 import { plaintext } from '@tanstack/highlight/languages/plaintext'
@@ -7,10 +8,17 @@ import { createTanStackMarkdownHighlighter } from '@tanstack/highlight/markdown'
 import { Markdown as TanStackMarkdown } from '@tanstack/markdown/react'
 import type { ComponentNode, MarkdownExtension } from '@tanstack/markdown'
 import * as stylex from '@stylexjs/stylex'
-import type { ComponentPropsWithoutRef } from 'react'
+import {
+  Children,
+  isValidElement,
+  type ComponentPropsWithoutRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 
 import { luau } from '../lib/luau'
 import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
+import { DataTable, type DataColumn } from './DataTable'
 import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
 
@@ -81,20 +89,6 @@ const styles = stylex.create({
     overflowX: 'auto',
     padding: '1rem 1.25rem',
   },
-  tableFrame: {
-    borderColor: 'var(--border)',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderRadius: '8px',
-    margin: '1.5rem 0',
-    overflowX: 'auto',
-  },
-  table: {
-    borderCollapse: 'collapse',
-    fontSize: 'var(--text-table)',
-    fontVariantNumeric: 'tabular-nums',
-    width: '100%',
-  },
 })
 
 /** Join a class the renderer set with the class StyleX compiled. */
@@ -141,25 +135,48 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
   )
 }
 
-/* A header row labels its column; it is not prose. Pagefind joins cell text
- * with no separator, so indexed it reads "FlagArgumentMeaning" inside an
- * excerpt. It stays on the page and leaves the index. */
-function TableHead(props: ComponentPropsWithoutRef<'thead'>) {
-  return <thead {...props} data-pagefind-ignore />
+/* A markdown table.
+ *
+ * The renderer hands this component a `thead` and a `tbody` of ordinary
+ * elements. It is read back into a heading row and a rectangle of cells, and
+ * `DataTable` renders it: the hairlines, the cell rhythm, the column widths
+ * and the scroll container are the design system's, and nothing here draws a
+ * box. Reading it back is what buys the widths — a table laid out from its
+ * own contents gives a column of one word the room a column of sentences
+ * needs.
+ */
+type Cell = ReactElement<{ children?: ReactNode; style?: { textAlign?: string } }>
+
+/** The element children of an element, in order. */
+function within(element: Cell | undefined): Cell[] {
+  if (element === undefined) return []
+  return Children.toArray(element.props.children).filter((child) => isValidElement(child)) as Cell[]
 }
 
-function ScrollableTable({ className, ...rest }: ComponentPropsWithoutRef<'table'>) {
-  const framed = stylex.props(styles.table)
+/** Markdown says left, right and center; the design system says start and end. */
+const ALIGNMENT: Record<string, TableColumnAlign> = {
+  center: 'center',
+  left: 'start',
+  right: 'end',
+}
+
+function column(cell: Cell): DataColumn {
+  const alignment = ALIGNMENT[cell.props.style?.textAlign ?? '']
+  return alignment === undefined
+    ? { header: cell.props.children }
+    : { align: alignment, header: cell.props.children }
+}
+
+function MarkdownTable({ children }: ComponentPropsWithoutRef<'table'>) {
+  const sections = Children.toArray(children).filter((child) => isValidElement(child)) as Cell[]
+  const head = sections.find((section) => section.type === 'thead')
+  const body = sections.find((section) => section.type === 'tbody')
 
   return (
-    // The wrapper is the scroll container, so the wrapper takes the tab stop.
-    <div {...stylex.props(styles.tableFrame)} tabIndex={0}>
-      <table
-        {...rest}
-        className={classes(className, framed.className)}
-        style={framed.style}
-      />
-    </div>
+    <DataTable
+      columns={within(within(head)[0]).map(column)}
+      rows={within(body).map((row) => within(row).map((cell) => cell.props.children))}
+    />
   )
 }
 
@@ -365,8 +382,7 @@ export function Markdown({
         a: Anchor,
         pre: CodeBlock,
         screen: Screen,
-        table: ScrollableTable,
-        thead: TableHead,
+        table: MarkdownTable,
         tree: TreeFence,
       }}
       extensions={[screenFences(file)]}

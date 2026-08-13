@@ -2,6 +2,7 @@
 import * as stylex from '@stylexjs/stylex'
 import Layout from '../../../components/Layout.astro'
 import NextLinks from '../../../components/NextLinks.astro'
+import { ReferenceTable } from '../../../components/DataTable'
 import { Screen } from '../../../components/Screen'
 import { pageLink } from '../../../data/links'
 import { GLOBAL_FLAGS, VERBS, neighbour, usage } from '../../../data/verbs'
@@ -55,39 +56,10 @@ const next = [
         <h2 id="arguments" {...stylex.props(styles.h2)}>
           Arguments
         </h2>
-        <div {...stylex.props(styles.tableFrame)} tabindex="0">
-          <table {...stylex.props(styles.table)}>
-            <thead data-pagefind-ignore>
-              <tr>
-                <th {...stylex.props(styles.th)}>Argument</th>
-                <th {...stylex.props(styles.th)}>Meaning</th>
-              </tr>
-            </thead>
-            <tbody>
-              {verb.arguments.map((argument, index) => (
-                <tr>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === verb.arguments.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {argument.name}
-                  </td>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      index === verb.arguments.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {argument.meaning}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReferenceTable
+          columns={[{ header: 'Argument', identifier: true }, { header: 'Meaning' }]}
+          rows={verb.arguments.map((argument) => [argument.name, argument.meaning])}
+        />
       </Fragment>
     )
   }
@@ -98,46 +70,18 @@ const next = [
         <h2 id="flags" {...stylex.props(styles.h2)}>
           Flags
         </h2>
-        <div {...stylex.props(styles.tableFrame)} tabindex="0">
-          <table {...stylex.props(styles.table)}>
-            <thead data-pagefind-ignore>
-              <tr>
-                <th {...stylex.props(styles.th)}>Flag</th>
-                <th {...stylex.props(styles.th)}>Argument</th>
-                <th {...stylex.props(styles.th)}>Meaning</th>
-              </tr>
-            </thead>
-            <tbody>
-              {verb.flags.map((flag, index) => (
-                <tr>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === verb.flags.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {flag.name}
-                  </td>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === verb.flags.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {flag.argument === '' ? '—' : flag.argument}
-                  </td>
-                  <td
-                    {...stylex.props(styles.td, index === verb.flags.length - 1 && styles.lastRow)}
-                  >
-                    {flag.meaning}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReferenceTable
+          columns={[
+            { header: 'Flag', identifier: true },
+            { header: 'Argument', identifier: true },
+            { header: 'Meaning' },
+          ]}
+          rows={verb.flags.map((flag) => [
+            flag.name,
+            flag.argument === '' ? '—' : flag.argument,
+            flag.meaning,
+          ])}
+        />
       </Fragment>
     )
   }
@@ -149,39 +93,10 @@ const next = [
           Global flags
         </h2>
         <p {...stylex.props(styles.p)}>Every verb takes these two.</p>
-        <div {...stylex.props(styles.tableFrame)} tabindex="0">
-          <table {...stylex.props(styles.table)}>
-            <thead data-pagefind-ignore>
-              <tr>
-                <th {...stylex.props(styles.th)}>Flag</th>
-                <th {...stylex.props(styles.th)}>Meaning</th>
-              </tr>
-            </thead>
-            <tbody>
-              {GLOBAL_FLAGS.map((flag, index) => (
-                <tr>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === GLOBAL_FLAGS.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {flag.name}
-                  </td>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      index === GLOBAL_FLAGS.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {flag.meaning}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReferenceTable
+          columns={[{ header: 'Flag', identifier: true }, { header: 'Meaning' }]}
+          rows={GLOBAL_FLAGS.map((flag) => [flag.name, flag.meaning])}
+        />
       </Fragment>
     ) : (
       <p {...stylex.props(styles.p)}>
@@ -200,36 +115,10 @@ const next = [
         <h2 id="exit-codes" {...stylex.props(styles.h2)}>
           Exit codes
         </h2>
-        <div {...stylex.props(styles.tableFrame)} tabindex="0">
-          <table {...stylex.props(styles.table)}>
-            <thead data-pagefind-ignore>
-              <tr>
-                <th {...stylex.props(styles.th)}>Code</th>
-                <th {...stylex.props(styles.th)}>When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {verb.exits.map((exit, index) => (
-                <tr>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === verb.exits.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {exit.code}
-                  </td>
-                  <td
-                    {...stylex.props(styles.td, index === verb.exits.length - 1 && styles.lastRow)}
-                  >
-                    {exit.when}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReferenceTable
+          columns={[{ header: 'Code', identifier: true }, { header: 'When' }]}
+          rows={verb.exits.map((exit) => [String(exit.code), exit.when])}
+        />
       </Fragment>
     )
   }

@@ -2,6 +2,7 @@
 import * as stylex from '@stylexjs/stylex'
 import Layout from '../../components/Layout.astro'
 import NextLinks from '../../components/NextLinks.astro'
+import { ReferenceTable } from '../../components/DataTable'
 import { envOf } from '../../data/env'
 import { pageLink } from '../../data/links'
 import { styles } from './_styles'
@@ -44,36 +45,10 @@ const next = [pageLink('/reference/files'), pageLink('/reference')]
           {table.title}
         </h2>
         <p {...stylex.props(styles.p)}>{table.lead}</p>
-        <div {...stylex.props(styles.tableFrame)} tabindex="0">
-          <table {...stylex.props(styles.table)}>
-            <thead data-pagefind-ignore>
-              <tr>
-                <th {...stylex.props(styles.th)}>Variable</th>
-                <th {...stylex.props(styles.th)}>What it does</th>
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((variable, index) => (
-                <tr>
-                  <td
-                    {...stylex.props(
-                      styles.td,
-                      styles.cell,
-                      index === table.rows.length - 1 && styles.lastRow,
-                    )}
-                  >
-                    {variable.name}
-                  </td>
-                  <td
-                    {...stylex.props(styles.td, index === table.rows.length - 1 && styles.lastRow)}
-                  >
-                    {variable.role}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ReferenceTable
+          columns={[{ header: 'Variable', identifier: true }, { header: 'What it does' }]}
+          rows={table.rows.map((variable) => [variable.name, variable.role])}
+        />
       </Fragment>
     ))
   }
