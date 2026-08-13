@@ -70,12 +70,13 @@ export const styles = stylex.create({
   said: {
     color: 'var(--ink-muted)',
   },
-  code: {
-    color: 'var(--th-code-inline)',
-    fontSize: 'var(--text-inline-code)',
-  },
-  // A signature, or the usage line. The frame the site gives code, with
-  // the horizontal scroll a long type keeps instead of wrapping.
+  // The site's one inline treatment, from app.css. A syntax token here made
+  // a flag name in a sentence orange on reference pages and neutral on
+  // every other page.
+  code: {},
+  // A signature, or the usage line. It wraps between its bracket groups,
+  // because the synopsis is the first thing a reader looks at and half of
+  // it behind a horizontal scroll is half a synopsis.
   signature: {
     backgroundColor: 'var(--surface)',
     borderColor: 'var(--border)',
@@ -87,9 +88,13 @@ export const styles = stylex.create({
     lineHeight: 1.6,
     marginBlock: '1rem',
     overflowX: 'auto',
+    // A long option keeps its own shape; the line breaks at the spaces
+    // between groups, never inside `[<TARGET>...]`.
+    overflowWrap: 'normal',
     paddingBlock: '0.75rem',
     paddingInline: '1rem',
-    whiteSpace: 'pre',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'normal',
   },
   // Tables are framed, not striped: a container border, and hairlines
   // under the rows.
@@ -116,11 +121,9 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-meta)',
     fontWeight: 500,
-    letterSpacing: '0.06em',
     paddingBlock: '0.6rem',
     paddingInline: '1rem',
     textAlign: 'start',
-    textTransform: 'uppercase',
     whiteSpace: 'nowrap',
   },
   td: {

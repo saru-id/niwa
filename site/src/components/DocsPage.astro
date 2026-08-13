@@ -5,7 +5,6 @@ import { collectHeadings } from '../lib/headings'
 import { areaOf } from '../lib/page'
 import { currentPath } from '../nav'
 import { styles } from './DocsPage.styles'
-import Kicker from './Kicker.astro'
 import Layout from './Layout.astro'
 import { Markdown } from './Markdown'
 import NextLinks from './NextLinks.astro'
@@ -22,12 +21,15 @@ const source = entry.body ?? ''
 const file = entry.filePath ?? entry.id
 // The markdown twin is this page's URL with the extension its route serves.
 // Reading the URL, not the id, keeps the two in step if the route moves.
+// The area is not drawn, but the lookup is the inventory gate: a page whose
+// path no nav group carries stops the build here.
+areaOf(entry.id, file)
+
 const twin = `${currentPath(Astro.url.pathname)}.md`
 ---
 
 <Layout title={title} description={description} headings={collectHeadings(source)}>
   <article id="article">
-    <Kicker label={areaOf(entry.id, file)} />
     <h1 {...stylex.props(styles.title)}>{title}</h1>
     <p {...stylex.props(styles.deck)}>{description}</p>
     {

@@ -9,8 +9,8 @@ export const styles = stylex.create({
   rail: {
     alignSelf: 'start',
     display: { default: 'none', '@media (min-width: 1024px)': 'block' },
-    insetBlockStart: 0,
-    maxHeight: '100dvh',
+    insetBlockStart: 'var(--header-height)',
+    maxHeight: 'calc(100dvh - var(--header-height))',
     overflowY: 'auto',
     paddingBlock: '2.5rem',
     position: 'sticky',
@@ -23,7 +23,7 @@ export const styles = stylex.create({
   // at 375. The taller of the two is the one that has to fit.
   panel: {
     display: { default: 'block', '@media (min-width: 1024px)': 'none' },
-    maxHeight: 'calc(100dvh - 10.5rem)',
+    maxHeight: 'calc(100dvh - var(--header-height) - 3rem)',
     overflowY: 'auto',
     paddingBlock: '0 1.25rem',
     paddingInline: '1.25rem',
@@ -39,11 +39,9 @@ export const styles = stylex.create({
     color: { default: 'var(--ink-muted)', ':hover': 'var(--ink-strong)' },
     cursor: 'pointer',
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-kicker)',
+    fontSize: 'var(--text-nav)',
     fontWeight: 500,
-    letterSpacing: '0.1em',
     paddingBlock: '0.25rem',
-    textTransform: 'uppercase',
     transitionDuration: '120ms',
     transitionProperty: 'color',
     transitionTimingFunction: 'ease',

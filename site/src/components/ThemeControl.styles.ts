@@ -37,12 +37,10 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
     fontWeight: 500,
-    letterSpacing: '0.06em',
     // Three buttons that touch, so the spacing exception does not apply and
     // each one has to reach 24 pixels on its own.
     paddingBlock: '0.4rem',
     paddingInline: '0.5rem',
-    textTransform: 'uppercase',
     transitionDuration: '120ms',
     transitionProperty: 'color, background-color',
     transitionTimingFunction: 'ease',

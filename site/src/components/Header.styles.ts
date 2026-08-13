@@ -1,10 +1,19 @@
 import * as stylex from '@stylexjs/stylex'
 
 export const styles = stylex.create({
+  // Sticky, so the wordmark, search and the theme control stay reachable
+  // from the foot of a long reference page. It carries its own ground: the
+  // page scrolls behind it, and a transparent bar would show the text.
   header: {
+    backgroundColor: 'var(--ground)',
     borderBlockEndColor: 'var(--border)',
     borderBlockEndStyle: 'solid',
     borderBlockEndWidth: '1px',
+    insetBlockStart: 0,
+    position: 'sticky',
+    // Above the rails, which are sticky too, and above the tree's own
+    // stacking context. Below the search dialog, which is a top layer.
+    zIndex: 20,
   },
   // The controls need more room than a phone has beside the wordmark, so
   // the bar wraps rather than scrolling sideways.
@@ -96,10 +105,8 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
     fontWeight: 500,
-    letterSpacing: '0.1em',
     paddingBlock: '0.75rem',
     paddingInline: '1.25rem',
-    textTransform: 'uppercase',
     transitionDuration: '120ms',
     transitionProperty: 'color',
     transitionTimingFunction: 'ease',

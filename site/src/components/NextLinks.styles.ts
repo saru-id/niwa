@@ -11,11 +11,9 @@ export const styles = stylex.create({
   label: {
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-kicker)',
+    fontSize: 'var(--text-meta)',
     fontWeight: 500,
-    letterSpacing: '0.1em',
     marginBlock: '0 0.75rem',
-    textTransform: 'uppercase',
   },
   list: {
     listStyle: 'none',

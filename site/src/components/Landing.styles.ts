@@ -15,10 +15,17 @@ import * as stylex from '@stylexjs/stylex'
  * on the left edge the header's wordmark and the footer's line already use. */
 const COLUMN = '48rem'
 
+/* The landing holds two widths and no others. Words sit at the reading
+ * measure, the same one every documentation page uses. The two exhibits —
+ * the config and the plan it produces — run to the column, because their
+ * lines are a fixed width the page does not get to choose. A third width
+ * anywhere reads as an accident. */
+const WORDS = 'var(--measure)'
+
 /* The display line, from 38px at 375px to 72px at 1280px and no larger. The
  * floor keeps `configured` inside a 375px viewport with room to spare; the
  * ceiling keeps the statement to three lines in a 48rem column. */
-const DISPLAY = 'clamp(2.375rem, 1.5rem + 3.75vw, 4.5rem)'
+const DISPLAY = 'clamp(2.125rem, 1.25rem + 2.9vw, 3rem)'
 
 export const styles = stylex.create({
   // Flow root, so every band's air is the band's padding and never a margin
@@ -41,6 +48,7 @@ export const styles = stylex.create({
   statement: {
     color: 'var(--ink-strong)',
     fontSize: DISPLAY,
+    maxWidth: WORDS,
     fontWeight: 700,
     // A display line breaks between words. Never inside one: the body's
     // `overflow-wrap: break-word` is right for a path in running prose and
@@ -64,6 +72,10 @@ export const styles = stylex.create({
     backgroundColor: 'var(--border)',
     borderStyle: 'none',
     height: '1px',
+    // A capped `hr` centres itself; this one belongs to the left edge every
+    // other line on the page hangs from.
+    marginInline: 0,
+    maxWidth: WORDS,
     marginBlock: 'clamp(2rem, 4vw, 2.75rem)',
   },
   // Body scale, not a deck size. The statement above already carries the
@@ -73,16 +85,17 @@ export const styles = stylex.create({
     fontSize: 'var(--text-body)',
     lineHeight: 1.7,
     marginBlock: 0,
-    maxWidth: 'var(--measure)',
+    maxWidth: WORDS,
     textWrap: 'pretty',
   },
   // Wide enough for the command and the controls that sit at its top right,
   // and no wider: the install line is a small precise object, and the
   // evidence below is what runs the full column.
   install: {
-    maxWidth: '26rem',
+    maxWidth: WORDS,
   },
   secondary: {
+    maxWidth: WORDS,
     fontSize: 'var(--text-body)',
     marginBlock: '1.5rem 0',
   },
@@ -117,6 +130,7 @@ export const styles = stylex.create({
   // sides of it. It is the strongest gesture the site owns and it costs one
   // border.
   heading: {
+    maxWidth: WORDS,
     borderBlockStartColor: 'var(--border)',
     borderBlockStartStyle: 'solid',
     borderBlockStartWidth: '1px',
@@ -130,6 +144,7 @@ export const styles = stylex.create({
     textWrap: 'balance',
   },
   steps: {
+    maxWidth: WORDS,
     listStyle: 'none',
     marginBlock: 0,
     paddingInline: 0,
@@ -160,31 +175,22 @@ export const styles = stylex.create({
     color: 'var(--ink)',
     lineHeight: 1.65,
     marginBlock: 0,
-    maxWidth: 'var(--measure)',
+    maxWidth: WORDS,
   },
   boundaryText: {
     color: 'var(--ink)',
     lineHeight: 1.7,
     marginBlock: '0 1rem',
-    maxWidth: 'var(--measure)',
+    maxWidth: WORDS,
   },
   onward: {
+    maxWidth: WORDS,
     marginBlock: '0.6rem 0',
   },
   boundaryOnward: {
+    maxWidth: WORDS,
     marginBlock: '1.75rem 0',
   },
-  // Inline code as a chip: surface, hairline, 5px. The optical size step is
-  // the site's, not a reduction.
-  code: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderRadius: '5px',
-    borderStyle: 'solid',
-    borderWidth: '1px',
-    color: 'var(--ink-strong)',
-    fontSize: 'var(--text-inline-code)',
-    paddingBlock: '0.1em',
-    paddingInline: '0.32em',
-  },
+  // Inline code takes the site's one treatment, from app.css.
+  code: {},
 })

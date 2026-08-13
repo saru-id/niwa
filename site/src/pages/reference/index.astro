@@ -1,6 +1,5 @@
 ---
 import * as stylex from '@stylexjs/stylex'
-import Kicker from '../../components/Kicker.astro'
 import Layout from '../../components/Layout.astro'
 import NextLinks from '../../components/NextLinks.astro'
 import { pageLink } from '../../data/links'
@@ -36,7 +35,6 @@ const next = [
 ---
 
 <Layout title="Reference" description={deck} headings={headings}>
-  <Kicker label="Reference" />
   <h1 {...stylex.props(styles.h1)}>Reference</h1>
   <p {...stylex.props(styles.deck)}>{deck}</p>
   <p {...stylex.props(styles.p)}>

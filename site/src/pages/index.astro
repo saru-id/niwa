@@ -2,7 +2,6 @@
 import * as stylex from '@stylexjs/stylex'
 import Footer from '../components/Footer.astro'
 import Header from '../components/Header.astro'
-import Kicker from '../components/Kicker.astro'
 import Search from '../components/Search.astro'
 import { styles as shell } from '../components/Layout.styles'
 import { Markdown } from '../components/Markdown'
@@ -81,10 +80,9 @@ const PLAN = 'plan_mixed_pending_color'
     <Header pathname={pathname} carriesNavigation />
 
     <main id="main" data-pagefind-body>
-      {/* Band 2. Kicker, the statement, one hairline, and what follows from it. */}
+      {/* Band 2. The statement, one hairline, and what follows from it. */}
       <section {...stylex.props(shell.column, styles.bandStatement)}>
         <div {...stylex.props(styles.column)}>
-          <Kicker label="niwa" />
           <h1 {...stylex.props(styles.statement)}>
             Your whole Mac, configured by one script you can actually read.
           </h1>

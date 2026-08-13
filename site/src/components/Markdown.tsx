@@ -48,8 +48,6 @@ const styles = stylex.create({
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
-    letterSpacing: '0.1em',
-    textTransform: 'uppercase',
   },
   copy: {
     // Longhands throughout: StyleX 0.19 silently drops the `background`
@@ -60,7 +58,6 @@ const styles = stylex.create({
     cursor: 'pointer',
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
-    letterSpacing: '0.1em',
     // Eleven pixel type draws a box under the 24 pixel target minimum. The
     // padding grows the box and the equal negative margin gives the space
     // back to the layout, so the label sits where it always sat.
@@ -70,7 +67,6 @@ const styles = stylex.create({
       ':focus-visible': 1,
     },
     padding: '6px',
-    textTransform: 'uppercase',
   },
   pre: {
     backgroundColor: 'var(--surface)',
@@ -143,6 +139,13 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
       </pre>
     </div>
   )
+}
+
+/* A header row labels its column; it is not prose. Pagefind joins cell text
+ * with no separator, so indexed it reads "FlagArgumentMeaning" inside an
+ * excerpt. It stays on the page and leaves the index. */
+function TableHead(props: ComponentPropsWithoutRef<'thead'>) {
+  return <thead {...props} data-pagefind-ignore />
 }
 
 function ScrollableTable({ className, ...rest }: ComponentPropsWithoutRef<'table'>) {
@@ -363,6 +366,7 @@ export function Markdown({
         pre: CodeBlock,
         screen: Screen,
         table: ScrollableTable,
+        thead: TableHead,
         tree: TreeFence,
       }}
       extensions={[screenFences(file)]}

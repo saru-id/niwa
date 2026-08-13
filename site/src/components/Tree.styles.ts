@@ -43,14 +43,18 @@ export const styles = stylex.create({
   }),
   // The purposes beside the tree, when the fence carries them: the path in
   // the chrome face, its purpose in prose, one line each.
+  // One grid for every row, so one column width serves them all. A grid per
+  // row let each one size its own first column, and the purposes came out
+  // at five different left edges.
   notes: {
-    marginBlock: '0.75rem 0',
-  },
-  noteRow: {
     columnGap: '0.75rem',
     display: 'grid',
     gridTemplateColumns: 'minmax(6rem, max-content) minmax(0, 1fr)',
-    marginBlock: '0.15rem',
+    marginBlock: '0.75rem 0',
+    rowGap: '0.3rem',
+  },
+  noteRow: {
+    display: 'contents',
   },
   notePath: {
     color: 'var(--ink-strong)',
