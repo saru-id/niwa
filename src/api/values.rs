@@ -304,15 +304,15 @@ fn declare_use(lua: &Lua, ctx: &Ctx, source: &str) -> mlua::Result<Table> {
     if let Some(engine) = &ctx.engine {
         let key = format!("github:{repo}");
         let Some(pin) = engine.module_pin(&key) else {
-            return Err(mlua::Error::RuntimeError(format!(
-                "{prov}: the module {source} is not resolved · run `niwa update`"
+            return Err(spec.fail(&format!(
+                "the module {source} is not resolved · run `niwa update`"
             )));
         };
         let cache = crate::modules::cache_dir(&ctx.paths, &pin.sha256);
         let entry = cache.join("init.luau");
         if !entry.is_file() {
-            return Err(mlua::Error::RuntimeError(format!(
-                "{prov}: the module {source} is not cached on this machine · run `niwa update`"
+            return Err(spec.fail(&format!(
+                "the module {source} is not cached on this machine · run `niwa update`"
             )));
         }
         crate::luau::load_external(lua, &entry, &format!("use:{repo}/init.luau"))?;
