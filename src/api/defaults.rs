@@ -140,8 +140,8 @@ pub fn record(
 }
 
 /// The dock sugar and its lowering table. `apps` becomes
-/// `persistent-apps`; the provider turns the list into the plist
-/// shape at apply time.
+/// `persistent-apps`, and only the empty dock is expressible at this
+/// version (deviations ledger #9).
 fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {
@@ -182,9 +182,18 @@ fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
         mlua::Value::Nil => {}
         raw => {
             let value = spec.value("apps", &raw)?;
-            let Value::List(_) = &value else {
+            let Value::List(apps) = &value else {
                 return Err(spec.fail("field `apps` expects a list of app names"));
             };
+            // The Dock reads `persistent-apps` as tile dictionaries,
+            // not names; writing raw strings would corrupt it. The
+            // one shape that needs no tiles is the empty dock — the
+            // design's own example — so that is the shape allowed.
+            if !apps.is_empty() {
+                return Err(spec.fail(
+                    "field `apps` supports only the empty list (an empty dock) at this version",
+                ));
+            }
             if let Some(truth) = record(
                 ctx,
                 &prov,

@@ -52,6 +52,10 @@ nobody re-derives it:
 - **`self update`.** There is no release channel at this version;
   the verb's one honest refusal is tested, the fetch-verify-swap it
   will grow is not written.
+- **`once` under interruption.** The marker lands after the body, so
+  a run killed between the two repeats the body on the next apply:
+  at-least-once, stated in the API docs. Driving a kill into that
+  window is timing-dependent; the manual tier carries it.
 - **Custom `reverse` through undo.** Validated at definition,
   journaled irreversible by name; driving the handler from undo
   lands after 0.1.0 (deviations ledger).

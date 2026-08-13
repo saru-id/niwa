@@ -185,6 +185,27 @@ fn an_unguarded_run_is_rejected_with_the_three_guards() {
 }
 
 #[test]
+fn a_dock_app_list_beyond_empty_is_refused_plainly() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        &config("niwa.dock { apps = { \"Ghostty\" } }\n"),
+    );
+    let err = check_fails(home.path());
+    assert!(err.contains("apps"), "{err}");
+    assert!(err.contains("empty"), "{err}");
+
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        &config("niwa.dock { apps = {} }\n"),
+    );
+    checks_clean(home.path());
+}
+
+#[test]
 fn spec_errors_name_the_resource_the_field_and_the_place() {
     let home = tempfile::tempdir().unwrap();
     write(

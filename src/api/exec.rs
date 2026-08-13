@@ -146,7 +146,9 @@ fn declare_run(
 }
 
 /// `niwa.once(name, fn)`: the marker is the guard, and the journal
-/// will record it as irreversible.
+/// will record it as irreversible. The marker lands after the body:
+/// a run killed between the two repeats the body next time, so once
+/// is at-least-once under interruption, never at-most-once.
 fn declare_once(lua: &Lua, ctx: &Ctx, name: &str, body: &Function) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {
