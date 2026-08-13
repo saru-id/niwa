@@ -32,6 +32,7 @@ enum Answer {
 
 fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
+    super::refuse_mid_merge(&paths, "pulling")?;
     let (_lock, reclaimed) = crate::apply::Lock::take(&paths.state)?;
     if reclaimed {
         out.note("reclaimed a stale lock from a crashed run");
@@ -68,7 +69,16 @@ fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
             out.note("removal waits · run `niwa pull` for the interactive walk");
             continue;
         }
-        let answer = if all { Answer::Apply } else { ask(out) };
+        let answer = if all {
+            Answer::Apply
+        } else {
+            match ask(out) {
+                Some(answer) => answer,
+                // A closed stdin answers every remaining question the
+                // same way: nobody is here to say yes.
+                None => break,
+            }
+        };
         match answer {
             Answer::Apply | Answer::Edit => {
                 let edited = matches!(answer, Answer::Edit);
@@ -285,11 +295,14 @@ fn describe(declarations: &[crate::model::Declaration], finding: &Finding) -> St
 }
 
 /// The four answers, defined once, meaning the same thing everywhere.
-fn ask(out: &Out) -> Answer {
-    match out.prompt("[a]pply  [e]dit  [n]ever  [s]kip").as_deref() {
-        Some("a") => Answer::Apply,
-        Some("e") => Answer::Edit,
-        Some("n") => Answer::Never,
-        _ => Answer::Skip,
-    }
+/// `None` is a closed stdin: the walk ends, nothing else is asked.
+fn ask(out: &Out) -> Option<Answer> {
+    Some(
+        match out.prompt("[a]pply  [e]dit  [n]ever  [s]kip")?.as_str() {
+            "a" => Answer::Apply,
+            "e" => Answer::Edit,
+            "n" => Answer::Never,
+            _ => Answer::Skip,
+        },
+    )
 }

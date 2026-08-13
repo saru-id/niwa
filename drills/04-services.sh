@@ -135,4 +135,16 @@ check 19 "its plist runs niwa unattended and unprivileged" sh -c "
     /usr/bin/plutil -p '$HOME/Library/LaunchAgents/dev.drill.converge.plist' |
     grep -q 'no-privileged'"
 
+# --- removing the declaration offers removal, never takes it --------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+LUAU
+: >"$CALLS"
+{ sleep 1; for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do printf 'a\n'; done; sleep 1; } | /usr/bin/script -q "$SANDBOX/orphan.log" \
+    "$NIWA_BIN" pull >/dev/null 2>&1 || true
+check 20 "accepting the orphan boots the job out" \
+    grep -q "bootout" "$CALLS"
+check 21 "the plist left launchd's folder" \
+    sh -c "! test -f '$HOME/Library/LaunchAgents/dev.drill.converge.plist'"
+
 echo "drill: services · all checks passed"
