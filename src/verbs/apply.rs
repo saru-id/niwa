@@ -521,7 +521,9 @@ fn tree_is_dirty(paths: &Paths) -> bool {
         return false;
     }
     // Stamps under state/ dirty the tree after every apply by
-    // design; they never count against an unattended run.
+    // design; they never count against an unattended run. A repo
+    // whose git will not answer reads as dirty: the guard exists to
+    // refuse, so it fails closed, never open.
     let config = paths.config.display().to_string();
     bounded_stdout(
         "git",
@@ -536,5 +538,5 @@ fn tree_is_dirty(paths: &Paths) -> bool {
         ],
         Duration::from_secs(10),
     )
-    .is_some_and(|status| !status.is_empty())
+    .is_none_or(|status| !status.is_empty())
 }

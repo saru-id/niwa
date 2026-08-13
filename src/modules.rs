@@ -114,10 +114,12 @@ fn collect(root: &Path, prefix: &Path, out: &mut Vec<PathBuf>) {
             continue;
         }
         let relative = prefix.join(&name);
-        if entry.path().is_dir() {
-            collect(root, &relative, out);
-        } else {
-            out.push(relative);
+        // Entry file types never follow symlinks: a cloned module
+        // carrying a link to `/` or a cycle must not recurse.
+        match entry.file_type() {
+            Ok(kind) if kind.is_dir() => collect(root, &relative, out),
+            Ok(kind) if kind.is_file() => out.push(relative),
+            _ => {}
         }
     }
 }

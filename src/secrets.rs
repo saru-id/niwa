@@ -74,10 +74,18 @@ fn search(
                     if !read {
                         return Ok(None);
                     }
-                    if let Ok(bytes) = std::fs::read(&sealed)
-                        && let Ok(clear) = unseal(paths, &bytes)
-                    {
-                        return Ok(Some(String::from_utf8_lossy(&clear).trim_end().to_string()));
+                    match std::fs::read(&sealed).map(|bytes| unseal(paths, &bytes)) {
+                        Ok(Ok(clear)) => {
+                            return Ok(Some(
+                                String::from_utf8_lossy(&clear).trim_end().to_string(),
+                            ));
+                        }
+                        // The file is there and will not open: that is
+                        // a key problem, not an absence, and the words
+                        // must send the person to the key.
+                        _ => looked.push(format!(
+                            "secrets/{name}.age exists but did not decrypt · is this machine's sealing key the repo's? (`niwa seal-key restore`)"
+                        )),
                     }
                 }
             }

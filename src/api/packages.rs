@@ -324,6 +324,13 @@ fn declare_github_release(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result
     }
     let mut fields = BTreeMap::new();
     if let Some(bin) = spec.opt_str(options, "bin")? {
+        // The name becomes a file under ~/.local/bin, and undo will
+        // one day remove that exact path: one plain segment only.
+        if bin.is_empty() || bin.contains('/') || bin.starts_with('.') {
+            return Err(spec.fail(&format!(
+                "field `bin` expects a bare file name, got \"{bin}\""
+            )));
+        }
         fields.insert("bin".to_string(), Value::Str(bin));
     }
     settle(

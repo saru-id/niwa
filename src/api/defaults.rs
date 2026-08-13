@@ -54,11 +54,21 @@ fn declare_defaults(
     // An absolute domain is the admin half of the machine, and only
     // that: confined to /Library/Preferences, or a plist write could
     // land anywhere the user can write.
-    if domain.starts_with('/')
-        && (!domain.starts_with("/Library/Preferences/") || domain.contains(".."))
+    if domain.starts_with('/') {
+        if !domain.starts_with("/Library/Preferences/") || domain.contains("..") {
+            return Err(spec.fail(&format!(
+                "an absolute domain lives under /Library/Preferences, got \"{domain}\""
+            )));
+        }
+    } else if !domain
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
     {
+        // A bare domain is a reverse-DNS name and joins under
+        // ~/Library/Preferences; a slash or dot-dot in it would walk
+        // out of the folder the same way an absolute one could.
         return Err(spec.fail(&format!(
-            "an absolute domain lives under /Library/Preferences, got \"{domain}\""
+            "a domain is a reverse-DNS name (letters, digits, dots, dashes), got \"{domain}\""
         )));
     }
     let restart = match options {

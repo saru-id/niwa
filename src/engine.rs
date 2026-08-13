@@ -480,7 +480,12 @@ impl Engine {
                         );
                     }
                     self.journal.borrow().save(&self.paths.state)?;
-                } else if !entry.optional {
+                } else if entry.optional {
+                    // The summary's honesty: a failed nice-to-have is
+                    // still a failure, counted even though the run
+                    // continues.
+                    *self.failed.borrow_mut() += 1;
+                } else {
                     // A failed resource throws by default, halting
                     // the run rather than cascading.
                     return Err(Error::ResourceFailed {

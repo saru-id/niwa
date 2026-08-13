@@ -38,10 +38,10 @@ pub fn installed(paths: &Paths, bin: &str) -> bool {
 /// the resolution `niwa update` records.
 pub fn resolve(repo: &str) -> Result<ReleasePin, Error> {
     let (version, asset_url) = latest_asset(repo)?;
-    let temp = tempdir_file(repo);
+    let temp = tempdir_file(repo)?;
     download(&asset_url, &temp)?;
     let bytes = std::fs::read(&temp).map_err(|error| release_error(repo, &error))?;
-    let _ = std::fs::remove_file(&temp);
+    discard(&temp);
     Ok(ReleasePin {
         version,
         sha256: digest(&bytes),
@@ -66,13 +66,13 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
                 ),
             });
         }
-        let temp = tempdir_file(repo);
+        let temp = tempdir_file(repo)?;
         download(&asset_url, &temp)?;
         temp
     };
     let bytes = std::fs::read(&temp).map_err(|error| release_error(repo, &error))?;
     if digest(&bytes) != pin.sha256 {
-        let _ = std::fs::remove_file(&temp);
+        discard(&temp);
         return Err(Error::Apply {
             doing: format!("installing {repo}"),
             detail: "the downloaded asset does not match the locked sha256; refusing it"
@@ -94,7 +94,7 @@ pub fn install(paths: &Paths, repo: &str, bin: &str, pin: &ReleasePin) -> Result
         crate::util::write_atomic(&target, &bytes, Some(0o755), false)
             .map_err(|error| release_error(repo, &error))?;
     }
-    let _ = std::fs::remove_file(&temp);
+    discard(&temp);
     Ok(())
 }
 
@@ -135,7 +135,9 @@ pub fn prefetch(paths: &Paths, repo: &str, pin: &ReleasePin) {
     if version != pin.version {
         return;
     }
-    let temp = tempdir_file(&format!("{repo}-prefetch"));
+    let Ok(temp) = tempdir_file(&format!("{repo}-prefetch")) else {
+        return;
+    };
     if download(&asset_url, &temp).is_err() {
         return;
     }
@@ -143,7 +145,7 @@ pub fn prefetch(paths: &Paths, repo: &str, pin: &ReleasePin) {
         return;
     };
     if digest(&bytes) != pin.sha256 {
-        let _ = std::fs::remove_file(&temp);
+        discard(&temp);
         return;
     }
     let Some(parent) = target.parent() else {
@@ -282,23 +284,49 @@ fn find_file(dir: &Path, name: &str) -> Option<PathBuf> {
     let entries = std::fs::read_dir(dir).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_dir() {
+        // The file type comes from the directory entry, never a
+        // stat that follows symlinks: an archive carrying a link to
+        // `/` or its own parent must not recurse through it.
+        let kind = entry.file_type().ok()?;
+        if kind.is_dir() {
             if let Some(found) = find_file(&path, name) {
                 return Some(found);
             }
-        } else if path.file_name().is_some_and(|file| file == name) {
+        } else if kind.is_file() && path.file_name().is_some_and(|file| file == name) {
             return Some(path);
         }
     }
     None
 }
 
-fn tempdir_file(repo: &str) -> PathBuf {
-    std::env::temp_dir().join(format!(
-        "niwa-release-{}-{}",
-        repo.replace('/', "-"),
-        std::process::id()
+/// A private scratch file for one download: its parent directory is
+/// created fresh and exclusively (0700), so no other user can
+/// pre-plant a path for curl or tar to write through.
+fn tempdir_file(repo: &str) -> Result<PathBuf, Error> {
+    use std::os::unix::fs::PermissionsExt as _;
+    let base = std::env::temp_dir();
+    for attempt in 0..1024u32 {
+        let dir = base.join(format!("niwa-release-{}-{attempt}", std::process::id()));
+        match std::fs::create_dir(&dir) {
+            Ok(()) => {
+                let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+                return Ok(dir.join(repo.replace('/', "-")));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(release_error(repo, &error)),
+        }
+    }
+    Err(release_error(
+        repo,
+        &"no free scratch directory under the system temp",
     ))
+}
+
+/// Drop one scratch file and the private directory around it.
+fn discard(temp: &std::path::Path) {
+    if let Some(parent) = temp.parent() {
+        let _ = std::fs::remove_dir_all(parent);
+    }
 }
 
 fn release_error(repo: &str, error: &dyn std::fmt::Display) -> Error {
