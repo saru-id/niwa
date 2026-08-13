@@ -17,15 +17,7 @@ fn installs(paths: &Paths) -> PathBuf {
 /// Is any version of this tool installed? Returns the newest install
 /// directory's name when one is.
 pub fn installed(paths: &Paths, tool: &str) -> Option<String> {
-    let mut versions: Vec<String> = std::fs::read_dir(installs(paths).join(tool))
-        .ok()?
-        .flatten()
-        .filter(|entry| entry.path().is_dir())
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .filter(|name| !name.starts_with('.'))
-        .collect();
-    versions.sort();
-    versions.pop()
+    crate::util::newest_version_dir(&installs(paths).join(tool), |_| true)
 }
 
 /// The `tool@version` argument one declaration asks for. A locked

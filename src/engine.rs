@@ -447,10 +447,7 @@ impl Engine {
                 }
             };
 
-            for entry in to_install
-                .iter()
-                .filter(|entry| entry.declaration.identity.kind == kind)
-            {
+            for entry in &group {
                 let version = self.installed(&entry.declaration);
                 let landed = version.is_some();
                 self.truths.borrow_mut().insert(

@@ -21,13 +21,13 @@ pub fn installed(paths: &Paths, kind: &Kind, name: &str) -> Option<String> {
     match kind {
         Kind::BrewFormula => {
             let cellar = prefix.join("Cellar").join(name);
-            newest_version_dir(&cellar, |version| {
+            crate::util::newest_version_dir(&cellar, |version| {
                 version.join("INSTALL_RECEIPT.json").is_file()
             })
         }
         Kind::BrewCask => {
             let caskroom = prefix.join("Caskroom").join(name);
-            newest_version_dir(&caskroom, |version| {
+            crate::util::newest_version_dir(&caskroom, |version| {
                 !version
                     .file_name()
                     .is_some_and(|n| n.to_string_lossy().starts_with('.'))
@@ -35,18 +35,6 @@ pub fn installed(paths: &Paths, kind: &Kind, name: &str) -> Option<String> {
         }
         _ => None,
     }
-}
-
-fn newest_version_dir(root: &Path, valid: impl Fn(&Path) -> bool) -> Option<String> {
-    let mut versions: Vec<String> = std::fs::read_dir(root)
-        .ok()?
-        .flatten()
-        .filter(|entry| entry.path().is_dir() && valid(&entry.path()))
-        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .filter(|name| !name.starts_with('.'))
-        .collect();
-    versions.sort();
-    versions.pop()
 }
 
 /// Formulae someone asked for by name, off their receipts. What came

@@ -336,16 +336,7 @@ fn arm_progress(
     intent: &crate::model::action::Plan,
     pending: usize,
 ) -> Vec<std::thread::JoinHandle<()>> {
-    let open_checklist = intent
-        .items
-        .iter()
-        .filter(|item| {
-            matches!(
-                item.declaration.identity.kind,
-                crate::model::Kind::Permission | crate::model::Kind::Manual
-            )
-        })
-        .count();
+    let open_checklist = intent.items.iter().filter(|item| is_manual(item)).count();
     // In CI the cadence honors NIWA_PROGRESS_EVERY seconds; thirty is
     // the design's one-plain-line-per-half-minute rule.
     let every = std::env::var("NIWA_PROGRESS_EVERY")
@@ -439,16 +430,8 @@ fn privileged_block(out: &Out, intent: &crate::model::action::Plan) {
 /// while the machine does: nothing in the checklist ever blocks the
 /// apply.
 fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: usize) {
-    let manual: Vec<&crate::model::action::Item> = intent
-        .items
-        .iter()
-        .filter(|item| {
-            matches!(
-                item.declaration.identity.kind,
-                crate::model::Kind::Permission | crate::model::Kind::Manual
-            )
-        })
-        .collect();
+    let manual: Vec<&crate::model::action::Item> =
+        intent.items.iter().filter(|item| is_manual(item)).collect();
     if pending >= 10 && !manual.is_empty() {
         out.plain("");
         out.group("yours meanwhile");
@@ -456,6 +439,15 @@ fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: u
             out.result(Mark::Waiting, &checklist_line(&item.declaration));
         }
     }
+}
+
+/// A checklist item stays in a person's hands; the progress line and
+/// the up-front listing both count the same set.
+const fn is_manual(item: &crate::model::action::Item) -> bool {
+    matches!(
+        item.declaration.identity.kind,
+        crate::model::Kind::Permission | crate::model::Kind::Manual
+    )
 }
 
 /// A checklist row speaks its own deep link and pasteable command:

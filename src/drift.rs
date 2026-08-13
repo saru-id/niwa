@@ -92,9 +92,7 @@ impl Finding {
             Self::Orphan { identity } => format!("remove:{identity}"),
         }
     }
-}
 
-impl Finding {
     /// The short name a notification carries.
     pub fn label(&self) -> String {
         match self {

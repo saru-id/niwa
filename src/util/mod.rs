@@ -18,6 +18,24 @@ pub fn parse_duration(text: &str) -> Option<std::time::Duration> {
 }
 
 /// The digest format acknowledgements and checksums use: sha256, hex.
+/// The newest version directory under an installs root, by name:
+/// how both Homebrew and mise answer "is this installed, and as
+/// what". Dotfiles are housekeeping, never versions.
+pub fn newest_version_dir(
+    root: &std::path::Path,
+    valid: impl Fn(&std::path::Path) -> bool,
+) -> Option<String> {
+    let mut versions: Vec<String> = std::fs::read_dir(root)
+        .ok()?
+        .flatten()
+        .filter(|entry| entry.path().is_dir() && valid(&entry.path()))
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| !name.starts_with('.'))
+        .collect();
+    versions.sort();
+    versions.pop()
+}
+
 pub fn digest(bytes: &[u8]) -> String {
     use sha2::Digest as _;
     use std::fmt::Write as _;
