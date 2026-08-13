@@ -59,10 +59,7 @@ fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
     let mut staged = 0usize;
     let mut held = Vec::new();
     for finding in &result.findings {
-        out.result(
-            mark_of(finding),
-            &describe(&paths, &analysis.effective, finding),
-        );
+        out.result(mark_of(finding), &describe(&analysis.effective, finding));
 
         // Staging writes to the tree and stops there; removal is a
         // machine mutation and never rides `--all`. An orphan waits
@@ -240,12 +237,7 @@ const fn mark_of(finding: &Finding) -> Mark {
 
 /// One line per finding, in the design's pull shape: what moves, and
 /// where it would land.
-fn describe(
-    paths: &Paths,
-    declarations: &[crate::model::Declaration],
-    finding: &Finding,
-) -> String {
-    let _ = paths;
+fn describe(declarations: &[crate::model::Declaration], finding: &Finding) -> String {
     match finding {
         Finding::LiveEdit {
             target,

@@ -332,7 +332,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
         Kind::File | Kind::Link => {
             let target = paths.expand_home(key);
             if let Ok(current) = std::fs::read(&target) {
-                crate::apply::archive_bytes(&archive_root, identity, &current)?;
+                crate::apply::archive(&archive_root, identity, &current)?;
             }
             std::fs::remove_file(&target).map_err(|error| Error::Apply {
                 doing: format!("removing {key}"),
@@ -345,7 +345,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             };
             let store = crate::defaults::domain_path(paths, domain);
             if let Ok(bytes) = std::fs::read(&store) {
-                crate::apply::archive_bytes(&archive_root, identity, &bytes)?;
+                crate::apply::archive(&archive_root, identity, &bytes)?;
             }
             let mut root = plist::Value::from_file(&store)
                 .ok()
@@ -366,7 +366,7 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             crate::services::bootout(paths, key);
             let plist = crate::services::agent_plist(paths, key);
             if let Ok(bytes) = std::fs::read(&plist) {
-                crate::apply::archive_bytes(&archive_root, identity, &bytes)?;
+                crate::apply::archive(&archive_root, identity, &bytes)?;
             }
             let _ = std::fs::remove_file(&plist);
         }

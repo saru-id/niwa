@@ -327,7 +327,7 @@ fn may_overwrite(
 }
 
 /// Move existing bytes into the archive before they are replaced.
-fn archive(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Error> {
+pub fn archive(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Error> {
     let dir = archive_root.join(sanitize(identity));
     std::fs::create_dir_all(&dir)
         .map_err(|error| apply_error("archiving the previous bytes", &error))?;
@@ -394,12 +394,6 @@ fn archive_sealed(
     let sealed = crate::secrets::seal(paths, bytes)?;
     crate::util::write_atomic(&dir.join(digest(bytes)), &sealed, None, false)
         .map_err(|error| apply_error("archiving the previous bytes", &error))
-}
-
-/// Archive bytes for an identity, for callers outside the engine's
-/// own effect paths (orphan removal archives what it takes away).
-pub fn archive_bytes(archive_root: &Path, identity: &str, bytes: &[u8]) -> Result<(), Error> {
-    archive(archive_root, identity, bytes)
 }
 
 /// Prune archives past the ninety-day horizon. Whatever the newest
