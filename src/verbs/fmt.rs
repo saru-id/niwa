@@ -43,10 +43,12 @@ fn fmt(out: &Out) -> Result<ExitCode, Error> {
         })?;
         match crate::luaufmt::format(&text) {
             Some(clean) => {
-                std::fs::write(&path, clean).map_err(|error| Error::Apply {
-                    doing: format!("writing {}", path.display()),
-                    detail: error.to_string(),
-                })?;
+                crate::util::write_atomic(&path, clean.as_bytes(), None, false).map_err(
+                    |error| Error::Apply {
+                        doing: format!("writing {}", path.display()),
+                        detail: error.to_string(),
+                    },
+                )?;
                 formatted += 1;
             }
             None => untouched += 1,

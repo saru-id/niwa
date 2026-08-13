@@ -71,7 +71,8 @@ fn init(out: &Out) -> Result<ExitCode, Error> {
     // The editor story: the shipped types, where `.luaurc` points.
     let types_dir = paths.data.join("niwa/types");
     std::fs::create_dir_all(&types_dir).map_err(|error| init_error(&error))?;
-    std::fs::write(types_dir.join("init.luau"), TYPES).map_err(|error| init_error(&error))?;
+    crate::util::write_atomic(&types_dir.join("init.luau"), TYPES.as_bytes(), None, false)
+        .map_err(|error| init_error(&error))?;
 
     // The watcher, wired here and nowhere else.
     crate::watch::install(&paths)?;
@@ -101,7 +102,13 @@ fn init(out: &Out) -> Result<ExitCode, Error> {
 }
 
 fn write(paths: &Paths, relative: &str, content: &str) -> Result<(), Error> {
-    std::fs::write(paths.config.join(relative), content).map_err(|error| init_error(&error))
+    crate::util::write_atomic(
+        &paths.config.join(relative),
+        content.as_bytes(),
+        None,
+        false,
+    )
+    .map_err(|error| init_error(&error))
 }
 
 fn init_error(error: &dyn std::fmt::Display) -> Error {
