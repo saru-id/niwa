@@ -455,3 +455,24 @@ samp {
 ::selection {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
 }
+
+/* ---- Heading anchors ----------------------------------------------------
+ * Ghost at rest, shown by the heading's hover and by their own focus. The
+ * opacity transition is the budget's one sanctioned use of the property.
+ */
+
+.anchor-heading {
+  color: var(--ink-muted);
+  margin-inline-start: 0.35em;
+  opacity: 0;
+  text-decoration: none;
+  transition: opacity 120ms ease;
+}
+
+h1:hover .anchor-heading,
+h2:hover .anchor-heading,
+h3:hover .anchor-heading,
+h4:hover .anchor-heading,
+.anchor-heading:focus-visible {
+  opacity: 1;
+}
