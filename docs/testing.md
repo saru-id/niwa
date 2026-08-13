@@ -62,4 +62,4 @@ nobody re-derives it:
   window is timing-dependent; the manual tier carries it.
 - **Custom `reverse` through undo.** Validated at definition,
   journaled irreversible by name; driving the handler from undo
-  lands after 0.1.0 (deviations ledger).
+  is not driven at this version: undo runs without a Lua VM.

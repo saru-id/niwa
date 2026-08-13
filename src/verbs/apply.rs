@@ -270,9 +270,6 @@ fn stamp_and_warn(out: &Out, paths: &Paths, resources: usize) {
     }
 }
 
-/// The literal definition of idempotence: re-read everything, demand
-/// silence, and name the resource and source line of anything that
-/// still reports a change.
 /// `--sandbox`: does this config actually work from nothing? Files
 /// and links land in a throwaway home; packages settle against an
 /// empty prefix and are counted, never installed. The real machine
@@ -481,6 +478,9 @@ fn checklist_line(declaration: &crate::model::Declaration) -> String {
     line
 }
 
+/// The literal definition of idempotence: re-read everything, demand
+/// silence, and name the resource and source line of anything that
+/// still reports a change.
 fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>) -> ExitCode {
     let second = super::plan_pass(out, paths).map(|(plan, _)| plan);
     let second = match second {

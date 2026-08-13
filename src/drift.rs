@@ -1,7 +1,7 @@
 //! Drift: actual against acknowledged, and the two honest kinds of
 //! "unmanaged" niwa can enumerate.
 //!
-//! Four findings come out of a survey. A governed file whose live
+//! Six findings come out of a survey. A governed file whose live
 //! bytes moved is a live edit that `pull` brings home. A governed
 //! preference whose value moved is an in-place config edit waiting to
 //! be accepted. A package with a receipt but no declaration is an

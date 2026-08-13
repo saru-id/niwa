@@ -119,8 +119,8 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
 
 /// The dashboard's status lines: what would change, what is
 /// proposed, what is outdated, and what waits on hands — each with
-/// its first concrete name beside the count. Returns the outdated
-/// total for the in-sync verdict.
+/// its first concrete name beside the count, and the in-sync line
+/// when nothing is.
 fn status_lines(
     out: &Out,
     paths: &Paths,

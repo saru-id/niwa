@@ -6,7 +6,7 @@
 //! the tree deterministically, and caches it under that hash in the
 //! data directory. Loading reads only the cache: a plan never
 //! touches the network. This build loads a shared module's
-//! `init.luau`; internal requires inside shared modules come later.
+//! `init.luau`; a shared module is one file; internal requires inside it do not resolve.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

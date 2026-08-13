@@ -81,10 +81,9 @@ enforces the license and source policy in `deny.toml`.
   yourself is the mistake. age is a small, audited format built for
   exactly this shape of problem.
 - Maintenance: the reference Rust implementation, actively maintained.
-- Maintenance: actively maintained; tracks upstream Luau releases.
-- Weight: the largest native piece: it compiles the vendored Luau C++
-  sources at build time.
-- License: MIT (mlua and the vendored Luau both).
+- Weight: the largest tree here (curve and AEAD crates, BSD-3-Clause
+  dalek crates among them), all pure Rust.
+- License: MIT OR Apache-2.0; curve25519-dalek and friends BSD-3-Clause.
 
 ### jiff
 

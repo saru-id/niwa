@@ -457,7 +457,7 @@ fn truncate_keep_tail(text: &str, max: usize) -> String {
 }
 
 /// Humanize a time in the voice rules' shape: "2h ago", "3w ago".
-/// Absolutes appear at -v, later.
+/// Absolutes appear beside them at -v.
 pub fn ago(timestamp: &str) -> String {
     let Ok(then) = timestamp.parse::<jiff::Timestamp>() else {
         return timestamp.to_string();

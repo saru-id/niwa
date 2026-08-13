@@ -14,8 +14,8 @@ pub struct Paths {
     pub home: PathBuf,
     /// The config repo: `~/.config/niwa`.
     pub config: PathBuf,
-    /// Per-machine state that is never committed: the journal, and
-    /// later the undo archives. `~/.local/state/niwa`.
+    /// Per-machine state that is never committed: the journal and
+    /// the undo archives. `~/.local/state/niwa`.
     pub state: PathBuf,
     /// Where Homebrew lives: `HOMEBREW_PREFIX` when set and absolute,
     /// the architecture's default otherwise.

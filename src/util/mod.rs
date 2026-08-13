@@ -36,6 +36,7 @@ pub fn newest_version_dir(
     versions.pop()
 }
 
+/// The digest format acknowledgements and checksums use: sha256, hex.
 pub fn digest(bytes: &[u8]) -> String {
     use sha2::Digest as _;
     use std::fmt::Write as _;

@@ -140,8 +140,9 @@ pub fn record(
 }
 
 /// The dock sugar and its lowering table. `apps` becomes
-/// `persistent-apps`, and only the empty dock is expressible at this
-/// version (deviations ledger #9).
+/// `persistent-apps`; only the empty dock is expressible, because a
+/// populated list needs tile dictionaries this provider does not
+/// build.
 fn declare_dock(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table> {
     let prov = provenance(lua);
     let spec = SpecCtx {

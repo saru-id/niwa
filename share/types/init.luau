@@ -59,7 +59,7 @@ export type Niwa = {
 		prefix: string,
 	},
 
-	-- App Store installs; sign-in is a checklist item.
+	-- App Store apps; declared and counted, not yet checkable in this build.
 	mas: {
 		app: (apps: { [string]: number }) -> Result,
 	},
