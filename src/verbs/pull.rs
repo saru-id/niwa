@@ -33,10 +33,7 @@ enum Answer {
 fn pull(out: &Out, all: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
     super::refuse_mid_merge(&paths, "pulling")?;
-    let (_lock, reclaimed) = crate::apply::Lock::take(&paths.state)?;
-    if reclaimed {
-        out.note("reclaimed a stale lock from a crashed run");
-    }
+    let _lock = crate::apply::Lock::take(&paths.state)?;
     let analysis = super::run_pass(&paths, None)?;
     let mut journal = Journal::load(&paths.state)?;
     let mut baseline = Baseline::load(&paths.state);
@@ -293,6 +290,7 @@ fn describe(declarations: &[crate::model::Declaration], finding: &Finding) -> St
             let home = proposals::place(declarations, kind, None);
             let provider = match kind {
                 Kind::BrewCask => "cask",
+                Kind::Npm => "npm",
                 _ => "brew",
             };
             format!("{} ← {provider}: {name}", home.display())

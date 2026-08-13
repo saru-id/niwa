@@ -44,10 +44,7 @@ fn add(out: &Out, provider: &str, name: &str) -> Result<ExitCode, Error> {
     }
     let paths = Paths::resolve()?;
     super::refuse_mid_merge(&paths, "adding")?;
-    let (_lock, reclaimed) = crate::apply::Lock::take(&paths.state)?;
-    if reclaimed {
-        out.note("reclaimed a stale lock from a crashed run");
-    }
+    let _lock = crate::apply::Lock::take(&paths.state)?;
     let analysis = super::run_pass(&paths, None)?;
 
     let identity = Identity::new(kind, name);

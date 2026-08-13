@@ -213,7 +213,7 @@ fn tick(
     else {
         return ExitCode::SUCCESS;
     };
-    let result = crate::apply::Lock::take(&paths.state).and_then(|(_lock, _)| {
+    let result = crate::apply::Lock::take(&paths.state).and_then(|_lock| {
         let mut journal = Journal::load(&paths.state)?;
         let mut ack = crate::journal::Acknowledgement::new(step.spec.clone(), None);
         ack.context = Some(step_context(facts, &step.identity));

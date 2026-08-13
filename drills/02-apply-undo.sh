@@ -56,24 +56,25 @@ niwa undo --yes
 niwa undo --yes
 check 12 "undo bottoms out quietly (exit 0)" test "$STATUS" -eq 0
 
-# One apply at a time: a held lock refuses the second.
+# One apply at a time: the lock is a kernel flock held by a live
+# descriptor. A holder refuses the second taker; a killed holder's
+# lock releases by itself — a crash never needs a human with an rm.
 mkdir -p "$HOME/.local/state/niwa"
-touch "$HOME/.local/state/niwa/apply.lock"
+/usr/bin/perl -e '
+    open(my $f, ">>", $ARGV[0]) or die;
+    flock($f, 2) or die;
+    sleep 30;
+' "$HOME/.local/state/niwa/apply.lock" &
+HOLDER=$!
+sleep 1
 niwa apply --yes
 check 13 "a held lock refuses a second apply (exit 1)" test "$STATUS" -eq 1
-rm "$HOME/.local/state/niwa/apply.lock"
-
-# --- the stale-lock story -------------------------------------------
-# A lock stamped by a live process refuses; one stamped by a dead
-# process is reclaimed, because a crash must never need a human with
-# an rm.
-echo "$$" >"$HOME/.local/state/niwa/apply.lock"
+check 13b "the refusal names the lock" grep -q "apply.lock" "$SANDBOX/stderr"
+kill -9 "$HOLDER" 2>/dev/null || true
+wait "$HOLDER" 2>/dev/null || true
 niwa apply --yes
-check 13b "a live holder's lock refuses (exit 1)" test "$STATUS" -eq 1
-echo "4194000" >"$HOME/.local/state/niwa/apply.lock"
-niwa apply --yes
-check 13c "a dead holder's lock is reclaimed (exit 0)" test "$STATUS" -eq 0
-check 13d "the reclaim is said out loud"     grep -q "reclaimed" "$SANDBOX/stdout"
+check 13c "a killed holder frees the lock by itself (exit 0)" test "$STATUS" -eq 0
+check 13d "no human rm was needed" test -f "$HOME/.local/state/niwa/apply.lock"
 
 # --- the archive horizon --------------------------------------------
 # An archive past ninety days that the newest apply does not

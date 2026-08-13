@@ -55,10 +55,7 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         return Err(Error::DirtyTree);
     }
 
-    let (_lock, reclaimed) = Lock::take(&paths.state)?;
-    if reclaimed {
-        out.note("reclaimed a stale lock from a crashed run");
-    }
+    let _lock = Lock::take(&paths.state)?;
 
     // Pass one: predict.
     let (mut intent, _) = super::plan_pass(out, &paths)?;
@@ -470,6 +467,20 @@ fn checklist_up_front(out: &Out, intent: &crate::model::action::Plan, pending: u
     }
 }
 
+/// The System Settings anchors for the TCC panes the checklist can
+/// name. An unknown pane simply gets no link — never a guessed one.
+fn tcc_anchor(needs: &str) -> Option<&'static str> {
+    match needs {
+        "accessibility" => Some("Privacy_Accessibility"),
+        "full-disk" | "full-disk-access" => Some("Privacy_AllFiles"),
+        "screen-recording" => Some("Privacy_ScreenCapture"),
+        "microphone" => Some("Privacy_Microphone"),
+        "camera" => Some("Privacy_Camera"),
+        "input-monitoring" => Some("Privacy_ListenEvent"),
+        _ => None,
+    }
+}
+
 /// A checklist item stays in a person's hands; the progress line and
 /// the up-front listing both count the same set.
 const fn is_manual(item: &crate::model::action::Item) -> bool {
@@ -482,15 +493,25 @@ const fn is_manual(item: &crate::model::action::Item) -> bool {
 /// A checklist row speaks its own deep link and pasteable command:
 /// `open` is a door, `command` is shown, never executed.
 fn checklist_line(declaration: &crate::model::Declaration) -> String {
+    use std::fmt::Write as _;
     let mut line = declaration.identity.key.clone();
     if let crate::model::Value::Map(fields) = &declaration.spec {
         if let Some(crate::model::Value::Str(open)) = fields.get("open") {
-            use std::fmt::Write as _;
             let _ = write!(line, " · open {open}");
         }
         if let Some(crate::model::Value::Str(command)) = fields.get("command") {
-            use std::fmt::Write as _;
             let _ = write!(line, " · paste: {command}");
+        }
+        // A permission's pane has a deep link of its own: the door
+        // opens on the exact System Settings screen when the pane is
+        // one of the known TCC anchors.
+        if let Some(crate::model::Value::Str(needs)) = fields.get("needs")
+            && let Some(anchor) = tcc_anchor(needs)
+        {
+            let _ = write!(
+                line,
+                " · open x-apple.systempreferences:com.apple.preference.security?{anchor}"
+            );
         }
     }
     line

@@ -32,93 +32,46 @@ pub enum Outcome {
     Unchecked,
 }
 
-/// The exclusive lock: one apply at a time. Plan, check, and the
-/// watcher are read-only and never take it. Dropping unlocks.
+/// The exclusive lock: one apply at a time. Plan and the watcher are
+/// read-only and never take it. The lock is a kernel file lock on an
+/// open descriptor, so a crashed holder's lock releases by itself:
+/// there is nothing stale to reclaim and no pid to outsmart. The pid
+/// written inside is for a human reading the file, never the
+/// mechanism, and the file deliberately stays behind — removing it
+/// would let a new taker lock a different inode than a waiter holds.
 pub struct Lock {
-    path: PathBuf,
+    file: std::fs::File,
 }
 
 impl Lock {
-    /// Take the lock, stamping this process id into it. A lock whose
-    /// stamped holder is dead is reclaimed — a crash must never need
-    /// a human with an `rm`. The bool reports a reclaim, so the verb
-    /// can say it out loud.
-    pub fn take(state: &Path) -> Result<(Self, bool), Error> {
+    pub fn take(state: &Path) -> Result<Self, Error> {
         std::fs::create_dir_all(state)
             .map_err(|error| apply_error("creating the state directory", &error))?;
         let path = state.join("apply.lock");
-        match Self::try_stamp(&path) {
-            Ok(lock) => Ok((lock, false)),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                if let Some(dead) = Self::dead_holder(&path) {
-                    // Reclaim by renaming the stale file aside: rename
-                    // is atomic, so exactly one reclaimer wins it —
-                    // and the aside's content must still name the dead
-                    // pid that was probed. A slow probe can otherwise
-                    // rename a rival's fresh stamp aside; that one is
-                    // restored (link fails harmlessly if the rival
-                    // already re-stamped) and reads as held.
-                    let aside = path.with_extension(format!("stale-{}", std::process::id()));
-                    if std::fs::rename(&path, &aside).is_err() {
-                        return Err(Error::ApplyLocked { path });
-                    }
-                    let same = std::fs::read_to_string(&aside)
-                        .is_ok_and(|text| text.trim() == dead.to_string());
-                    if !same {
-                        let _ = std::fs::hard_link(&aside, &path);
-                        let _ = std::fs::remove_file(&aside);
-                        return Err(Error::ApplyLocked { path });
-                    }
-                    let _ = std::fs::remove_file(&aside);
-                    let lock = Self::try_stamp(&path)
-                        .map_err(|error| apply_error("taking the apply lock", &error))?;
-                    return Ok((lock, true));
-                }
-                Err(Error::ApplyLocked { path })
-            }
-            Err(error) => Err(apply_error("taking the apply lock", &error)),
-        }
-    }
-
-    fn try_stamp(path: &Path) -> std::io::Result<Self> {
-        use std::io::Write as _;
-        let mut file = std::fs::OpenOptions::new()
+        let file = std::fs::OpenOptions::new()
+            .create(true)
             .write(true)
-            .create_new(true)
-            .open(path)?;
-        write!(file, "{}", std::process::id())?;
-        Ok(Self {
-            path: path.to_path_buf(),
-        })
-    }
-
-    /// Only a lock that names a pid, and whose pid no longer runs,
-    /// reads as dead. An empty or garbled lock is treated as held —
-    /// it may be mid-write by a live process.
-    fn dead_holder(path: &Path) -> Option<u32> {
-        let pid = std::fs::read_to_string(path)
-            .ok()
-            .and_then(|text| text.trim().parse::<u32>().ok())?;
-        let probe = crate::util::proc::bounded_output(
-            "ps",
-            &["-p", &pid.to_string()],
-            std::time::Duration::from_secs(5),
-        );
-        // ps answers 0 for a live pid, 1 for a dead one. No answer at
-        // all (ps unreachable) reads as held: never steal on a guess.
-        matches!(probe, Some(finished) if finished.code == Some(1)).then_some(pid)
+            .truncate(false)
+            .open(&path)
+            .map_err(|error| apply_error("taking the apply lock", &error))?;
+        if file.try_lock().is_err() {
+            return Err(Error::ApplyLocked { path });
+        }
+        let _ = file.set_len(0);
+        {
+            use std::io::Write as _;
+            let mut writer = &file;
+            let _ = write!(writer, "{}", std::process::id());
+        }
+        Ok(Self { file })
     }
 }
 
 impl Drop for Lock {
     fn drop(&mut self) {
-        // Only this process's own stamp comes off: a lock someone
-        // else re-stamped after a reclaim race stays theirs.
-        let ours = std::fs::read_to_string(&self.path)
-            .is_ok_and(|text| text.trim() == std::process::id().to_string());
-        if ours {
-            let _ = std::fs::remove_file(&self.path);
-        }
+        // Closing the descriptor releases the kernel lock either way;
+        // the explicit unlock keeps the intent readable.
+        let _ = self.file.unlock();
     }
 }
 
@@ -960,7 +913,15 @@ fn reverse_link(
         return Ok(());
     };
     let target = paths.expand_home(target);
-    if std::fs::symlink_metadata(&target).is_ok() {
+    if let Ok(meta) = std::fs::symlink_metadata(&target) {
+        // What stands there may no longer be niwa's link: a person
+        // who replaced it with a real file owns those bytes, and
+        // nothing is ever the only copy.
+        if !meta.file_type().is_symlink()
+            && let Ok(current) = std::fs::read(&target)
+        {
+            archive(archive_root, &step.identity, &current)?;
+        }
         std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
     }
     if let Some(digest) = previous {

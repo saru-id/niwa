@@ -145,6 +145,10 @@ fn lint_code_locations(
     paths: &Paths,
     analysis: &crate::model::analysis::Analysis,
 ) -> Result<(), Error> {
+    // The lock comes before the load: a snapshot taken while an
+    // apply still runs would erase its tail on save. When the lock
+    // is busy the notes still print; only the memory waits.
+    let lock = crate::apply::Lock::take(&paths.state).ok();
     let mut journal = Journal::load(&paths.state)?;
     let mut remembered = false;
     for declaration in &analysis.effective {
@@ -172,14 +176,8 @@ fn lint_code_locations(
         journal.decline(key);
         remembered = true;
     }
-    if remembered {
-        // The memory is a courtesy, and check runs from the watcher
-        // while an apply may be live: persist only when the apply
-        // lock is free, or a stale snapshot would erase the apply's
-        // own steps. An unpersisted note simply prints again.
-        if let Ok((_lock, _)) = crate::apply::Lock::take(&paths.state) {
-            journal.save(&paths.state)?;
-        }
+    if remembered && lock.is_some() {
+        journal.save(&paths.state)?;
     }
     Ok(())
 }

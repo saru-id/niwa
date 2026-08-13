@@ -16,10 +16,7 @@ pub fn run(out: &Out, yes: bool) -> ExitCode {
 
 fn undo(out: &Out, yes: bool) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
-    let (_lock, reclaimed) = Lock::take(&paths.state)?;
-    if reclaimed {
-        out.note("reclaimed a stale lock from a crashed run");
-    }
+    let _lock = Lock::take(&paths.state)?;
     let mut journal = Journal::load(&paths.state)?;
 
     let Some(entry) = journal.last_apply() else {
