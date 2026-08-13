@@ -12,18 +12,19 @@ pub fn format(text: &str) -> Option<String> {
     let mut out = String::with_capacity(text.len());
     let mut depth: usize = 0;
     let mut blank_run = 0usize;
-    let mut in_long_bracket = false;
+    let mut in_long_bracket: Option<usize> = None;
 
     for line in text.lines() {
         let trimmed = line.trim_end();
 
         // Long-bracket strings and comments keep their bytes exactly
         // — the untrimmed line, or a content declaration would drift.
-        if in_long_bracket {
+        // Only the closer at the opener's own level ends the run.
+        if let Some(level) = in_long_bracket {
             out.push_str(line);
             out.push('\n');
-            if line.contains("]]") {
-                in_long_bracket = false;
+            if line.contains(&closer(level)) {
+                in_long_bracket = None;
             }
             continue;
         }
@@ -39,6 +40,11 @@ pub fn format(text: &str) -> Option<String> {
         blank_run = 0;
 
         let (opens, closes, opens_long) = weigh(body);
+        // One level per line: however many brackets a line opens, its
+        // children indent a single step — the canonical shapes the
+        // proposals write (and the example config uses) stay put.
+        let opens = opens.min(1);
+        let closes = closes.min(1);
         // A line that starts by closing sits one level shallower.
         let leading_close = body.starts_with(['}', ')', ']']);
         let level = if leading_close {
@@ -53,8 +59,8 @@ pub fn format(text: &str) -> Option<String> {
         out.push('\n');
         depth = depth.saturating_sub(closes);
         depth += opens;
-        if opens_long {
-            in_long_bracket = true;
+        if let Some(level) = opens_long {
+            in_long_bracket = Some(level);
         }
     }
 
@@ -66,9 +72,22 @@ pub fn format(text: &str) -> Option<String> {
     }
 }
 
+/// The closing token for a long bracket of one level: `]]`, `]=]`, …
+fn closer(level: usize) -> String {
+    format!("]{}]", "=".repeat(level))
+}
+
+/// A long-bracket opener at this position? Answers its `=` level.
+fn long_open(text: &str) -> Option<usize> {
+    let rest = text.strip_prefix('[')?;
+    let level = rest.chars().take_while(|c| *c == '=').count();
+    rest[level..].starts_with('[').then_some(level)
+}
+
 /// Count structural opens and closes on a line, ignoring everything
-/// inside strings and after comment markers.
-fn weigh(body: &str) -> (usize, usize, bool) {
+/// inside strings and after comment markers. The third answer is a
+/// long bracket left open, with its level.
+fn weigh(body: &str) -> (usize, usize, Option<usize>) {
     let mut opens = 0usize;
     let mut closes = 0usize;
     let mut characters = body.char_indices();
@@ -85,16 +104,24 @@ fn weigh(body: &str) -> (usize, usize, bool) {
         match character {
             '"' | '\'' | '`' => in_string = Some(character),
             '-' if body[index..].starts_with("--") => {
-                return (
-                    opens,
-                    closes,
-                    body[index..].contains("[[") && !body[index..].contains("]]"),
-                );
+                let after = &body[index + 2..];
+                let open = long_open(after).filter(|level| !after.contains(&closer(*level)));
+                return (opens, closes, open);
             }
-            '[' if body[index..].starts_with("[[") => {
-                return (opens, closes, !body[index + 2..].contains("]]"));
+            '[' => {
+                if let Some(level) = long_open(&body[index..]) {
+                    let after = &body[index + 2 + level..];
+                    if after.contains(&closer(level)) {
+                        // Opened and closed on one line: the bytes
+                        // between stay theirs, structure resumes
+                        // after — close enough to skip the rest.
+                        return (opens, closes, None);
+                    }
+                    return (opens, closes, Some(level));
+                }
+                opens += 1;
             }
-            '{' | '(' | '[' => opens += 1,
+            '{' | '(' => opens += 1,
             '}' | ')' | ']' => {
                 if opens > 0 {
                     opens -= 1;
@@ -105,11 +132,23 @@ fn weigh(body: &str) -> (usize, usize, bool) {
             _ => {}
         }
     }
-    (opens, closes, false)
+    (opens, closes, None)
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn leveled_long_brackets_keep_their_bytes_exactly() {
+        let source = "local x = [=[\nhello  \n\n\n\ttabbed\n]=]\n";
+        assert_eq!(super::format(source), None);
+    }
+
+    #[test]
+    fn the_proposal_shape_is_a_fixed_point() {
+        let statement = "niwa.defaults(\"com.apple.dock\", {\n  tilesize = 48,\n})\n";
+        assert_eq!(super::format(statement), None);
+    }
+
     use super::*;
 
     #[test]
