@@ -238,13 +238,9 @@ fn sugar_form(key: &str, value: &Value) -> Option<(String, String)> {
             let Value::Str(code) = value else {
                 return None;
             };
-            let readable = match code.as_str() {
-                "Nlsv" => "list",
-                "icnv" => "icon",
-                "clmv" => "column",
-                "glyv" => "gallery",
-                _ => return None,
-            };
+            let (readable, _) = crate::defaults::FINDER_VIEWS
+                .iter()
+                .find(|(_, stored)| *stored == code.as_str())?;
             ("default_view".to_string(), quote(readable))
         }
         _ => return None,
@@ -347,17 +343,9 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
             if let Ok(bytes) = std::fs::read(&store) {
                 crate::apply::archive(&archive_root, identity, &bytes)?;
             }
-            let mut root = plist::Value::from_file(&store)
-                .ok()
-                .and_then(plist::Value::into_dictionary)
-                .unwrap_or_default();
-            root.remove(preference);
-            let mut rendered = Vec::new();
-            plist::Value::Dictionary(root)
-                .to_writer_binary(&mut rendered)
-                .map_err(|error| Error::apply("rendering the preference file", error))?;
-            crate::util::write_atomic(&store, &rendered, None, false)
-                .map_err(|error| Error::apply("writing the preference file", error))?;
+            crate::defaults::edit_domain(&store, |root| {
+                root.remove(preference);
+            })?;
         }
         Kind::BrewFormula | Kind::BrewCask | Kind::Npm | Kind::Mise => {
             crate::apply::uninstall_package(&parsed)?;

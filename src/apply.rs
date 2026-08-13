@@ -309,19 +309,6 @@ fn apply_brew_service(
     Ok((Outcome::Done, Some(Effect::BrewServiceStarted)))
 }
 
-const fn fields_of(
-    declaration: &Declaration,
-) -> Option<&std::collections::BTreeMap<String, Value>> {
-    match &declaration.spec {
-        Value::Map(fields) => Some(fields),
-        _ => None,
-    }
-}
-
-fn expand_target(paths: &Paths, target: &str) -> PathBuf {
-    paths.expand_home(target)
-}
-
 /// The overwrite rule, stated once. Existing bytes are free to
 /// replace when they are exactly what the journal acknowledges niwa
 /// last wrote; anything else is a hand edit and stays protected
@@ -506,10 +493,10 @@ fn apply_file(
     archive_root: &Path,
     force: bool,
 ) -> Result<(Outcome, Option<Effect>), Error> {
-    let Some(fields) = fields_of(declaration) else {
+    let Some(fields) = declaration.fields() else {
         return Ok((Outcome::Unchecked, None));
     };
-    let target = expand_target(paths, &declaration.identity.key);
+    let target = paths.expand_home(&declaration.identity.key);
 
     let mut sealed_archives = false;
     let declared: Vec<u8> = match (fields.get("source"), fields.get("content")) {
@@ -594,7 +581,7 @@ fn apply_link(
     archive_root: &Path,
     force: bool,
 ) -> Result<(Outcome, Option<Effect>), Error> {
-    let Some(fields) = fields_of(declaration) else {
+    let Some(fields) = declaration.fields() else {
         return Ok((Outcome::Unchecked, None));
     };
     let Some(Value::Str(to)) = fields.get("to") else {
@@ -604,7 +591,7 @@ fn apply_link(
         return Ok((Outcome::Unchecked, None));
     };
     let destination = paths.config.join(rest);
-    let target = expand_target(paths, &declaration.identity.key);
+    let target = paths.expand_home(&declaration.identity.key);
 
     // A plain file in the way follows the overwrite rule; a wrong
     // symlink is niwa's kind of object and is replaced freely.
@@ -648,7 +635,7 @@ fn apply_defaults(
     journal: &mut Journal,
     archive_root: &Path,
 ) -> Result<(Outcome, Option<Effect>), Error> {
-    let Some(fields) = fields_of(declaration) else {
+    let Some(fields) = declaration.fields() else {
         return Ok((Outcome::Unchecked, None));
     };
     let Some(declared) = fields.get("value") else {
@@ -708,7 +695,7 @@ fn acknowledge_current(declaration: &Declaration, paths: &Paths, journal: &mut J
             // Re-read once and re-prove the match: an edit landing
             // between compare's read and this one must stay the
             // person's bytes, never become niwa's to overwrite.
-            let target = expand_target(paths, &declaration.identity.key);
+            let target = paths.expand_home(&declaration.identity.key);
             let live = std::fs::read(target).ok();
             match (&live, declared_file_bytes(paths, declaration)) {
                 (Some(live), Some(declared)) if *live == declared => {}
@@ -843,7 +830,7 @@ fn reverse_file(
     let Some(target) = step.identity.strip_prefix("file:") else {
         return Ok(());
     };
-    let target = expand_target(paths, target);
+    let target = paths.expand_home(target);
     if let Ok(current) = std::fs::read(&target) {
         archive_displaced(paths, archive_root, &step.identity, &current, seal)?;
     }
@@ -874,7 +861,7 @@ fn reverse_link(
     let Some(target) = step.identity.strip_prefix("link:") else {
         return Ok(());
     };
-    let target = expand_target(paths, target);
+    let target = paths.expand_home(target);
     if std::fs::symlink_metadata(&target).is_ok() {
         std::fs::remove_file(&target).map_err(|error| apply_error("removing the link", &error))?;
     }
@@ -962,23 +949,14 @@ fn reverse_defaults(
     if let Ok(bytes) = std::fs::read(&store) {
         archive_displaced(paths, archive_root, &step.identity, &bytes, seal)?;
     }
-    let mut root = plist::Value::from_file(&store)
-        .ok()
-        .and_then(plist::Value::into_dictionary)
-        .unwrap_or_default();
-    match previous {
+    crate::defaults::edit_domain(&store, |root| match previous {
         Some(value) => {
             root.insert(key.to_string(), crate::defaults::value_to_plist(value));
         }
         None => {
             root.remove(key);
         }
-    }
-    let mut rendered = Vec::new();
-    plist::Value::Dictionary(root)
-        .to_writer_binary(&mut rendered)
-        .map_err(|error| apply_error("rendering the preference file", &error))?;
-    write_atomic(&store, &rendered)
+    })
 }
 
 fn read_archived(

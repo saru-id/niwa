@@ -314,10 +314,7 @@ fn declare_github_release(lua: &Lua, ctx: &Ctx, options: &Table) -> mlua::Result
     };
     spec.no_unknown_fields(options, &["repo", "bin"])?;
     let repo = spec.required_str(options, "repo")?;
-    let mut parts = repo.split('/');
-    let owner_ok = parts.next().is_some_and(|p| !p.is_empty());
-    let name_ok = parts.next().is_some_and(|p| !p.is_empty());
-    if !(owner_ok && name_ok && parts.next().is_none()) {
+    if !super::spec::github_repo_ok(&repo) {
         return Err(spec.fail(&format!(
             "field `repo` expects \"owner/name\", got \"{repo}\""
         )));

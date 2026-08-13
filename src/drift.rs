@@ -17,7 +17,7 @@
 //! difference between a tool that informs and a firehose.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -202,7 +202,7 @@ fn governed_drift(
                 let Value::Map(fields) = &declaration.spec else {
                     continue;
                 };
-                let target = expand(paths, &declaration.identity.key);
+                let target = paths.expand_home(&declaration.identity.key);
                 let Ok(live) = std::fs::read(&target) else {
                     continue;
                 };
@@ -397,7 +397,7 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
     let identity = crate::model::Identity::parse(identity);
     let key = identity.key.as_str();
     match &identity.kind {
-        Kind::File | Kind::Link => expand(paths, key).symlink_metadata().is_ok(),
+        Kind::File | Kind::Link => paths.expand_home(key).symlink_metadata().is_ok(),
         Kind::Defaults => key.split_once(':').is_some_and(|(domain, key)| {
             plist::Value::from_file(crate::defaults::domain_path(paths, domain))
                 .ok()
@@ -413,10 +413,6 @@ fn still_present(paths: &Paths, identity: &str) -> bool {
         Kind::BrewService => crate::services::brew_service_plist(paths, key).is_file(),
         _ => false,
     }
-}
-
-fn expand(paths: &Paths, target: &str) -> PathBuf {
-    paths.expand_home(target)
 }
 
 fn lines_differing(old: &[u8], new: &[u8]) -> usize {

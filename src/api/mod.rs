@@ -12,7 +12,6 @@ pub mod exec;
 pub mod files;
 pub mod packages;
 mod spec;
-pub use spec::parse_duration;
 pub mod system;
 pub mod values;
 

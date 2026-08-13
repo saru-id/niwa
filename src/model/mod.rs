@@ -184,6 +184,14 @@ pub enum Unit {
 }
 
 impl Unit {
+    /// The unit's display name: `init`, or the module/host stem.
+    pub fn name(&self) -> String {
+        match self {
+            Self::Init => "init".to_string(),
+            Self::Module(name) | Self::Host(name) => name.clone(),
+        }
+    }
+
     /// Derive the unit from a config-relative chunk name like
     /// `modules/desktop.luau` or `hosts/airborne.luau`.
     pub fn from_chunk(name: &str) -> Self {
@@ -229,6 +237,14 @@ pub struct Declaration {
 }
 
 impl Declaration {
+    /// The spec's field map, when the spec is a map at all.
+    pub const fn fields(&self) -> Option<&std::collections::BTreeMap<String, Value>> {
+        match &self.spec {
+            Value::Map(fields) => Some(fields),
+            _ => None,
+        }
+    }
+
     /// `optional = true`: a failure is reported, never fatal.
     pub fn is_optional(&self) -> bool {
         matches!(

@@ -60,6 +60,15 @@ pub fn plist_to_value(value: &plist::Value) -> Value {
 }
 
 /// The model's shape back into a plist, for writes.
+/// Finder view styles: the sugar's readable names and the codes the
+/// plist stores. One table, read in both directions.
+pub const FINDER_VIEWS: [(&str, &str); 4] = [
+    ("list", "Nlsv"),
+    ("icon", "icnv"),
+    ("column", "clmv"),
+    ("gallery", "glyv"),
+];
+
 pub fn value_to_plist(value: &Value) -> plist::Value {
     match value {
         Value::Bool(b) => plist::Value::Boolean(*b),
@@ -124,4 +133,24 @@ pub fn restart_target(declaration: &Declaration) -> Option<String> {
         Some(Value::Str(target)) => Some(target.clone()),
         _ => None,
     }
+}
+
+/// One read-modify-write for a domain's plist file, rendered binary
+/// and written atomically: orphan removal and undo both edit through
+/// here.
+pub fn edit_domain(
+    store: &std::path::Path,
+    edit: impl FnOnce(&mut plist::Dictionary),
+) -> Result<(), crate::error::Error> {
+    let mut root = plist::Value::from_file(store)
+        .ok()
+        .and_then(plist::Value::into_dictionary)
+        .unwrap_or_default();
+    edit(&mut root);
+    let mut rendered = Vec::new();
+    plist::Value::Dictionary(root)
+        .to_writer_binary(&mut rendered)
+        .map_err(|error| crate::error::Error::apply("rendering the preference file", error))?;
+    crate::util::write_atomic(store, &rendered, None, false)
+        .map_err(|error| crate::error::Error::apply("writing the preference file", error))
 }

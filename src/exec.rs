@@ -67,7 +67,7 @@ pub fn run(declaration: &Declaration, paths: &Paths) -> Result<(), (Option<i32>,
     let command = &declaration.identity.key;
     let timeout = match &declaration.spec {
         Value::Map(fields) => match fields.get("timeout") {
-            Some(Value::Str(text)) => crate::api::parse_duration(text).unwrap_or(DEFAULT_TIMEOUT),
+            Some(Value::Str(text)) => crate::util::parse_duration(text).unwrap_or(DEFAULT_TIMEOUT),
             _ => DEFAULT_TIMEOUT,
         },
         _ => DEFAULT_TIMEOUT,

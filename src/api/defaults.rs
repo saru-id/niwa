@@ -261,14 +261,14 @@ fn declare_finder(lua: &Lua, ctx: &Ctx, settings: &Table) -> mlua::Result<Table>
         truths.push(truth);
     }
     if let Some(view) = spec.opt_str(settings, "default_view")? {
-        let code = match view.as_str() {
-            "list" => "Nlsv",
-            "icon" => "icnv",
-            "column" => "clmv",
-            "gallery" => "glyv",
-            other => {
+        let code = match crate::defaults::FINDER_VIEWS
+            .iter()
+            .find(|(name, _)| *name == view.as_str())
+        {
+            Some((_, code)) => *code,
+            None => {
                 return Err(spec.fail(&format!(
-                    "field `default_view` expects \"list\", \"icon\", \"column\", or \"gallery\", got \"{other}\""
+                    "field `default_view` expects \"list\", \"icon\", \"column\", or \"gallery\", got \"{view}\""
                 )));
             }
         };

@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::process::ExitCode;
 
 use crate::error::Error;
-use crate::model::{Kind, Unit};
+use crate::model::Kind;
 use crate::out::Out;
 use crate::paths::Paths;
 
@@ -34,7 +34,7 @@ fn export(out: &Out, markdown: bool) -> Result<ExitCode, Error> {
 
     let mut units: Vec<String> = Vec::new();
     for declaration in &analysis.effective {
-        let unit = unit_name(&declaration.unit);
+        let unit = declaration.unit.name();
         if !units.contains(&unit) {
             units.push(unit);
         }
@@ -44,7 +44,7 @@ fn export(out: &Out, markdown: bool) -> Result<ExitCode, Error> {
         let _ = writeln!(document, "\n## {unit}\n");
         let mut manual = Vec::new();
         for declaration in &analysis.effective {
-            if &unit_name(&declaration.unit) != unit {
+            if &declaration.unit.name() != unit {
                 continue;
             }
             match &declaration.identity.kind {
@@ -64,11 +64,4 @@ fn export(out: &Out, markdown: bool) -> Result<ExitCode, Error> {
 
     out.raw(&document);
     Ok(ExitCode::SUCCESS)
-}
-
-fn unit_name(unit: &Unit) -> String {
-    match unit {
-        Unit::Init => "init".to_string(),
-        Unit::Module(name) | Unit::Host(name) => name.clone(),
-    }
 }

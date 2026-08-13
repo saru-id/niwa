@@ -5,8 +5,8 @@
 use std::process::ExitCode;
 
 use crate::error::Error;
+use crate::model::Kind;
 use crate::model::action::{Action, Plan};
-use crate::model::{Kind, Unit};
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
 
@@ -87,7 +87,7 @@ pub fn render_pending(out: &Out, plan: &Plan) {
             Action::Change { detail } => (Mark::Changed, detail.clone()),
             Action::InSync | Action::Unchecked => continue,
         };
-        let group = unit_name(&item.declaration.unit);
+        let group = item.declaration.unit.name();
         if current.as_deref() != Some(group.as_str()) {
             flush(out, &mut rows);
             out.group(&group);
@@ -109,7 +109,7 @@ fn flush(out: &Out, rows: &mut Vec<(Mark, String, String)>) {
 fn render_groups(out: &Out, plan: &Plan) {
     let mut units: Vec<(String, usize)> = Vec::new();
     for item in &plan.items {
-        let name = unit_name(&item.declaration.unit);
+        let name = item.declaration.unit.name();
         match units.iter_mut().find(|(unit, _)| unit == &name) {
             Some((_, total)) => *total += 1,
             None => units.push((name, 1)),
@@ -125,7 +125,7 @@ fn render_all(out: &Out, plan: &Plan) {
     let mut current: Option<String> = None;
     let mut rows: Vec<(Mark, String, String)> = Vec::new();
     for item in &plan.items {
-        let group = unit_name(&item.declaration.unit);
+        let group = item.declaration.unit.name();
         if current.as_deref() != Some(group.as_str()) {
             flush(out, &mut rows);
             out.group(&group);
@@ -134,13 +134,6 @@ fn render_all(out: &Out, plan: &Plan) {
         rows.push((Mark::Ok, display_name(&item.declaration), String::new()));
     }
     flush(out, &mut rows);
-}
-
-fn unit_name(unit: &Unit) -> String {
-    match unit {
-        Unit::Init => "init".to_string(),
-        Unit::Module(name) | Unit::Host(name) => name.clone(),
-    }
 }
 
 /// How a resource reads in a plan line: `defaults` keys as
@@ -168,7 +161,7 @@ fn render_json(out: &Out, plan: &Plan) -> ExitCode {
             };
             serde_json::json!({
                 "identity": item.declaration.identity.to_string(),
-                "unit": unit_name(&item.declaration.unit),
+                "unit": item.declaration.unit.name(),
                 "action": action,
                 "detail": detail,
             })

@@ -87,6 +87,14 @@ impl SpecCtx<'_> {
 
 pub use crate::util::parse_duration;
 
+/// `owner/repo`, exactly: two non-empty segments, one slash.
+pub fn github_repo_ok(repo: &str) -> bool {
+    let mut parts = repo.split('/');
+    let owner_ok = parts.next().is_some_and(|p| !p.is_empty());
+    let name_ok = parts.next().is_some_and(|p| !p.is_empty());
+    owner_ok && name_ok && parts.next().is_none()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

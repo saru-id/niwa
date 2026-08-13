@@ -266,6 +266,13 @@ impl Out {
         }
     }
 
+    /// A question with no read of its own: the passphrase prompt
+    /// prints here and reads through its echo-off dance.
+    #[expect(clippy::unused_self, reason = "every screen prints through Out")]
+    pub fn question(&self, text: &str) {
+        eprint!("{text}");
+    }
+
     /// A yes/no question; only an explicit yes is a yes.
     pub fn confirm(&self, question: &str) -> bool {
         self.prompt(question)

@@ -80,7 +80,19 @@ pub fn config_commit(paths: &Paths) -> (Option<String>, bool) {
         &["-C", &repo, "rev-parse", "--short", "HEAD"],
         Duration::from_secs(10),
     );
-    let dirty = bounded_stdout(
+    // The stamp is descriptive: no answer from git reads as clean.
+    (commit, tree_status(paths).unwrap_or(false))
+}
+
+/// The one dirtiness probe. Stamps under state/ dirty the tree after
+/// every apply by design and never count. `None` is git itself not
+/// answering — callers decide whether that fails open or closed.
+pub fn tree_status(paths: &Paths) -> Option<bool> {
+    if !paths.config.join(".git").exists() {
+        return Some(false);
+    }
+    let repo = paths.config.display().to_string();
+    bounded_stdout(
         "git",
         &[
             "-C",
@@ -93,8 +105,7 @@ pub fn config_commit(paths: &Paths) -> (Option<String>, bool) {
         ],
         Duration::from_secs(10),
     )
-    .is_some_and(|status| !status.is_empty());
-    (commit, dirty)
+    .map(|status| !status.is_empty())
 }
 
 /// Write this machine's stamp into the repo after an apply.

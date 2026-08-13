@@ -9,7 +9,6 @@
 use std::io::IsTerminal as _;
 use std::process::ExitCode;
 use std::rc::Rc;
-use std::time::Duration;
 
 use crate::apply::Lock;
 use crate::engine::{Engine, Mode};
@@ -18,7 +17,6 @@ use crate::journal::Journal;
 use crate::model::action::Action;
 use crate::out::{Mark, Out, count};
 use crate::paths::Paths;
-use crate::util::proc::bounded_stdout;
 
 #[allow(
     clippy::struct_excessive_bools,
@@ -517,26 +515,7 @@ fn verify(out: &Out, paths: &Paths, ignore_privileged: bool, only: Option<&str>)
 /// Is the config repo's working tree dirty? A config that is not a
 /// git repository has nothing to be dirty.
 fn tree_is_dirty(paths: &Paths) -> bool {
-    if !paths.config.join(".git").exists() {
-        return false;
-    }
-    // Stamps under state/ dirty the tree after every apply by
-    // design; they never count against an unattended run. A repo
-    // whose git will not answer reads as dirty: the guard exists to
-    // refuse, so it fails closed, never open.
-    let config = paths.config.display().to_string();
-    bounded_stdout(
-        "git",
-        &[
-            "-C",
-            &config,
-            "status",
-            "--porcelain",
-            "--",
-            ".",
-            ":(exclude)state",
-        ],
-        Duration::from_secs(10),
-    )
-    .is_none_or(|status| !status.is_empty())
+    // The guard exists to refuse: a repo whose git will not answer
+    // reads as dirty, never as clean.
+    crate::stamp::tree_status(paths).is_none_or(|dirty| dirty)
 }

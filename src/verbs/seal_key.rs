@@ -21,7 +21,7 @@ fn seal_key(out: &Out, action: &str) -> Result<ExitCode, Error> {
     let paths = Paths::resolve()?;
     match action {
         "backup" => {
-            let passphrase = read_passphrase("choose a passphrase for the escrow: ")?;
+            let passphrase = read_passphrase(out, "choose a passphrase for the escrow: ")?;
             let escrow = crate::secrets::backup_key(&paths, &passphrase)?;
             out.result(
                 Mark::Ok,
@@ -36,7 +36,7 @@ fn seal_key(out: &Out, action: &str) -> Result<ExitCode, Error> {
             Ok(ExitCode::SUCCESS)
         }
         "restore" => {
-            let passphrase = read_passphrase("the escrow's passphrase: ")?;
+            let passphrase = read_passphrase(out, "the escrow's passphrase: ")?;
             crate::secrets::restore_key(&paths, &passphrase)?;
             out.result(Mark::Ok, "the sealing key is restored on this machine");
             Ok(ExitCode::SUCCESS)
@@ -51,17 +51,17 @@ fn seal_key(out: &Out, action: &str) -> Result<ExitCode, Error> {
 /// A passphrase, without an echo when a terminal is attached. The
 /// echo dance goes through stty; piped input just reads a line, which
 /// is what drills do.
-fn read_passphrase(prompt: &str) -> Result<String, Error> {
+fn read_passphrase(out: &Out, prompt: &str) -> Result<String, Error> {
     let tty = std::io::stdin().is_terminal();
     if tty {
-        eprint!("{prompt}");
+        out.question(prompt);
         let _ = bounded_output("stty", &["-echo"], Duration::from_secs(5));
     }
     let mut line = String::new();
     let read = std::io::stdin().read_line(&mut line);
     if tty {
         let _ = bounded_output("stty", &["echo"], Duration::from_secs(5));
-        eprintln!();
+        out.question("\n");
     }
     read.map_err(|error| Error::apply("reading the passphrase", error))?;
     let passphrase = line.trim_end_matches(['\n', '\r']).to_string();

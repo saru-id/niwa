@@ -62,7 +62,7 @@ pub fn render(paths: &Paths, declaration: &Declaration) -> Option<plist::Diction
     );
 
     if let Some(Value::Str(interval)) = fields.get("interval")
-        && let Some(duration) = crate::api::parse_duration(interval)
+        && let Some(duration) = crate::util::parse_duration(interval)
     {
         #[allow(
             clippy::cast_possible_wrap,

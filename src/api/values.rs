@@ -275,10 +275,7 @@ fn declare_use(lua: &Lua, ctx: &Ctx, source: &str) -> mlua::Result<Table> {
             "pin a ref: \"github:{rest}@v1\" instead of \"{source}\""
         )));
     };
-    let mut parts = repo.split('/');
-    let owner_ok = parts.next().is_some_and(|p| !p.is_empty());
-    let name_ok = parts.next().is_some_and(|p| !p.is_empty());
-    if !(owner_ok && name_ok && parts.next().is_none()) || reference.is_empty() {
+    if !super::spec::github_repo_ok(repo) || reference.is_empty() {
         return Err(spec.fail(&format!(
             "expects \"github:owner/repo@ref\", got \"{source}\""
         )));

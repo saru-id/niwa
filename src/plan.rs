@@ -6,7 +6,7 @@
 //! provider module.
 
 use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::journal::{Journal, digest};
 use crate::model::action::Action;
@@ -84,24 +84,11 @@ pub fn compare(
     }
 }
 
-const fn spec_fields(
-    declaration: &Declaration,
-) -> Option<&std::collections::BTreeMap<String, Value>> {
-    match &declaration.spec {
-        Value::Map(fields) => Some(fields),
-        _ => None,
-    }
-}
-
-fn expand_target(paths: &Paths, target: &str) -> PathBuf {
-    paths.expand_home(target)
-}
-
 fn compare_file(declaration: &Declaration, paths: &Paths, journal: &Journal) -> Action {
-    let Some(fields) = spec_fields(declaration) else {
+    let Some(fields) = declaration.fields() else {
         return Action::Unchecked;
     };
-    let target = expand_target(paths, &declaration.identity.key);
+    let target = paths.expand_home(&declaration.identity.key);
 
     // What should the bytes be? A plain source or content is known
     // now. Rendered content resolves at apply time, so the plan leans
@@ -162,7 +149,7 @@ fn mode_action(fields: &std::collections::BTreeMap<String, Value>, target: &Path
 }
 
 fn compare_link(declaration: &Declaration, paths: &Paths) -> Action {
-    let Some(fields) = spec_fields(declaration) else {
+    let Some(fields) = declaration.fields() else {
         return Action::Unchecked;
     };
     let Some(Value::Str(to)) = fields.get("to") else {
@@ -172,7 +159,7 @@ fn compare_link(declaration: &Declaration, paths: &Paths) -> Action {
         return Action::Unchecked;
     };
     let expected = paths.config.join(rest);
-    let target = expand_target(paths, &declaration.identity.key);
+    let target = paths.expand_home(&declaration.identity.key);
 
     match std::fs::read_link(&target) {
         Ok(actual) if actual == expected => Action::InSync,
