@@ -1,0 +1,49 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import type { CollectionEntry } from 'astro:content'
+import { collectHeadings } from '../lib/headings'
+import { areaOf } from '../lib/page'
+import { currentPath } from '../nav'
+import { styles } from './DocsPage.styles'
+import Kicker from './Kicker.astro'
+import Layout from './Layout.astro'
+import { Markdown } from './Markdown'
+import NextLinks from './NextLinks.astro'
+
+interface Props {
+  entry: CollectionEntry<'docs'>
+}
+
+const { entry } = Astro.props
+const { title, description, next } = entry.data
+const source = entry.body ?? ''
+// The file's own path, so a fence the build refuses names something a person
+// can open.
+const file = entry.filePath ?? entry.id
+// The markdown twin is this page's URL with the extension its route serves.
+// Reading the URL, not the id, keeps the two in step if the route moves.
+const twin = `${currentPath(Astro.url.pathname)}.md`
+---
+
+<Layout title={title} description={description} headings={collectHeadings(source)}>
+  <article id="article">
+    <Kicker label={areaOf(entry.id, file)} />
+    <h1 {...stylex.props(styles.title)}>{title}</h1>
+    <p {...stylex.props(styles.deck)}>{description}</p>
+    {
+      /* No client directive. React renders the body once, during the build,
+        and none of it reaches the browser. */
+    }
+    <Markdown source={source} file={file} />
+    {next !== undefined && <NextLinks links={next} />}
+    {
+      /* The twin is the page, so search indexes the page and not this line. */
+    }
+    <p {...stylex.props(styles.foot)} data-pagefind-ignore>
+      <a href={twin} {...stylex.props(styles.twin)}>view as markdown</a>
+    </p>
+  </article>
+  <script>
+    import '../scripts/copy'
+  </script>
+</Layout>
