@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <!-- The kicker's accent dot, which is the site's one mark. -->
+  <style>
+    circle { fill: #4e5bd0 }
+    @media (prefers-color-scheme: dark) { circle { fill: #8b93ff } }
+  </style>
+  <circle cx="8" cy="8" r="5" />
+</svg>
