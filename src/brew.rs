@@ -18,6 +18,9 @@ use crate::util::proc::Invocation;
 /// arrived as someone's dependency still satisfies a declaration.
 pub fn installed(paths: &Paths, kind: &Kind, name: &str) -> Option<String> {
     let prefix = Path::new(&paths.brew_prefix);
+    // A tap-qualified declaration (`owner/tap/formula`) installs
+    // under the formula's own name: the receipts live at the tail.
+    let name = name.rsplit('/').next().unwrap_or(name);
     match kind {
         Kind::BrewFormula => {
             let cellar = prefix.join("Cellar").join(name);

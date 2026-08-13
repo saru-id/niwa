@@ -23,8 +23,16 @@ pub fn format(text: &str) -> Option<String> {
         if let Some(level) = in_long_bracket {
             out.push_str(line);
             out.push('\n');
-            if line.contains(&closer(level)) {
+            if let Some(position) = line.find(&closer(level)) {
                 in_long_bracket = None;
+                // Structure after the closer still counts: `]])`
+                // closes the call the opener line opened.
+                let (opens, closes, opens_long) = weigh(&line[position + closer(level).len()..]);
+                depth = depth.saturating_sub(closes.min(1));
+                depth += opens.min(1);
+                if let Some(next) = opens_long {
+                    in_long_bracket = Some(next);
+                }
             }
             continue;
         }
@@ -111,11 +119,22 @@ fn weigh(body: &str) -> (usize, usize, Option<usize>) {
             '[' => {
                 if let Some(level) = long_open(&body[index..]) {
                     let after = &body[index + 2 + level..];
-                    if after.contains(&closer(level)) {
+                    if let Some(position) = after.find(&closer(level)) {
                         // Opened and closed on one line: the bytes
-                        // between stay theirs, structure resumes
-                        // after — close enough to skip the rest.
-                        return (opens, closes, None);
+                        // between stay theirs; structure resumes
+                        // after the closer and still counts.
+                        let (rest_opens, rest_closes, rest_long) =
+                            weigh(&after[position + closer(level).len()..]);
+                        let mut opens = opens + rest_opens;
+                        let mut closes_total = closes;
+                        for _ in 0..rest_closes {
+                            if opens > 0 {
+                                opens -= 1;
+                            } else {
+                                closes_total += 1;
+                            }
+                        }
+                        return (opens, closes_total, rest_long);
                     }
                     return (opens, closes, Some(level));
                 }
@@ -141,6 +160,14 @@ mod tests {
     fn leveled_long_brackets_keep_their_bytes_exactly() {
         let source = "local x = [=[\nhello  \n\n\n\ttabbed\n]=]\n";
         assert_eq!(super::format(source), None);
+    }
+
+    #[test]
+    fn structure_after_a_closer_still_counts() {
+        let source = "local out = run([[\nbody\n]])\nprint(out)\n";
+        assert_eq!(super::format(source), None);
+        let inline = "local t = { [[x]] }\nprint(t)\n";
+        assert_eq!(super::format(inline), None);
     }
 
     #[test]

@@ -28,6 +28,8 @@ pub fn agent_plist(paths: &Paths, label: &str) -> PathBuf {
 
 /// Where Homebrew puts a started service's plist.
 pub fn brew_service_plist(paths: &Paths, name: &str) -> PathBuf {
+    // Tap-qualified names install under the formula's own tail.
+    let name = name.rsplit('/').next().unwrap_or(name);
     paths
         .home
         .join("Library/LaunchAgents")
