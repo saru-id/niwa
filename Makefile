@@ -37,4 +37,4 @@ coverage:
 		for drill in drills/[0-9]*.sh; do \
 			NIWA_BIN="$$CARGO_LLVM_COV_TARGET_DIR/debug/niwa" sh "$$drill" || exit 1; \
 		done && \
-		cargo llvm-cov report' && rm -f default_*.profraw
+		cargo llvm-cov report'; status=$$?; rm -f default_*.profraw; exit $$status

@@ -105,6 +105,23 @@ check 23 "the dashboard settles to in sync" grep -q "in sync" "$SANDBOX/stdout"
     "$NIWA_BIN" >/dev/null 2>&1 || true
 check 23b "an uppercase H still opens history" grep -q "undo reaches" "$SANDBOX/menu.log"
 
+# --- the tick key marks a manual step done --------------------------
+cat >>"$CONFIG/modules/inbox.luau" <<'LUAU'
+niwa.manual { "Point the domain at the new box" }
+LUAU
+git -C "$CONFIG" -c user.name=drill -c user.email=drill@test \
+    -c commit.gpgsign=false add -A
+git -C "$CONFIG" -c user.name=drill -c user.email=drill@test \
+    -c commit.gpgsign=false commit -qm manual-step
+{ sleep 1; printf 't\n1\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/tick.log" \
+    "$NIWA_BIN" >/dev/null 2>&1 || true
+check 23c "ticking the step lands in the journal" \
+    grep -q "Point the domain" "$HOME/.local/state/niwa/journal.json"
+{ sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/after-tick.log" \
+    "$NIWA_BIN" >/dev/null 2>&1 || true
+check 23d "a ticked step leaves the waiting line" \
+    sh -c "! grep -q 'manual step' '$SANDBOX/after-tick.log'"
+
 # --- the tag flips a config branch ----------------------------------
 cat >>"$CONFIG/modules/inbox.luau" <<'EOF'
 if niwa.machine.tags.work then
