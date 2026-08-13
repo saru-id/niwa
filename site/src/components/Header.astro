@@ -19,17 +19,32 @@ const { pathname } = Astro.props
     <div {...stylex.props(styles.controls)}>
       <button
         type="button"
-        disabled
-        aria-disabled="true"
-        title="Search arrives with the index."
+        data-search-open
+        aria-haspopup="dialog"
+        aria-keyshortcuts="Meta+K Control+K"
         {...stylex.props(styles.search)}
       >
-        Search <kbd {...stylex.props(styles.kbd)}>⌘K</kbd>
+        {
+          /* The hint is for the eye. `aria-keyshortcuts` is the same fact,
+            said the way a screen reader says it. */
+        }
+        Search <kbd aria-hidden="true" {...stylex.props(styles.kbd)}>⌘K</kbd>
       </button>
       <ThemeControl />
       <a href={SITE.repository} {...stylex.props(styles.link)}>Repository</a>
     </div>
   </div>
+  {
+    /* Search needs its script and its index. Without them the button opens
+      nothing, so it is not shown; the sidebar names every page anyway. */
+  }
+  <noscript>
+    <style is:inline>
+      [data-search-open] {
+        display: none;
+      }
+    </style>
+  </noscript>
   <details {...stylex.props(styles.disclosure)}>
     <summary {...stylex.props(shell.column, styles.disclosureLabel)}>Navigation</summary>
     <Sidebar pathname={pathname} variant="disclosure" />

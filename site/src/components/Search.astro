@@ -1,0 +1,61 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import { styles } from './Search.styles'
+
+/* The search dialog, mounted once per page.
+ *
+ * The elements are Pagefind's own: they carry the input, the ranking, the
+ * announcements, the arrow keys, and the focus trap a native `<dialog>`
+ * gives them. What the site supplies is the row, because a row is the one
+ * part a reader reads.
+ *
+ * Pagefind writes its runtime, its stylesheet and the index into one
+ * directory of the build output, and the script below loads the first two
+ * the first time a reader opens search. Bundling them instead would put
+ * 157 KB of JavaScript and 41 KB of CSS on every page for a dialog most
+ * readers never open, on a site that otherwise ships under a kilobyte.
+ *
+ * The header's button opens it. Pagefind's `<pagefind-modal-trigger>` is
+ * not used: it renders a button of its own, with an icon, its own type
+ * scale and its own key badges, and none of that is the header's.
+ */
+
+const cls = (style: stylex.StyleXStyles): string => stylex.attrs(style).class ?? ''
+
+// One source of truth for the directory, read back by the script.
+const bundlePath = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/pagefind/`
+
+// Both templates start at their element, because Pagefind observes the first
+// node a template returns and a leading newline would make that a text node.
+const result = `<li class="${cls(styles.result)}">
+  <a class="${cls(styles.link)}" href="{{ meta.url | default(url) | safeUrl }}">
+    <span>{{ meta.title }}</span>
+    <span class="${cls(styles.path)}">{{ meta.url | default(url) }}</span>
+  </a>
+  <p class="${cls(styles.excerpt)}">{{+ excerpt +}}</p>
+</li>`
+
+const placeholder = `<li class="${cls(styles.placeholder)}" aria-hidden="true"></li>`
+---
+
+<pagefind-config bundle-path={bundlePath}></pagefind-config>
+<pagefind-modal>
+  <pagefind-modal-header>
+    <pagefind-input placeholder="Search the documentation"></pagefind-input>
+  </pagefind-modal-header>
+  <pagefind-modal-body>
+    <pagefind-summary></pagefind-summary>
+    <pagefind-results hide-sub-results>
+      <script is:inline type="text/pagefind-template" set:html={result}></script>
+      <script
+        is:inline
+        type="text/pagefind-template"
+        data-template="placeholder"
+        set:html={placeholder}></script>
+    </pagefind-results>
+  </pagefind-modal-body>
+  <pagefind-modal-footer>
+    <pagefind-keyboard-hints></pagefind-keyboard-hints>
+  </pagefind-modal-footer>
+</pagefind-modal>
+<script src="../scripts/search.ts"></script>

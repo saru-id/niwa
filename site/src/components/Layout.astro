@@ -5,6 +5,7 @@ import '../styles/app.css'
 import Footer from './Footer.astro'
 import Header from './Header.astro'
 import { styles } from './Layout.styles'
+import Search from './Search.astro'
 import Sidebar from './Sidebar.astro'
 import Toc from './Toc.astro'
 
@@ -14,9 +15,12 @@ interface Props {
   description: string
   /** Absent when the page has no headings. The rail then does not exist. */
   headings?: readonly Heading[]
+  /** Search indexes every page unless the page says otherwise. Opting out
+   * is for pages that answer nobody's search, like the 404. */
+  indexed?: boolean
 }
 
-const { title, description, headings } = Astro.props
+const { title, description, headings, indexed = true } = Astro.props
 const pathname = Astro.url.pathname
 // A page with no headings has no rail, and its grid keeps two columns.
 const toc = headings !== undefined && headings.length > 0 ? headings : undefined
@@ -46,17 +50,29 @@ const toc = headings !== undefined && headings.length > 0 ? headings : undefined
     }
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    {
+      /* The dev server's StyleX stylesheet.
+        StyleX collects its rules while it transforms the sources, and serves
+        them from this route. It reaches the page through a Vite hook that
+        rewrites `index.html`, which is a file this site does not have: every
+        route is an `.astro` component. So dev pages arrived unstyled, and the
+        one line that was missing is this one. The build needs nothing: there
+        the rules are appended to the stylesheet Astro emits.
+        The route answers `no-store`, so a reload always shows the latest. */
+    }
+    {import.meta.env.DEV && <link rel="stylesheet" href="/virtual:stylex.css" />}
   </head>
   <body>
     <a href="#main" {...stylex.props(styles.skip)}>Skip to content</a>
     <Header pathname={pathname} />
     <div {...stylex.props(styles.page, toc !== undefined && styles.pageWithToc)}>
       <Sidebar pathname={pathname} variant="rail" />
-      <main id="main" {...stylex.props(styles.main)}>
+      <main id="main" {...stylex.props(styles.main)} data-pagefind-body={indexed ? '' : undefined}>
         <slot />
       </main>
       {toc !== undefined && <Toc headings={toc} />}
     </div>
     <Footer />
+    <Search />
   </body>
 </html>

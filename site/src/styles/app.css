@@ -251,6 +251,115 @@
   color: var(--th-variable);
 }
 
+/* ---- Search ------------------------------------------------------------
+ * Pagefind's search elements set `all: initial` on themselves, so the site's
+ * rules stop at their edge. Custom properties cross it, and these are the
+ * ones it reads. `all` does not reset them, which is what makes this the
+ * whole theming route.
+ *
+ * They are declared once, not three times like the tokens above, because
+ * every value here is a token: a theme change moves the tokens and these
+ * follow. The one that is not a token uses `light-dark()`, which reads the
+ * `color-scheme` the three theme blocks already set.
+ *
+ * The selector is doubled on purpose. The component's own stylesheet gives
+ * every one of these names a default on `:root`, and it is fetched when a
+ * reader first opens search, which puts it after this file. Equal
+ * specificity would hand the defaults the win; one more `:root` settles it
+ * without depending on load order.
+ */
+
+:root:root {
+  --pf-font: var(--font-sans);
+  --pf-text: var(--ink-strong);
+  --pf-text-secondary: var(--ink);
+  --pf-text-muted: var(--ink-muted);
+  --pf-background: var(--ground);
+  --pf-border: var(--border);
+  --pf-border-focus: var(--border-strong);
+  --pf-hover: var(--surface);
+  --pf-outline-focus: var(--accent);
+  --pf-outline-width: 2px;
+  --pf-outline-offset: 2px;
+
+  /* A border is the only edge this site draws. The dialog's own border is
+   * `none` and out of reach, so its hairline is a shadow with no blur and a
+   * one pixel spread, which is a border in every way a reader can see. */
+  --pf-shadow-lg: 0 0 0 1px var(--border);
+  --pf-scroll-shadow: transparent;
+
+  --pf-error-bg: var(--surface);
+  --pf-error-border: var(--border);
+  --pf-error-text: var(--role-bad);
+  --pf-error-text-secondary: var(--ink-muted);
+
+  --pf-border-radius: 8px;
+  --pf-input-height: 2.5rem;
+  --pf-input-font-size: var(--text-body);
+  --pf-summary-font-size: var(--text-meta);
+  /* The rows draw their own separators. */
+  --pf-results-gap: 0;
+
+  /* A scrim, not a frost: the page behind has to dim in both themes, and in
+   * the dark one it is already the darker of the two surfaces. */
+  --pf-modal-backdrop: light-dark(rgb(0 0 0 / 0.4), rgb(0 0 0 / 0.66));
+  --pf-modal-max-width: 34rem;
+  --pf-modal-max-height: min(72dvh, 36rem);
+  --pf-modal-top: 8dvh;
+}
+
+/* The result count and the key badges are chrome, and the site sets chrome in
+ * the face the tool prints in. A custom property set on an element beats the
+ * one it would inherit, which is how this reaches inside. It reaches the
+ * summary and the badges and stops there: the words beside the badges are
+ * reset by a rule of the component's own and stay in the reading face, which
+ * is where prose belongs anyway. */
+pagefind-summary,
+pagefind-modal-footer {
+  --pf-font: var(--font-mono);
+}
+
+/* Pagefind marks the matched words. The site does not highlight with a block
+ * of color; a match is heavier ink. */
+pagefind-results mark {
+  background: transparent;
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
+/* Two rules the custom properties do not reach.
+ *
+ * The dialog's radius and its entrance are written into the component's own
+ * stylesheet at a specificity built to win against a host page. `!important`
+ * is the one author declaration that outranks it, and both of these are house
+ * rules: the site's radius is 8px, and the entrance may fade and do nothing
+ * else. The shipped keyframes also scale, which the motion budget does not
+ * allow.
+ *
+ * 641px is one pixel past the width where the component stops being a dialog
+ * and becomes a full screen sheet with no corners and no entrance. Below it,
+ * both of those are right and neither rule applies. The reduced motion query
+ * is the component's own, so a reader who asks for less motion still gets no
+ * animation at all.
+ */
+@media (min-width: 641px) {
+  dialog.pf-modal {
+    border-radius: 8px !important;
+  }
+}
+
+@media (min-width: 641px) and (prefers-reduced-motion: no-preference) {
+  dialog.pf-modal[open] {
+    animation: niwa-fade 120ms ease !important;
+  }
+}
+
+@keyframes niwa-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* ---- Type --------------------------------------------------------------
  * System faces. The tool wears the reader's terminal theme; the site wears
  * the reader's platform faces. On a Mac both resolve to the same family.

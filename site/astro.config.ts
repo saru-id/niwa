@@ -1,5 +1,6 @@
 import stylex from '@stylexjs/unplugin'
 import { defineConfig } from 'astro/config'
+import pagefind from 'astro-pagefind'
 import { buildOnlyReact } from './integrations/build-only-react'
 import { installScript } from './integrations/install-script'
 
@@ -11,7 +12,10 @@ export default defineConfig({
   // its highlighter would only cost build time. Turning it off also keeps the
   // markdown processor Astro 7 ships irrelevant to this build.
   markdown: { syntaxHighlight: false },
-  integrations: [buildOnlyReact(), installScript()],
+  // Pagefind reads the built pages after they are written, so its index is a
+  // fact about the output rather than a second description of the content. In
+  // dev it serves whatever the last build indexed.
+  integrations: [buildOnlyReact(), installScript(), pagefind()],
   vite: {
     // StyleX must transform sources before the React plugin the integration
     // adds, so it is declared here rather than through the integration, which
