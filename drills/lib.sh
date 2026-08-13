@@ -32,6 +32,12 @@ export LLVM_PROFILE_FILE="${LLVM_PROFILE_FILE:-$SANDBOX/%p-%m.profraw}"
 export NIWA_MANAGED_PREFS="$SANDBOX/managed"
 mkdir -p "$NIWA_MANAGED_PREFS"
 
+# Homebrew resolves into the sandbox by default; the real Cellar must
+# never answer a drill's survey. Drills that stub brew re-export the
+# same value.
+export HOMEBREW_PREFIX="$SANDBOX/brew"
+mkdir -p "$HOMEBREW_PREFIX/Cellar" "$HOMEBREW_PREFIX/Caskroom"
+
 # Default stubs for every tool that could reach the real machine. A
 # drill that forgets to stub one of these must hit a harmless no-op,
 # never the real thing. Drills prepend their own bin to override.
