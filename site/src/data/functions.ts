@@ -5,9 +5,10 @@
  * signatures come from `share/types/init.luau`, and the digest in
  * `types-digest.ts` binds this file to that one.
  *
- * Eight names, nine signatures: `niwa.secret` takes two shapes, and the
- * reference states both under one heading rather than splitting a call in
- * half for the sake of a count.
+ * Eight names, eight signatures. `niwa.secret`'s two shapes share one
+ * union signature, mirroring the shipped types: the analyzer never picks
+ * between overloads for a table literal, so the types stopped offering it
+ * the choice.
  */
 
 import type { ApiEntry } from './resources'
@@ -20,15 +21,14 @@ export interface ApiFunction extends Omit<ApiEntry, 'signature'> {
 export const FUNCTIONS: readonly ApiFunction[] = [
   {
     name: 'niwa.try',
-    signatures: ['niwa.try<T>(body: () -> T) -> T'],
+    signatures: ['niwa.try<T...>(body: () -> T...) -> ()'],
     description:
       'Run a block whose failures do not halt the apply. What fails inside it is reported and the run continues.',
   },
   {
     name: 'niwa.secret',
     signatures: [
-      'niwa.secret(name: string) -> Secret',
-      'niwa.secret(options: { name: string, from: string? }) -> Secret',
+      'niwa.secret(name: string | { name: string, from: string? }) -> Secret',
     ],
     description:
       'Take a handle on a secret. niwa searches the keychain, then secrets/<name>.age in the config repo, then an external manager; from forces one of them. The handle is opaque: it resolves at apply time, never at plan time, and the value never reaches the config or the screen.',

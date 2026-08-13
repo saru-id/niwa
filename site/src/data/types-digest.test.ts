@@ -66,9 +66,9 @@ describe('the resource pages', () => {
 })
 
 describe('the functions and facts', () => {
-  it('are eight names over nine signatures', () => {
+  it('are eight names over eight signatures', () => {
     expect(FUNCTIONS.length).toBe(8)
-    expect(FUNCTIONS.flatMap((entry) => entry.signatures).length).toBe(9)
+    expect(FUNCTIONS.flatMap((entry) => entry.signatures).length).toBe(8)
   })
 
   it('are seven facts', () => {

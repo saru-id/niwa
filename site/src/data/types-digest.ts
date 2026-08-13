@@ -10,4 +10,4 @@
  */
 
 /** SHA-256 of `share/types/init.luau`, hex, lowercase. */
-export const TYPES_DIGEST = '6567fb06b9a8145b929aa88813f6096e9f2c3250c6f4dd4a99ea41c54755aa75'
+export const TYPES_DIGEST = '77f5d52fc11d249b9962d49ba9abab30dd5e79828908938468948514b76497af'

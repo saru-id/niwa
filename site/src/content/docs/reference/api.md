@@ -116,8 +116,8 @@ plainly when it is not.
 
 ## The rest of the surface
 
-Twenty resource calls over nineteen named kinds plus custom, eight functions in
-nine signatures, seven facts.
+Twenty resource calls over nineteen named kinds plus custom, eight functions,
+seven facts.
 
 | Page | What it holds |
 | --- | --- |

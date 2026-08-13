@@ -59,9 +59,12 @@ niwa.file("~/.netrc", {
 `niwa.secret` returns an opaque handle, not a value. It searches three
 places in order: the keychain, then `secrets/<name>.age` in the config,
 then an external manager. No external manager is configured in this build,
-so the third place searches nothing today. A table form takes `from` and
-pins the search to one of them; the
-[functions reference](/reference/api/functions) carries both signatures.
+so the third place searches nothing today. A table form pins the search to
+one place and searches nowhere else:
+
+```luau
+local pinned = niwa.secret { name = "github-token", from = "keychain" }
+```
 A secret that is nowhere fails the plan, before anything changes, and the
 failure lists the places it looked and both commands above.
 
