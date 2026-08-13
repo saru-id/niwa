@@ -20,13 +20,14 @@ use crate::paths::Paths;
 
 #[allow(
     clippy::struct_excessive_bools,
-    reason = "these mirror four independent command line flags"
+    reason = "these mirror independent command line flags"
 )]
 pub struct Options {
     pub yes: bool,
     pub dirty: bool,
     pub force: crate::model::action::ForceScope,
     pub verify: bool,
+    pub interactive: bool,
     pub no_privileged: bool,
     pub only: Option<String>,
     pub sandbox: bool,
@@ -80,17 +81,9 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
     checklist_up_front(out, &intent, pending);
     privileged_block(out, &intent);
 
-    let declined = if options.yes {
-        std::collections::HashSet::new()
-    } else {
-        if !std::io::stdin().is_terminal() {
-            return Err(Error::NeedsConfirmation);
-        }
-        let Some(declined) = walk(out, &paths, &intent) else {
-            out.result(Mark::Ok, "canceled · nothing changed");
-            return Ok(ExitCode::FAILURE);
-        };
-        declined
+    let Some(declined) = confirm(out, &paths, options, &intent, pending)? else {
+        out.result(Mark::Ok, "canceled · nothing changed");
+        return Ok(ExitCode::FAILURE);
     };
     if declined.len() >= pending {
         out.result(Mark::Ok, "everything passed over · nothing changed");
@@ -153,6 +146,31 @@ fn apply(out: &Out, options: &Options) -> Result<ExitCode, Error> {
         ));
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// The design's confirm phase: show the plan, ask once. `--yes`
+/// skips the question; `--interactive` steps through the changes one
+/// decision at a time instead. `None` means canceled.
+fn confirm(
+    out: &Out,
+    paths: &Paths,
+    options: &Options,
+    intent: &crate::model::action::Plan,
+    pending: usize,
+) -> Result<Option<std::collections::HashSet<String>>, Error> {
+    if options.yes {
+        return Ok(Some(std::collections::HashSet::new()));
+    }
+    if !std::io::stdin().is_terminal() {
+        return Err(Error::NeedsConfirmation);
+    }
+    if options.interactive {
+        return Ok(walk(out, paths, intent));
+    }
+    if !out.confirm(&format!("apply {}? [y/N]", count(pending, "change"))) {
+        return Ok(None);
+    }
+    Ok(Some(std::collections::HashSet::new()))
 }
 
 /// Interactive apply: every remaining difference, one decision at a

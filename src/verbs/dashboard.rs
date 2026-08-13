@@ -103,6 +103,7 @@ fn dashboard(out: &Out) -> Result<ExitCode, Error> {
                 dirty: false,
                 force: crate::model::action::ForceScope::None,
                 verify: false,
+                interactive: false,
                 no_privileged: false,
                 only: None,
                 sandbox: false,

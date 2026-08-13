@@ -10,8 +10,17 @@ use std::process::{Command, Output};
 
 /// A command wired to the sandbox; suites add their own args/envs.
 pub fn command(home: &Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_niwa"));
+    // The binary runs under perl's alarm: every spawned process in
+    // the test tier carries a deadline, the same law the drills keep.
+    let mut command = Command::new("/usr/bin/perl");
     command
+        .args([
+            "-e",
+            "alarm shift; exec @ARGV or die \"exec: $!\"",
+            "--",
+            "60",
+        ])
+        .arg(env!("CARGO_BIN_EXE_niwa"))
         .env_clear()
         .env("HOME", home)
         .env("NIWA_MANAGED_PREFS", home.join("managed"))

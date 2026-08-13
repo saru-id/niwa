@@ -60,6 +60,9 @@ pub enum Verb {
         /// reports a change
         #[arg(long)]
         verify: bool,
+        /// Step through every change one decision at a time
+        #[arg(long)]
+        interactive: bool,
         /// Skip the steps that need administrator rights
         #[arg(long = "no-privileged")]
         no_privileged: bool,

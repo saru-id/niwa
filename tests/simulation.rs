@@ -246,6 +246,10 @@ proptest! {
             let path = home.path().join(format!(".sim-{}", resource.name()));
             match resource.prior() {
                 Some(prior) => {
+                    prop_assert!(
+                        path.exists(),
+                        "{} was not restored at all", resource.name()
+                    );
                     let restored = std::fs::read(&path).unwrap_or_default();
                     prop_assert_eq!(
                         String::from_utf8_lossy(&restored),

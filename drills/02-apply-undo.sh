@@ -115,14 +115,24 @@ local niwa = require("@niwa")
 niwa.file("~/.walk-case", { content = "walked" })
 LUAU
 { sleep 1; printf 'Y\ns\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/walk-case.log" \
-    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+    "$NIWA_BIN" apply --interactive >/dev/null 2>&1 || true
 check 20 "an uppercase Y is a yes in the walk" grep -q "walked" "$HOME/.walk-case"
 { sleep 1; printf 'YES\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/undo-case.log" \
     "$NIWA_BIN" undo >/dev/null 2>&1 || true
 check 21 "an uppercase YES is a yes to undo" sh -c "! test -e '$HOME/.walk-case'"
 { sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/walk-eof.log" \
-    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+    "$NIWA_BIN" apply --interactive >/dev/null 2>&1 || true
 check 22 "a closed stdin quits the walk, changing nothing" \
     sh -c "! test -e '$HOME/.walk-case'"
+
+# --- attended apply asks once; --interactive steps ------------------
+{ sleep 1; printf 'n\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/once-no.log" \
+    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+check 23 "the one question, declined, changes nothing" \
+    sh -c "! test -e '$HOME/.walk-case' && grep -q 'canceled' '$SANDBOX/once-no.log'"
+{ sleep 1; printf 'y\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/once-yes.log" \
+    "$NIWA_BIN" apply >/dev/null 2>&1 || true
+check 24 "the one question, answered, applies everything" \
+    grep -q "walked" "$HOME/.walk-case"
 
 echo "drill: apply and undo · all checks passed"

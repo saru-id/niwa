@@ -12,10 +12,13 @@ notes. The `drills/[0-9]*.sh` glob never matches this directory.
    notification names the change within seconds. `niwa uninstall`
    unloads and removes the agent. `launchctl list | grep rs.niwa`
    is empty afterwards.
-2. **Privileged apply.** A config with one `/Library` declaration
-   asks for administrator rights once, at the top, with the steps
-   listed. Cancelling the prompt leaves the machine unchanged and
-   the summary says which steps were skipped.
+2. **Privileged steps, honestly.** Run an apply whose config carries
+   /Library work. The privileged steps are listed up front with their
+   sources. There is no elevation at this version: attended, they run
+   with your own rights (and fail plainly if those do not suffice);
+   `--no-privileged` skips them whole. The one password prompt lands
+   with the release channel.
+
 3. **mas honesty.** Declare a `niwa.mas.app`. The declaration
    validates and counts; plan and apply answer Unchecked ("not yet
    checkable in this build") whether signed in or not — the provider
