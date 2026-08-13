@@ -14,11 +14,10 @@ pub fn run(out: &Out, action: &str, rollback: bool) -> ExitCode {
 
 fn self_update(out: &Out, action: &str, rollback: bool) -> Result<ExitCode, Error> {
     if action != "update" {
-        return Err(Error::Apply {
-            doing: format!("self {action}"),
-            detail: "self knows one action: update (with --rollback for the previous pair)"
-                .to_string(),
-        });
+        return Err(Error::apply(
+            format!("running self {action}"),
+            "self knows one action: update (with --rollback for the previous pair)",
+        ));
     }
     let _ = rollback;
     out.result(

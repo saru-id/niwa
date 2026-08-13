@@ -63,10 +63,10 @@ pub struct Finished {
 /// and reaped) or the wait itself failed.
 fn wait_deadline(
     child: &mut std::process::Child,
-    timeout: Duration,
+    deadline: Duration,
     poll: Duration,
 ) -> Option<std::process::ExitStatus> {
-    let deadline = Instant::now() + timeout;
+    let deadline = Instant::now() + deadline;
     loop {
         match child.try_wait() {
             Ok(Some(status)) => return Some(status),
@@ -83,7 +83,7 @@ fn wait_deadline(
 
 /// Run a program to completion under the deadline and report what
 /// happened, or `None` when it could not start or ran past the clock.
-pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option<Finished> {
+pub fn bounded_output(program: &str, args: &[&str], deadline: Duration) -> Option<Finished> {
     let mut child = Command::new(resolve(program)?)
         .args(args)
         .stdin(Stdio::null())
@@ -91,7 +91,7 @@ pub fn bounded_output(program: &str, args: &[&str], timeout: Duration) -> Option
         .stderr(Stdio::piped())
         .spawn()
         .ok()?;
-    wait_deadline(&mut child, timeout, Duration::from_millis(10))?;
+    wait_deadline(&mut child, deadline, Duration::from_millis(10))?;
     let output = child.wait_with_output().ok()?;
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
     let skip = stderr.lines().count().saturating_sub(6);
@@ -121,7 +121,7 @@ pub fn interactive(program: &str, args: &[&str]) -> Option<i32> {
 /// Run a program and return its trimmed stdout, or `None` for a
 /// failure, a timeout, or a program that is not there. From the
 /// caller's side those are one answer: no information.
-pub fn bounded_stdout(program: &str, args: &[&str], timeout: Duration) -> Option<String> {
+pub fn bounded_stdout(program: &str, args: &[&str], deadline: Duration) -> Option<String> {
     let mut child = Command::new(resolve(program)?)
         .args(args)
         .stdin(Stdio::null())
@@ -129,7 +129,7 @@ pub fn bounded_stdout(program: &str, args: &[&str], timeout: Duration) -> Option
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
-    let status = wait_deadline(&mut child, timeout, Duration::from_millis(10))?;
+    let status = wait_deadline(&mut child, deadline, Duration::from_millis(10))?;
     let output = child.wait_with_output().ok()?;
     if !status.success() {
         return None;

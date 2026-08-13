@@ -46,16 +46,16 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
     );
     out.result(Mark::Ok, &line);
 
-    if !analyze(&paths, out) {
+    if !analyze(out, &paths) {
         return Ok(ExitCode::FAILURE);
     }
 
-    if upstream && !ask_upstream(&paths, out, &analysis)? {
+    if upstream && !ask_upstream(out, &paths, &analysis)? {
         return Ok(ExitCode::FAILURE);
     }
 
-    lint_unreferenced(&paths, out, &analysis);
-    lint_code_locations(&paths, out, &analysis)?;
+    lint_unreferenced(out, &paths, &analysis);
+    lint_code_locations(out, &paths, &analysis)?;
 
     // The watcher pings for exactly three things: a config error you
     // just saved (handled in `run`), drift you just caused (below),
@@ -113,8 +113,8 @@ fn check(out: &Out, notify: bool, upstream: bool) -> Result<ExitCode, Error> {
 /// `--upstream`: the rot survey, spoken. Ghosts fail the check;
 /// what could not be asked is named, never guessed.
 fn ask_upstream(
-    paths: &Paths,
     out: &Out,
+    paths: &Paths,
     analysis: &crate::model::analysis::Analysis,
 ) -> Result<bool, Error> {
     let lock = crate::lockfile::Lockfile::load(paths)?;
@@ -141,8 +141,8 @@ fn ask_upstream(
 /// declaration: the acknowledgement is remembered like a declined
 /// proposal, so the note never nags.
 fn lint_code_locations(
-    paths: &Paths,
     out: &Out,
+    paths: &Paths,
     analysis: &crate::model::analysis::Analysis,
 ) -> Result<(), Error> {
     let mut journal = Journal::load(&paths.state)?;
@@ -180,7 +180,7 @@ fn lint_code_locations(
 
 /// A module no one requires and a source no declaration reads are/// A module no one requires and a source no declaration reads are
 /// rot in waiting; the lint names them quietly.
-fn lint_unreferenced(paths: &Paths, out: &Out, analysis: &crate::model::analysis::Analysis) {
+fn lint_unreferenced(out: &Out, paths: &Paths, analysis: &crate::model::analysis::Analysis) {
     if let Ok(entries) = std::fs::read_dir(paths.config.join("modules")) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
@@ -240,7 +240,7 @@ fn lint_unreferenced(paths: &Paths, out: &Out, analysis: &crate::model::analysis
 /// Deeper type checks through luau-analyze when it is installed;
 /// when it is not, one plain sentence says so instead of pretending
 /// the checks ran. Returns false when the analyzer found problems.
-fn analyze(paths: &Paths, out: &Out) -> bool {
+fn analyze(out: &Out, paths: &Paths) -> bool {
     let mut files: Vec<String> = Vec::new();
     for dir in ["", "modules", "hosts"] {
         let root = paths.config.join(dir);

@@ -41,10 +41,10 @@ fn seal_key(out: &Out, action: &str) -> Result<ExitCode, Error> {
             out.result(Mark::Ok, "the sealing key is restored on this machine");
             Ok(ExitCode::SUCCESS)
         }
-        other => Err(Error::Apply {
-            doing: format!("seal-key {other}"),
-            detail: "seal-key knows backup and restore".to_string(),
-        }),
+        other => Err(Error::apply(
+            format!("running seal-key {other}"),
+            "seal-key knows backup and restore",
+        )),
     }
 }
 
