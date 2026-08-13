@@ -1,0 +1,32 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import { styles } from './NextLinks.styles'
+
+/** One to three, written by hand. There is no mechanical next page. */
+export interface NextLink {
+  href: string
+  label: string
+  /** The clause that says why to follow this link. */
+  why: string
+}
+
+interface Props {
+  links: readonly NextLink[]
+}
+
+const { links } = Astro.props
+---
+
+<div {...stylex.props(styles.block)}>
+  <p {...stylex.props(styles.label)}>Next</p>
+  <ul {...stylex.props(styles.list)}>
+    {
+      links.map((link) => (
+        <li {...stylex.props(styles.item)}>
+          <a href={link.href}>{link.label}</a>{' '}
+          <span {...stylex.props(styles.why)}>— {link.why}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>

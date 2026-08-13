@@ -1,0 +1,37 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import { SITE } from '../nav'
+import { styles } from './Header.styles'
+import { styles as shell } from './Layout.styles'
+import Sidebar from './Sidebar.astro'
+import ThemeControl from './ThemeControl.astro'
+
+interface Props {
+  pathname: string
+}
+
+const { pathname } = Astro.props
+---
+
+<header {...stylex.props(styles.header)}>
+  <div {...stylex.props(shell.column, styles.bar)}>
+    <a href="/" {...stylex.props(styles.wordmark)}>niwa</a>
+    <div {...stylex.props(styles.controls)}>
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        title="Search arrives with the index."
+        {...stylex.props(styles.search)}
+      >
+        Search <kbd {...stylex.props(styles.kbd)}>⌘K</kbd>
+      </button>
+      <ThemeControl />
+      <a href={SITE.repository} {...stylex.props(styles.link)}>Repository</a>
+    </div>
+  </div>
+  <details {...stylex.props(styles.disclosure)}>
+    <summary {...stylex.props(shell.column, styles.disclosureLabel)}>Navigation</summary>
+    <Sidebar pathname={pathname} variant="disclosure" />
+  </details>
+</header>

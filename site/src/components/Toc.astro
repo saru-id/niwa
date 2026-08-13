@@ -1,0 +1,30 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import type { Heading } from '../lib/headings'
+import { styles } from './Toc.styles'
+
+interface Props {
+  headings: readonly Heading[]
+}
+
+const { headings } = Astro.props
+---
+
+<nav aria-label="On this page" data-toc {...stylex.props(styles.rail)}>
+  <p {...stylex.props(styles.label)}>On this page</p>
+  <ol {...stylex.props(styles.list)}>
+    {
+      headings.map((heading) => (
+        <li>
+          <a
+            href={`#${heading.id}`}
+            {...stylex.props(styles.item, heading.depth === 3 && styles.nested)}
+          >
+            {heading.text}
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+<script src="../scripts/toc.ts"></script>

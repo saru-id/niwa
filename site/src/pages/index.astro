@@ -1,22 +1,14 @@
 ---
-import { Probe } from '../components/Probe'
-import '../styles/app.css'
+import Kicker from '../components/Kicker.astro'
+import Layout from '../components/Layout.astro'
+
+// Placeholder prose. The landing's seven bands arrive with their own task;
+// what this page proves today is the shell around them.
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="niwa is a configuration tool for macOS." />
-    <title>niwa</title>
-  </head>
-  <body>
-    <main>
-      <Probe label="niwa" />
-      <h1>niwa</h1>
-      <p>One Luau script declares what a machine should be.</p>
-      <p><a href="/docs/probe">Probe page</a></p>
-    </main>
-  </body>
-</html>
+<Layout description="niwa is a configuration tool for macOS.">
+  <Kicker label="niwa" />
+  <h1>niwa</h1>
+  <p>One Luau script declares what a machine should be.</p>
+  <p><a href="/docs/probe">Probe page</a></p>
+</Layout>

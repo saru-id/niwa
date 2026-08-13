@@ -1,0 +1,44 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import { NAV, currentPath, groupOpens } from '../nav'
+import { styles } from './Sidebar.styles'
+
+interface Props {
+  pathname: string
+  /**
+   * The same list serves two places: its own column from the layout's first
+   * breakpoint up, and the header's disclosure below it. Only one of the two
+   * is displayed at any width, so only one is ever in the accessibility tree.
+   */
+  variant: 'rail' | 'disclosure'
+}
+
+const { pathname, variant } = Astro.props
+const here = currentPath(pathname)
+---
+
+<nav
+  aria-label="Site"
+  {...stylex.props(styles.nav, variant === 'rail' ? styles.rail : styles.panel)}
+>
+  {
+    NAV.map((group) => (
+      <details open={groupOpens(group, pathname)} {...stylex.props(styles.group)}>
+        <summary {...stylex.props(styles.label)}>{group.label}</summary>
+        <ul {...stylex.props(styles.list)}>
+          {group.entries.map((entry) => (
+            <li>
+              <a
+                href={entry.path}
+                aria-current={entry.path === here ? 'page' : undefined}
+                {...stylex.props(styles.item)}
+              >
+                {entry.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))
+  }
+</nav>

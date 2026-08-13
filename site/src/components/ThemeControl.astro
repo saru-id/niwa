@@ -1,0 +1,41 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import { styles } from './ThemeControl.styles'
+
+/* Three named states. Absent means follow the system, which is also what the
+ * server renders: it cannot know the reader's stored choice, so the script
+ * corrects the pressed button on load.
+ */
+const CHOICES = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+]
+---
+
+<div role="group" aria-label="Theme" data-theme-control {...stylex.props(styles.group)}>
+  {
+    CHOICES.map((choice) => (
+      <button
+        type="button"
+        data-theme-choice={choice.value}
+        aria-pressed={choice.value === 'system' ? 'true' : 'false'}
+        {...stylex.props(styles.choice)}
+      >
+        {choice.label}
+      </button>
+    ))
+  }
+</div>
+{
+  /* Without the script the buttons decide nothing, so they are not shown.
+    The system preference still sets the theme. */
+}
+<noscript>
+  <style is:inline>
+    [data-theme-control] {
+      display: none;
+    }
+  </style>
+</noscript>
+<script src="../scripts/theme.ts"></script>

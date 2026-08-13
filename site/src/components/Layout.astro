@@ -1,0 +1,62 @@
+---
+import * as stylex from '@stylexjs/stylex'
+import type { Heading } from '../lib/headings'
+import '../styles/app.css'
+import Footer from './Footer.astro'
+import Header from './Header.astro'
+import { styles } from './Layout.styles'
+import Sidebar from './Sidebar.astro'
+import Toc from './Toc.astro'
+
+interface Props {
+  /** Absent on the landing, where the site's name is the whole title. */
+  title?: string
+  description: string
+  /** Absent when the page has no headings. The rail then does not exist. */
+  headings?: readonly Heading[]
+}
+
+const { title, description, headings } = Astro.props
+const pathname = Astro.url.pathname
+// A page with no headings has no rail, and its grid keeps two columns.
+const toc = headings !== undefined && headings.length > 0 ? headings : undefined
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    {
+      /* First in the head and inline, so the class is on <html> before the
+        first paint: a stored choice applied after it is a flash. Storage can
+        be refused, and then the system preference decides. */
+    }
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('niwa-theme')
+        if (t === 'light' || t === 'dark') document.documentElement.classList.add('theme-' + t)
+      } catch {}
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title === undefined ? 'niwa' : `${title} · niwa`}</title>
+    <meta name="description" content={description} />
+    {
+      /* Browser chrome follows the platform preference; the media attribute
+        reads no other signal. The two values are the ground token. */
+    }
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a href="#main" {...stylex.props(styles.skip)}>Skip to content</a>
+    <Header pathname={pathname} />
+    <div {...stylex.props(styles.page, toc !== undefined && styles.pageWithToc)}>
+      <Sidebar pathname={pathname} variant="rail" />
+      <main id="main" {...stylex.props(styles.main)}>
+        <slot />
+      </main>
+      {toc !== undefined && <Toc headings={toc} />}
+    </div>
+    <Footer />
+  </body>
+</html>
