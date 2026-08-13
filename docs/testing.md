@@ -52,6 +52,10 @@ nobody re-derives it:
 - **`self update`.** There is no release channel at this version;
   the verb's one honest refusal is tested, the fetch-verify-swap it
   will grow is not written.
+- **Narrow-terminal reflow.** Truncation keeps the tail of a path and
+  wide characters count by columns (both unit-tested); reflowing prose
+  to a narrow width is not implemented at this version, so there is
+  nothing further to cover.
 - **`once` under interruption.** The marker lands after the body, so
   a run killed between the two repeats the body on the next apply:
   at-least-once, stated in the API docs. Driving a kill into that

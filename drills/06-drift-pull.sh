@@ -102,7 +102,7 @@ check 12b "the removal is offered, not taken" \
     grep -q "interactive" "$SANDBOX/stdout"
 
 # The explicit yes: the interactive walk, driven through a real tty.
-{ sleep 1; printf 'a\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/walk.log" \
+{ sleep 1; printf 'a\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/walk.log" \
     "$NIWA_BIN" pull >/dev/null 2>&1 || true
 check 13 "saying yes in the walk uninstalls the orphan" \
     test ! -d "$HOMEBREW_PREFIX/Cellar/fd"
@@ -112,21 +112,21 @@ check 14 "the declared formula stayed" test -d "$HOMEBREW_PREFIX/Cellar/htop"
 mkdir -p "$HOMEBREW_PREFIX/Cellar/fd/9.0.0"
 echo '{"installed_on_request":true}' \
     >"$HOMEBREW_PREFIX/Cellar/fd/9.0.0/INSTALL_RECEIPT.json"
-{ sleep 1; printf 's\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/ask.log" \
+{ sleep 1; printf 's\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/ask.log" \
     sh -c "'$NIWA_BIN' pull >'$SANDBOX/ask-stdout' 2>/dev/null" || true
 check 14b "the answers are offered on stderr, not the screen" \
     sh -c "! grep -q 'a.pply' '$SANDBOX/ask-stdout'"
 
 # --- skip returns; never is remembered ------------------------------
-{ sleep 1; } | /usr/bin/script -q "$SANDBOX/skip-return.log" \
+{ sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/skip-return.log" \
     "$NIWA_BIN" pull >/dev/null 2>&1 || true
 check 14c "a skipped proposal returns on the next pull" \
     grep -q "fd" "$SANDBOX/skip-return.log"
-{ sleep 1; printf 'n\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/never.log" \
+{ sleep 1; printf 'n\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/never.log" \
     "$NIWA_BIN" pull >/dev/null 2>&1 || true
 check 14d "the never landed in the journal, exact proposal and all" \
     grep -q "add:brew.formula:fd" "$HOME/.local/state/niwa/journal.json"
-{ sleep 1; } | /usr/bin/script -q "$SANDBOX/after-never.log" \
+{ sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/after-never.log" \
     "$NIWA_BIN" pull >/dev/null 2>&1 || true
 check 14e "a declined proposal is never made again" \
     sh -c "grep -q 'nothing to pull' '$SANDBOX/after-never.log' \

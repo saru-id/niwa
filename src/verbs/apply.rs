@@ -297,12 +297,20 @@ fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
     let lock = crate::lockfile::Lockfile::load(paths)?;
     let mut files = 0usize;
     let mut packages = 0usize;
+    let mut absolute = 0usize;
     for item in &intent.items {
         if !matches!(item.action, Action::Create | Action::Change { .. }) {
             continue;
         }
         match &item.declaration.identity.kind {
             crate::model::Kind::File | crate::model::Kind::Link => {
+                // Only `~/` targets land in the sandbox home; an
+                // absolute path would leave the rehearsal and touch
+                // the real machine, which is the one forbidden thing.
+                if !item.declaration.identity.key.starts_with("~/") {
+                    absolute += 1;
+                    continue;
+                }
                 crate::apply::perform(&item.declaration, paths, &mut journal, &lock, false)?;
                 files += 1;
             }
@@ -314,14 +322,20 @@ fn rehearse(out: &Out, paths: &Paths) -> Result<ExitCode, Error> {
             _ => {}
         }
     }
-    out.result(
-        Mark::Ok,
-        &format!(
-            "works from nothing · {} landed · {} would install",
-            count(files, "file"),
-            count(packages, "package")
-        ),
+    let mut summary = format!(
+        "works from nothing · {} landed · {} would install",
+        count(files, "file"),
+        count(packages, "package")
     );
+    if absolute > 0 {
+        use std::fmt::Write as _;
+        let _ = write!(
+            summary,
+            " · {} with absolute targets left untouched",
+            count(absolute, "file")
+        );
+    }
+    out.result(Mark::Ok, &summary);
     Ok(ExitCode::SUCCESS)
 }
 

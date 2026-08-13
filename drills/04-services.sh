@@ -140,7 +140,7 @@ cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
 local niwa = require("@niwa")
 LUAU
 : >"$CALLS"
-{ sleep 1; for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do printf 'a\n'; done; sleep 1; } | /usr/bin/script -q "$SANDBOX/orphan.log" \
+{ sleep 1; for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do printf 'a\n'; done; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/orphan.log" \
     "$NIWA_BIN" pull >/dev/null 2>&1 || true
 check 20 "accepting the orphan boots the job out" \
     grep -q "bootout" "$CALLS"

@@ -5,10 +5,10 @@
 //! there is one way to run a child here, and it has a wall clock: a
 //! wedged child costs one answer, never the run.
 //!
-//! Output is drained after the child exits, so a child that writes
-//! more than a pipe buffer holds blocks until the deadline kills it.
-//! That suits programs that answer in kilobytes; anything that streams
-//! belongs elsewhere.
+//! Output drains on its own threads while the child runs, so a
+//! chatty child never blocks on the pipe, and a grandchild that
+//! inherits it can delay EOF without holding the answer hostage:
+//! the deadline takes what has arrived and walks away.
 //!
 //! Programs resolve through the `PATH` variable here, explicitly,
 //! never through the exec fallback path. That one rule is load
@@ -18,6 +18,8 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// Find a program the way a shell would, and only that way. A name
@@ -58,6 +60,56 @@ pub struct Finished {
     pub stderr_tail: String,
 }
 
+/// One pipe, drained as it fills. The buffer is readable at any
+/// moment and `done` flips at EOF, so a deadline can take whatever
+/// has arrived. The thread parks on the pipe and dies with the
+/// process if a grandchild never closes it — bounded by design.
+struct Drain {
+    buffer: Arc<Mutex<Vec<u8>>>,
+    done: Arc<AtomicBool>,
+}
+
+impl Drain {
+    fn start<R: std::io::Read + Send + 'static>(mut stream: R) -> Self {
+        let buffer = Arc::new(Mutex::new(Vec::new()));
+        let done = Arc::new(AtomicBool::new(false));
+        let sink = Arc::clone(&buffer);
+        let flag = Arc::clone(&done);
+        std::thread::spawn(move || {
+            let mut chunk = [0u8; 8192];
+            loop {
+                match stream.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        if let Ok(mut buffer) = sink.lock() {
+                            buffer.extend_from_slice(&chunk[..n]);
+                        }
+                    }
+                }
+            }
+            flag.store(true, Ordering::Release);
+        });
+        Self { buffer, done }
+    }
+
+    /// Wait briefly for EOF, then take what arrived either way.
+    fn settle(&self, grace: Duration) -> Vec<u8> {
+        let deadline = Instant::now() + grace;
+        while !self.done.load(Ordering::Acquire) && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        self.buffer
+            .lock()
+            .map(|buffer| buffer.clone())
+            .unwrap_or_default()
+    }
+}
+
+/// How long after the child's exit the drains may wait for EOF. A
+/// well-behaved child closes its pipes at exit; a lingering
+/// grandchild forfeits the tail instead of the run.
+const DRAIN_GRACE: Duration = Duration::from_secs(2);
+
 /// Poll one child to completion under its deadline: the one wait in
 /// this module. `None` means the clock ran out (the child is killed
 /// and reaped) or the wait itself failed.
@@ -91,15 +143,17 @@ pub fn bounded_output(program: &str, args: &[&str], deadline: Duration) -> Optio
         .stderr(Stdio::piped())
         .spawn()
         .ok()?;
-    wait_deadline(&mut child, deadline, Duration::from_millis(10))?;
-    let output = child.wait_with_output().ok()?;
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let stdout = Drain::start(child.stdout.take()?);
+    let stderr = Drain::start(child.stderr.take()?);
+    let status = wait_deadline(&mut child, deadline, Duration::from_millis(10))?;
+    let stdout = String::from_utf8_lossy(&stdout.settle(DRAIN_GRACE)).into_owned();
+    let stderr = String::from_utf8_lossy(&stderr.settle(DRAIN_GRACE)).into_owned();
     let skip = stderr.lines().count().saturating_sub(6);
     let tail: Vec<&str> = stderr.lines().skip(skip).collect();
     let stderr_tail = tail.join("\n");
     Some(Finished {
-        code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        code: status.code(),
+        stdout,
         stderr,
         stderr_tail,
     })
@@ -129,12 +183,13 @@ pub fn bounded_stdout(program: &str, args: &[&str], deadline: Duration) -> Optio
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
+    let stdout = Drain::start(child.stdout.take()?);
     let status = wait_deadline(&mut child, deadline, Duration::from_millis(10))?;
-    let output = child.wait_with_output().ok()?;
+    let bytes = stdout.settle(DRAIN_GRACE);
     if !status.success() {
         return None;
     }
-    let stdout = String::from_utf8(output.stdout).ok()?;
+    let stdout = String::from_utf8(bytes).ok()?;
     Some(stdout.trim().to_string())
 }
 
@@ -206,6 +261,34 @@ mod tests {
             resolve_in("/bin/echo", None),
             Some(PathBuf::from("/bin/echo"))
         );
+    }
+
+    #[test]
+    fn a_chatty_child_is_drained_not_deadlocked() {
+        // 200 kB is past any pipe buffer: without a concurrent
+        // drain the child blocks writing and dies at the deadline.
+        let out = bounded_stdout(
+            "/bin/sh",
+            &["-c", "head -c 200000 /dev/zero | tr '\\0' x"],
+            Duration::from_secs(10),
+        )
+        .unwrap();
+        assert_eq!(out.len(), 200_000);
+    }
+
+    #[test]
+    fn a_lingering_grandchild_cannot_hold_the_answer_hostage() {
+        // The child exits at once; the sleep it leaves behind holds
+        // the pipe open, so EOF never comes. The drain takes what
+        // arrived and walks away.
+        let started = Instant::now();
+        let answer = bounded_stdout(
+            "/bin/sh",
+            &["-c", "sleep 30 & echo done"],
+            Duration::from_secs(5),
+        );
+        assert_eq!(answer.as_deref(), Some("done"));
+        assert!(started.elapsed() < Duration::from_secs(10));
     }
 
     #[test]

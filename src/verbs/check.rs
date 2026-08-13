@@ -173,12 +173,18 @@ fn lint_code_locations(
         remembered = true;
     }
     if remembered {
-        journal.save(&paths.state)?;
+        // The memory is a courtesy, and check runs from the watcher
+        // while an apply may be live: persist only when the apply
+        // lock is free, or a stale snapshot would erase the apply's
+        // own steps. An unpersisted note simply prints again.
+        if let Ok((_lock, _)) = crate::apply::Lock::take(&paths.state) {
+            journal.save(&paths.state)?;
+        }
     }
     Ok(())
 }
 
-/// A module no one requires and a source no declaration reads are/// A module no one requires and a source no declaration reads are
+/// A module no one requires and a source no declaration reads are
 /// rot in waiting; the lint names them quietly.
 fn lint_unreferenced(out: &Out, paths: &Paths, analysis: &crate::model::analysis::Analysis) {
     if let Ok(entries) = std::fs::read_dir(paths.config.join("modules")) {

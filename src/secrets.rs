@@ -226,13 +226,10 @@ pub fn restore_key(paths: &Paths, passphrase: &str) -> Result<(), Error> {
 
     std::fs::create_dir_all(&paths.state)
         .map_err(|error| Error::apply("creating the state directory", error))?;
-    let path = key_path(paths);
-    std::fs::write(&path, clear).map_err(|error| Error::apply("writing the sealing key", error))?;
-    let mut permissions = std::fs::metadata(&path)
-        .map_err(|error| Error::apply("reading the sealing key's permissions", error))?
-        .permissions();
-    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o600);
-    let _ = std::fs::set_permissions(&path, permissions);
+    // Born 0600 and renamed into place: the key is never readable
+    // wider, and a failed chmod cannot leave it open.
+    crate::util::write_atomic(&key_path(paths), &clear, Some(0o600), true)
+        .map_err(|error| Error::apply("writing the sealing key", error))?;
     Ok(())
 }
 
@@ -292,11 +289,13 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_secret_reports_every_place_it_looked() {
+    fn a_missing_age_secret_names_the_file_it_wanted() {
+        // Forced to the age place so the probe never shells out; the
+        // every-place listing is proven end to end with a stubbed
+        // keychain in tests/output.rs.
         let dir = tempfile::tempdir().unwrap();
         let paths = paths_in(dir.path());
-        let places = exists(&paths, "github-token", None).unwrap_err();
-        assert!(places.iter().any(|place| place.contains("keychain")));
+        let places = exists(&paths, "github-token", Some("age")).unwrap_err();
         assert!(
             places
                 .iter()
@@ -311,8 +310,7 @@ mod tests {
         let sealed = seal(&paths, b"hunter2\n").unwrap();
         std::fs::create_dir_all(paths.config.join("secrets")).unwrap();
         std::fs::write(paths.config.join("secrets/token.age"), sealed).unwrap();
-        assert_eq!(resolve(&paths, "token", None).unwrap(), "hunter2");
+        assert_eq!(resolve(&paths, "token", Some("age")).unwrap(), "hunter2");
         assert!(exists(&paths, "token", Some("age")).is_ok());
-        assert!(exists(&paths, "token", Some("keychain")).is_err());
     }
 }

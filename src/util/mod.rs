@@ -71,18 +71,30 @@ pub fn write_atomic(
         |p| p.join(&temp_name),
     );
     let result = (|| {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        use std::os::unix::fs::PermissionsExt as _;
         {
             use std::io::Write as _;
-            let mut file = std::fs::File::create(&temp)?;
+            // Born private: the bytes may be a secret, and they must
+            // never sit world-readable, not even between two
+            // instructions. The real mode lands before the rename.
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&temp)?;
             file.write_all(bytes)?;
             if sync {
                 file.sync_all()?;
             }
         }
-        if let Some(mode) = mode {
-            use std::os::unix::fs::PermissionsExt as _;
-            std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(mode))?;
-        }
+        // No explicit mode keeps what the target had (0644 for a new
+        // file): replacing a file must not silently tighten it.
+        let mode = mode.unwrap_or_else(|| {
+            std::fs::metadata(target).map_or(0o644, |meta| meta.permissions().mode() & 0o777)
+        });
+        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(mode))?;
         std::fs::rename(&temp, target)
     })();
     if result.is_err() {

@@ -231,6 +231,25 @@ fn apply_sandbox_rehearses_from_nothing_without_touching_home() {
 }
 
 #[test]
+fn a_rehearsal_leaves_absolute_targets_alone() {
+    let home = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let target = outside.path().join("absolute-target");
+    write(
+        home.path(),
+        "init.luau",
+        &format!(
+            "local niwa = require(\"@niwa\")\nniwa.file(\"{}\", {{ content = \"never\" }})\n",
+            target.display()
+        ),
+    );
+    let output = niwa(home.path(), &[], &["apply", "--sandbox"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(!target.exists(), "the rehearsal wrote outside its sandbox");
+    assert!(stdout(&output).contains("absolute"), "{}", stdout(&output));
+}
+
+#[test]
 fn a_ticked_step_stays_ticked_until_the_world_moves() {
     let home = tempfile::tempdir().unwrap();
     write(
@@ -373,6 +392,29 @@ fn an_acknowledgement_gone_on_both_sides_is_dropped() {
         !acknowledged(home.path()).contains(&"file:~/.zshrc".to_string()),
         "the stale acknowledgement survived"
     );
+}
+
+#[test]
+fn a_missing_secret_reports_every_place_it_looked() {
+    let home = tempfile::tempdir().unwrap();
+    let bin = home.path().join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::write(bin.join("security"), "#!/bin/sh\nexit 44\n").unwrap();
+    let mut permissions = std::fs::metadata(bin.join("security"))
+        .unwrap()
+        .permissions();
+    std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+    std::fs::set_permissions(bin.join("security"), permissions).unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        "local niwa = require(\"@niwa\")\nlocal t = niwa.secret(\"github-token\")\nniwa.file(\"~/.x\", { content = niwa.render(\"{t}\", { t = t }) })\n",
+    );
+    let output = niwa(home.path(), &[("PATH", bin.to_str().unwrap())], &["plan"]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    let err = stderr(&output);
+    assert!(err.contains("keychain"), "{err}");
+    assert!(err.contains("github-token.age"), "{err}");
 }
 
 #[test]

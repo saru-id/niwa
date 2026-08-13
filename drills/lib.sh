@@ -48,6 +48,11 @@ for tool in killall launchctl osascript ioreg; do
         "$tool" "$SANDBOX" >"$STUBS/$tool"
     chmod 755 "$STUBS/$tool"
 done
+# security answers "item not found"; the real keychain never hears
+# from a drill. Drills proving keychain behavior write their own.
+printf '#!/bin/sh\necho "security $*" >>"%s/system.log"\nexit 44\n' \
+    "$SANDBOX" >"$STUBS/security"
+chmod 755 "$STUBS/security"
 export PATH="$STUBS:/usr/bin:/bin"
 
 cleanup() { rm -rf "$SANDBOX"; }
@@ -97,6 +102,15 @@ esac
 exit 0
 BREW_STUB
     chmod 755 "$BIN/brew"
+}
+
+# bounded <seconds> <command...>: a hard deadline for anything a
+# drill runs outside the niwa() wrapper (pseudo-tty walks, the
+# installer). macOS ships no timeout tool; perl's alarm serves.
+bounded() {
+    _limit="$1"
+    shift
+    /usr/bin/perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$_limit" "$@"
 }
 
 # niwa <args...>: run the binary against the sandbox with a hard

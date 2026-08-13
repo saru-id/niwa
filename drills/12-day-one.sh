@@ -67,7 +67,7 @@ INSTALLER="$(dirname "$0")/../install.sh"
 
 # --- install: checksum first, then one binary, PATH once ------------
 STATUS=0
-sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+bounded 300 sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 1 "the installer succeeds (exit 0)" test "$STATUS" -eq 0
 check 2 "the binary landed in ~/.local/bin" test -x "$HOME/.local/bin/niwa"
 check 2b "the missing tools were triggered, then waited for" \
@@ -77,7 +77,7 @@ check 3 "the fetch went to the documented base for this arch" \
 check 4 "PATH is wired in .zshrc" grep -q "added by niwa" "$HOME/.zshrc"
 
 STATUS=0
-sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+bounded 300 sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 5 "a second run is idempotent (exit 0)" test "$STATUS" -eq 0
 check 6 "PATH is wired exactly once" \
     test "$(grep -c 'added by niwa' "$HOME/.zshrc")" -eq 1
@@ -86,7 +86,7 @@ check 6 "PATH is wired exactly once" \
 tar -czf "$RELEASE/$NAME" -C "$SANDBOX" stubs
 BEFORE="$(shasum -a 256 "$HOME/.local/bin/niwa")"
 STATUS=0
-sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+bounded 300 sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 7 "a checksum mismatch refuses (exit 1)" test "$STATUS" -eq 1
 check 8 "the refusal says nothing was installed" \
     grep -q "nothing was installed" "$SANDBOX/stderr"
@@ -121,7 +121,7 @@ EOF
 chmod 755 "$BIN/curl"
 STATUS=0
 NIWA_RELEASE_BASE="mirror.test/niwa" \
-    sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+    bounded 300 sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 10 "NIWA_RELEASE_BASE redirects the fetch (exit 0)" test "$STATUS" -eq 0
 check 11 "the mirror was asked, not the default" \
     grep -q "^mirror.test/niwa/$NAME\$" "$SANDBOX/curl.log"
@@ -141,7 +141,7 @@ git -C "$SEED" -c user.name=drill -c user.email=drill@test \
 
 STATUS=0
 NIWA_RELEASE_BASE="mirror.test/niwa" \
-    sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+    bounded 300 sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 11b "an installer with a config repo clones it (exit 0)" \
     sh -c "test $STATUS -eq 0 && test -f '$HOME/.config/niwa/init.luau'"
 check 11c "the walk is printed: restore, plan, apply" sh -c "
@@ -149,7 +149,7 @@ check 11c "the walk is printed: restore, plan, apply" sh -c "
     grep -q 'niwa plan' '$SANDBOX/stdout'"
 STATUS=0
 NIWA_RELEASE_BASE="mirror.test/niwa" \
-    sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
+    bounded 300 sh "$INSTALLER" "$SEED" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 11d "an existing config is left alone" \
     sh -c "test $STATUS -eq 0 && grep -q 'leaving it' '$SANDBOX/stdout'"
 rm -rf "$HOME/.config/niwa"

@@ -101,7 +101,7 @@ check 22 "the stamp carries the tag" \
 niwa
 check 23 "the dashboard settles to in sync" grep -q "in sync" "$SANDBOX/stdout"
 
-{ sleep 1; printf 'H\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/menu.log" \
+{ sleep 1; printf 'H\n'; sleep 1; } | bounded 120 /usr/bin/script -q "$SANDBOX/menu.log" \
     "$NIWA_BIN" >/dev/null 2>&1 || true
 check 23b "an uppercase H still opens history" grep -q "undo reaches" "$SANDBOX/menu.log"
 
