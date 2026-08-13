@@ -148,4 +148,31 @@ niwa apply --yes
 check 15 "an apply's own effect stays invisible to this run's queries" \
     sh -c "test $STATUS -eq 0 && test -f '$HOME/.memo-probe'"
 
+# --- --verify catches what refuses to converge ----------------------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+local defiant = niwa.resource("drill.defiant", {
+    check = function(read, spec)
+        return false
+    end,
+    apply = function(act, spec)
+    end,
+    reverse = false,
+    describe = function(spec)
+        return `defiant {spec.name}`
+    end,
+})
+defiant { name = "gremlin" }
+LUAU
+git -C "$HOME/.config/niwa" -c user.name=d -c user.email=d@t \
+    -c commit.gpgsign=false add -A
+git -C "$HOME/.config/niwa" -c user.name=d -c user.email=d@t \
+    -c commit.gpgsign=false commit -qm defiant
+niwa apply --yes --verify
+check 16 "a resource that never converges fails --verify (exit 1)" \
+    test "$STATUS" -eq 1
+check 17 "the verify names the resource and its source line" \
+    sh -c "grep -q 'drill.defiant:gremlin' '$SANDBOX/stdout' \
+        && grep -q 'init.luau' '$SANDBOX/stdout'"
+
 echo "drill: custom kinds · all checks passed"

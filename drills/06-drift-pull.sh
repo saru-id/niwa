@@ -116,7 +116,38 @@ echo '{"installed_on_request":true}' \
     sh -c "'$NIWA_BIN' pull >'$SANDBOX/ask-stdout' 2>/dev/null" || true
 check 14b "the answers are offered on stderr, not the screen" \
     sh -c "! grep -q 'a.pply' '$SANDBOX/ask-stdout'"
+
+# --- skip returns; never is remembered ------------------------------
+{ sleep 1; } | /usr/bin/script -q "$SANDBOX/skip-return.log" \
+    "$NIWA_BIN" pull >/dev/null 2>&1 || true
+check 14c "a skipped proposal returns on the next pull" \
+    grep -q "fd" "$SANDBOX/skip-return.log"
+{ sleep 1; printf 'n\n'; sleep 1; } | /usr/bin/script -q "$SANDBOX/never.log" \
+    "$NIWA_BIN" pull >/dev/null 2>&1 || true
+check 14d "the never landed in the journal, exact proposal and all" \
+    grep -q "add:brew.formula:fd" "$HOME/.local/state/niwa/journal.json"
+{ sleep 1; } | /usr/bin/script -q "$SANDBOX/after-never.log" \
+    "$NIWA_BIN" pull >/dev/null 2>&1 || true
+check 14e "a declined proposal is never made again" \
+    sh -c "grep -q 'nothing to pull' '$SANDBOX/after-never.log' \
+        && ! grep -q 'fd' '$SANDBOX/after-never.log'"
 rm -rf "$HOMEBREW_PREFIX/Cellar/fd"
+
+# --- a directory source pulls per file ------------------------------
+mkdir -p "$HOME/.config/niwa/files/tools"
+printf 'one\n' >"$HOME/.config/niwa/files/tools/alpha"
+printf 'two\n' >"$HOME/.config/niwa/files/tools/beta"
+cat >>"$HOME/.config/niwa/modules/cli.luau" <<'LUAU'
+niwa.file("~/.tools/", { source = "@self/files/tools/" })
+LUAU
+niwa apply --yes
+check 14f "the directory fanned out (exit 0)" \
+    sh -c "test $STATUS -eq 0 && test -f '$HOME/.tools/alpha' && test -f '$HOME/.tools/beta'"
+printf 'one edited\n' >"$HOME/.tools/alpha"
+niwa pull --all
+check 14g "only the edited file was pulled, the sibling stayed" \
+    sh -c "grep -q 'one edited' '$HOME/.config/niwa/files/tools/alpha' \
+        && grep -qx 'two' '$HOME/.config/niwa/files/tools/beta'"
 
 # --- the gate holds a secret back -------------------------------------
 printf 'export EDITOR=nvim\nexport GH=ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345\n' >"$HOME/.zshrc"
@@ -166,5 +197,25 @@ check 26 "an ungoverned key churning stays silence"     sh -c "! grep -q cacheto
 /usr/bin/plutil -replace theme -string "light"     "$HOME/Library/Preferences/com.example.churner.plist"
 niwa pull --all
 check 27 "the governed key moving still proposes"     grep -q "theme" "$SANDBOX/stdout"
+
+# --- the watchlist is settings domains, not every plist --------------
+/usr/bin/plutil -replace ShowPathbar -bool NO \
+    "$HOME/Library/Preferences/com.apple.finder.plist" 2>/dev/null ||
+    /usr/bin/plutil -create xml1 "$HOME/Library/Preferences/com.apple.finder.plist" &&
+    /usr/bin/plutil -replace ShowPathbar -bool NO \
+        "$HOME/Library/Preferences/com.apple.finder.plist"
+/usr/bin/plutil -create xml1 "$HOME/Library/Preferences/com.example.private.plist"
+/usr/bin/plutil -replace mood -string calm \
+    "$HOME/Library/Preferences/com.example.private.plist"
+niwa pull --all
+/usr/bin/plutil -replace ShowPathbar -bool YES \
+    "$HOME/Library/Preferences/com.apple.finder.plist"
+/usr/bin/plutil -replace mood -string wild \
+    "$HOME/Library/Preferences/com.example.private.plist"
+niwa pull --all
+check 28 "a flip in an untouched settings domain proposes" \
+    grep -q "ShowPathbar" "$SANDBOX/stdout"
+check 29 "a foreign domain's churn is silence" \
+    sh -c "! grep -q mood '$SANDBOX/stdout'"
 
 echo "drill: drift and pull · all checks passed"

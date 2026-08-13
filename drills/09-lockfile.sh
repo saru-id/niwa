@@ -173,6 +173,8 @@ tar -czf "$RELEASE/lazygit_Darwin_arm64.tar.gz" -C "$RELEASE/pack" lazygit
 niwa update lazygit
 check 19 "update moves the pin (exit 0)" \
     sh -c "test $STATUS -eq 0 && grep -q '0.45.0' '$HOME/.config/niwa/niwa.lock'"
+check 19b "the move is shown as a reviewable row" \
+    grep -q "0.44.1 → 0.45.0" "$SANDBOX/stdout"
 niwa apply --yes
 check 20 "apply converges onto the new pin (exit 0)" test "$STATUS" -eq 0
 check 21 "the binary is the pinned version's bytes" \

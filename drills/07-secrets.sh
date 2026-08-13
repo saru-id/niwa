@@ -77,6 +77,26 @@ niwa undo --yes
 check 14 "undo decrypts the sealed archive and restores the hand edit" \
     grep -q "my-hand-edit" "$HOME/.netrc"
 
+# --- a rendered file is one-way: pull refuses, names the template ---
+niwa apply --yes --force
+check 14b "the rendered file is acknowledged again (exit 0)" test "$STATUS" -eq 0
+printf 'machine api.github.com login me password another-edit\n' >"$HOME/.netrc"
+niwa pull --all
+check 14c "pull refuses the rendered file, pointing at the template" \
+    grep -q "template" "$SANDBOX/stdout"
+check 14d "the live edit stayed out of the repo" \
+    sh -c "! grep -rq another-edit '$HOME/.config/niwa'"
+
+# --- doctor --deep proves the sealed archives still decrypt ---------
+niwa doctor --deep
+check 14e "healthy sealed archives pass doctor --deep (exit 0)" test "$STATUS" -eq 0
+BROKEN="$HOME/.local/state/niwa/archive/file:~_s.netrc/deadbeef"
+printf 'age-encryption.org/v1\ngarbage\n' >"$BROKEN"
+niwa doctor --deep
+check 14f "a sealed archive that will not decrypt fails --deep (exit 1)" \
+    test "$STATUS" -eq 1
+rm -f "$BROKEN"
+
 # --- the keychain is a resolution place, through security -------------
 cat >"$HOME/.config/niwa/init.luau" <<'EOF'
 local niwa = require("@niwa")
@@ -89,6 +109,19 @@ niwa apply --yes
 check 15 "a keychain secret resolves through security (exit 0)" test "$STATUS" -eq 0
 check 16 "the keychain value landed" grep -q "token=from-the-keychain" "$HOME/.kc"
 check 17 "security was asked, on a leash" grep -q "find-generic-password" "$CALLS"
+
+# --- when two places hold a secret, the keychain outranks the file --
+printf 'from-the-age-file' | niwa add secret kc-token
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+local token = niwa.secret("kc-token")
+niwa.file("~/.kc2", {
+  content = niwa.render("token={token}", { token = token }),
+})
+LUAU
+niwa apply --yes
+check 17b "the keychain outranks the sealed file" \
+    grep -q "token=from-the-keychain" "$HOME/.kc2"
 
 # --- the escrow crosses machines on one passphrase --------------------
 niwa seal-key backup <<'EOF'

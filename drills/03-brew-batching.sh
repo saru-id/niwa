@@ -112,6 +112,29 @@ check 11 "the resource after the failure was not reached" \
 check 12 "the failure names the command" \
     grep -q "brew install broken" "$SANDBOX/stderr"
 
+# --- 4b: a re-run repeats nothing already done ----------------------
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.brew.formula { "jq", "broken" }
+niwa.file("~/.marker", { source = "@self/files/marker" })
+LUAU
+rm -rf "$HOMEBREW_PREFIX/Cellar" && mkdir -p "$HOMEBREW_PREFIX/Cellar"
+rm -f "$HOME/.marker"
+: >"$BREWLOG"
+niwa apply --yes
+check 12b "the failure line carries the honest counts" \
+    grep -q "not reached · re-run to continue" "$SANDBOX/stdout"
+niwa apply --yes
+check 12c "the re-run skips the package that already landed" \
+    sh -c "! sed -n '2p' '$BREWLOG' | grep -q jq"
+mkdir -p "$HOMEBREW_PREFIX/Cellar/broken/1.0.0"
+echo '{"installed_on_request":true}' \
+    >"$HOMEBREW_PREFIX/Cellar/broken/1.0.0/INSTALL_RECEIPT.json"
+niwa apply --yes
+check 12d "once the cause is fixed the run continues to the end" \
+    sh -c "test $STATUS -eq 0 && test -e '$HOME/.marker'"
+rm -rf "$HOMEBREW_PREFIX/Cellar/broken" "$HOME/.marker"
+
 # --- 5: optional failure is a result, not a halt ----------------------
 cat >"$HOME/.config/niwa/init.luau" <<'EOF'
 local niwa = require("@niwa")
@@ -178,5 +201,28 @@ LUAU
 niwa apply --yes
 check 19 "two consecutive singles land as one invocation" \
     sh -c "test $STATUS -eq 0 && test \"\$(wc -l <'$BREWLOG' | tr -d ' ')\" = '1'"
+
+# --- 7: batched and split runs land the same machine ----------------
+rm -rf "$HOMEBREW_PREFIX/Cellar" && mkdir -p "$HOMEBREW_PREFIX/Cellar"
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.brew.formula { "fd", "ripgrep", "jq" }
+LUAU
+niwa apply --yes
+BATCHED="$(ls "$HOMEBREW_PREFIX/Cellar" | sort | tr '\n' ' ')"
+rm -rf "$HOMEBREW_PREFIX/Cellar" && mkdir -p "$HOMEBREW_PREFIX/Cellar"
+rm -rf "$HOME/.local/state/niwa"
+cat >"$HOME/.config/niwa/init.luau" <<'LUAU'
+local niwa = require("@niwa")
+niwa.brew.formula "fd"
+niwa.file("~/.cut", { content = "the batch barrier\n" })
+niwa.brew.formula "ripgrep"
+niwa.file("~/.cut2", { content = "another barrier\n" })
+niwa.brew.formula "jq"
+LUAU
+niwa apply --yes
+check 20 "batched and split runs land the same packages" \
+    sh -c "test $STATUS -eq 0 \
+        && test \"\$(ls '$HOMEBREW_PREFIX/Cellar' | sort | tr '\n' ' ')\" = \"$BATCHED\""
 
 echo "drill: brew batching · all checks passed"

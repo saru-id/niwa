@@ -165,6 +165,22 @@ fn the_niwa_alias_resolves_to_a_frozen_table() {
 }
 
 #[test]
+fn a_credential_in_the_repo_fails_the_check_naming_the_file() {
+    let home = tempfile::tempdir().unwrap();
+    write(home.path(), "init.luau", "");
+    write(
+        home.path(),
+        "files/zshrc",
+        "export GH=ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345\n",
+    );
+    let output = niwa(home.path(), &["check"]);
+    assert_eq!(output.status.code(), Some(1), "{}", stdout(&output));
+    let err = stderr(&output);
+    assert!(err.contains("files/zshrc"), "{err}");
+    assert!(err.contains("GitHub"), "{err}");
+}
+
+#[test]
 fn xdg_config_home_is_honored_when_absolute() {
     let home = tempfile::tempdir().unwrap();
     let elsewhere = tempfile::tempdir().unwrap();

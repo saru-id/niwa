@@ -41,9 +41,19 @@ echo "\$url" >>"$SANDBOX/curl.log"
 cp "$RELEASE/\$(basename "\$url")" "\$target" 2>/dev/null || exit 22
 EOF
 chmod 755 "$BIN/curl"
-cat >"$BIN/xcode-select" <<'EOF'
+# Stateful: the tools are missing until --install is asked for, so
+# the installer's trigger-and-wait branch actually runs.
+cat >"$BIN/xcode-select" <<EOF
 #!/bin/sh
-echo "/Library/Developer/CommandLineTools"
+STATE="$SANDBOX/clt-state"
+case "\$1" in
+--install) touch "\$STATE"; exit 0 ;;
+-p)
+    [ -f "\$STATE" ] && { echo "/Library/Developer/CommandLineTools"; exit 0; }
+    exit 2
+    ;;
+esac
+exit 0
 EOF
 chmod 755 "$BIN/xcode-select"
 cat >"$BIN/scutil" <<'EOF'
@@ -60,6 +70,8 @@ STATUS=0
 sh "$INSTALLER" >"$SANDBOX/stdout" 2>"$SANDBOX/stderr" || STATUS=$?
 check 1 "the installer succeeds (exit 0)" test "$STATUS" -eq 0
 check 2 "the binary landed in ~/.local/bin" test -x "$HOME/.local/bin/niwa"
+check 2b "the missing tools were triggered, then waited for" \
+    test -f "$SANDBOX/clt-state"
 check 3 "the fetch went to the documented base for this arch" \
     grep -q "niwa.rs/release/niwa-0.1.0-macos-$ARCH.tar.gz" "$SANDBOX/curl.log"
 check 4 "PATH is wired in .zshrc" grep -q "added by niwa" "$HOME/.zshrc"

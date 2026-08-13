@@ -365,6 +365,47 @@ fn a_custom_kind_cannot_shadow_a_built_in() {
 }
 
 #[test]
+fn the_api_surface_is_exactly_the_documented_set() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        &config(
+            r#"local keys = {}
+for key in pairs(niwa) do keys[#keys + 1] = key end
+table.sort(keys)
+assert(table.concat(keys, " ")
+    == "brew command defaults dock exists file finder github_release home"
+        .. " host hostname hosts link login_shell machine manual mas mise npm"
+        .. " once permission render resource run secret service try use",
+    table.concat(keys, " "))
+"#,
+        ),
+    );
+    checks_clean(home.path());
+}
+
+#[test]
+fn a_user_function_passes_results_through_untouched() {
+    let home = tempfile::tempdir().unwrap();
+    write(
+        home.path(),
+        "init.luau",
+        &config(
+            r#"local function tool(name)
+  return niwa.brew.formula(name)
+end
+local result = tool("fd")
+assert(table.isfrozen(result))
+assert(result.changed == false)
+assert(result.present == true)
+"#,
+        ),
+    );
+    checks_clean(home.path());
+}
+
+#[test]
 fn facts_and_queries_answer_inside_the_config() {
     let home = tempfile::tempdir().unwrap();
     write(
