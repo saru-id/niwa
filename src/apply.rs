@@ -400,7 +400,7 @@ fn archive_displaced(
 
 /// Archive with the content sealed; the file keeps its plaintext
 /// digest for a name, so undo can find it without reading it.
-fn archive_sealed(
+pub fn archive_sealed(
     paths: &Paths,
     archive_root: &Path,
     identity: &str,
@@ -520,6 +520,13 @@ fn apply_file(
     };
 
     // The overwrite rule, for targets that already hold other bytes.
+    // The current bytes came from the acknowledged spec: when that
+    // spec used secrets, they are secret-bearing no matter what the
+    // incoming declaration looks like.
+    let sealed_archives = sealed_archives
+        || journal
+            .acknowledged(&declaration.identity.to_string())
+            .is_some_and(|ack| ack.spec.uses_secrets());
     let mut previous_mode = None;
     let previous = if let Ok(current) = std::fs::read(&target) {
         if current != declared && !may_overwrite(declaration, journal, &current, force) {

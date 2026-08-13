@@ -324,11 +324,20 @@ pub fn remove_orphan(paths: &Paths, journal: &mut Journal, identity: &str) -> Re
     let archive_root = crate::apply::archive_dir(paths);
     let parsed = crate::model::Identity::parse(identity);
     let key = parsed.key.as_str();
+    // The bytes being removed may have been rendered from secrets;
+    // the acknowledged spec knows, and the archive seals when it says.
+    let seal = journal
+        .acknowledged(identity)
+        .is_some_and(|ack| ack.spec.uses_secrets());
     match &parsed.kind {
         Kind::File | Kind::Link => {
             let target = paths.expand_home(key);
             if let Ok(current) = std::fs::read(&target) {
-                crate::apply::archive(&archive_root, identity, &current)?;
+                if seal {
+                    crate::apply::archive_sealed(paths, &archive_root, identity, &current)?;
+                } else {
+                    crate::apply::archive(&archive_root, identity, &current)?;
+                }
             }
             std::fs::remove_file(&target).map_err(|error| Error::Apply {
                 doing: format!("removing {key}"),
