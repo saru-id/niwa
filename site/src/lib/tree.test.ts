@@ -74,7 +74,43 @@ describe('preparing a tree', () => {
   test('counts one row per path, directories included', () => {
     const tree = prepareTree(example)
     expect(tree.rowCount).toBe(tree.paths.length)
-    expect(tree.preparedInput.paths).toEqual(tree.paths)
+    expect(tree.rows.map((row) => row.path)).toEqual(tree.paths)
+  })
+
+  test('draws the last child of a level with an elbow and the rest with tees', () => {
+    const { rows } = prepareTree([
+      { path: 'init.luau' },
+      { path: 'modules/cli.luau' },
+      { path: 'modules/shell.luau' },
+    ])
+    expect(rows.map((row) => `${row.prefix}${row.name}`)).toEqual([
+      '├─ init.luau',
+      '└─ modules/',
+      '   ├─ cli.luau',
+      '   └─ shell.luau',
+    ])
+  })
+
+  test('carries a bar down every level that still has siblings below it', () => {
+    const { rows } = prepareTree([{ path: 'modules/cli.luau' }, { path: 'init.luau' }])
+    // `modules/` is drawn before `init.luau` by the declared order, so the
+    // branch continues past its child and the child's line keeps the bar.
+    expect(rows.map((row) => `${row.prefix}${row.name}`)).toEqual([
+      '├─ init.luau',
+      '└─ modules/',
+      '   └─ cli.luau',
+    ])
+  })
+
+  test('puts each note on its own row rather than in a list below', () => {
+    const { rows } = prepareTree([
+      { path: 'init.luau', note: 'The one file niwa reads first.' },
+      { path: 'modules/' },
+    ])
+    expect(rows.map((row) => [row.name, row.note])).toEqual([
+      ['init.luau', 'The one file niwa reads first.'],
+      ['modules/', undefined],
+    ])
   })
 
   test('returns notes in tree order and never inside the tree', () => {

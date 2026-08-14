@@ -203,23 +203,6 @@
   color-scheme: inherit;
 }
 
-/* The same decision, for the source view's shadow host.
- *
- * `@pierre/diffs` renders both palettes into the shadow root and chooses
- * between them with `color-scheme`, which is exactly the hook the site
- * wants: the reader's class on `<html>` already sets `color-scheme`, so the
- * file would follow the page for free. It does not, because the component's
- * own base layer declares `color-scheme: light dark` on `:host`, and a
- * declared value beats an inherited one.
- *
- * A rule written out here reaches it. Styles from the outside win for the
- * host element, so this is the one place the decision can be handed back to
- * `<html>` — the same sentence, and the same reason, as the rule above.
- */
-diffs-container {
-  color-scheme: inherit;
-}
-
 /* The site prints three inks and the design system holds two names for
  * them, so `--color-text-primary` carries running text and a heading takes
  * the strongest ink here. The theme file cannot do it: the system writes

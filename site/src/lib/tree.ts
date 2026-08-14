@@ -1,19 +1,21 @@
 /* Directory structures, prepared at build time.
  *
- * The tree draws structure and nothing else. What an entry is for belongs in
- * the prose beside it, so a note travels with its path through here and the
- * component never receives one.
+ * A tree draws structure, and beside each row it says what that entry is
+ * for. The two belong on one line: a listing followed by a second listing
+ * that repeats every path to attach its purpose makes the reader match the
+ * two by eye, and the second listing is longer than the tree it explains.
  *
- * `@pierre/trees` builds its own hierarchy from a flat list of paths. It can
- * sort that list itself, but only alphabetically, and the config repo has a
- * meaningful order that the alphabet is not. So the order is declared here,
- * the list is sorted here, and the library is handed the result presorted.
+ * So this emits rows, each carrying the box-drawing prefix that puts it in
+ * the structure, its own name, and its note. The renderer sets them in two
+ * columns and the notes line up down the page.
+ *
+ * The order is declared here rather than sorted alphabetically, because a
+ * config repo has a meaningful order and the alphabet is not it.
  */
 
 import { existsSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { type FileTreePreparedInput, preparePresortedFileTreeInput } from '@pierre/trees'
 
 /** One entry in a tree. */
 export type TreeEntry = {
@@ -30,15 +32,27 @@ export type TreeNote = {
   note: string
 }
 
+/** One drawn row: where it sits, what it is called, what it is for. */
+export type TreeRow = {
+  /** The box-drawing run that places the row, for example `\u2502  \u251c\u2500 `. */
+  prefix: string
+  /** The entry's own name. A directory keeps its trailing slash. */
+  name: string
+  /** The full path from the root, for tests and for keys. */
+  path: string
+  /** What the entry is for, when the fence gave it one. */
+  note?: string
+}
+
 /** A tree the component can render. */
 export type PreparedTree = {
-  /** The input the library renders. Built once, here, never in the page. */
-  preparedInput: FileTreePreparedInput
+  /** Every row, in draw order, each carrying its own prefix and note. */
+  rows: readonly TreeRow[]
   /** Every path, directories included, in the order the tree draws them. */
   paths: readonly string[]
-  /** One row per path. The host's height is measured from this. */
+  /** One row per path. */
   rowCount: number
-  /** The notes that came in, in tree order. The component never sees them. */
+  /** The notes that came in, in tree order. */
   notes: readonly TreeNote[]
 }
 
@@ -94,11 +108,39 @@ export function prepareTree(
     if (note !== undefined) ordered.push({ path, note })
   }
 
-  return {
-    preparedInput: preparePresortedFileTreeInput(paths),
-    paths,
-    rowCount: paths.length,
-    notes: ordered,
+  const rows: TreeRow[] = []
+  drawRows(root, order, notes, rows, '')
+
+  return { rows, paths, rowCount: paths.length, notes: ordered }
+}
+
+/* The rows, with the runs of box-drawing that place them.
+ *
+ * The rule is the one `tree` itself follows: a row is drawn with an elbow
+ * when it is the last of its siblings and a tee when it is not, and every
+ * level below it inherits either a bar, because that branch continues past
+ * it, or three spaces, because it does not.
+ */
+function drawRows(
+  node: Node,
+  order: readonly string[],
+  notes: Map<string, string>,
+  out: TreeRow[],
+  trail: string,
+): void {
+  const children = [...node.children.values()]
+  const top = node.path === ''
+  children.sort((left, right) => compare(left, right, top ? order : []))
+
+  for (const [index, child] of children.entries()) {
+    const last = index === children.length - 1
+    out.push({
+      prefix: `${trail}${last ? '\u2514\u2500 ' : '\u251c\u2500 '}`,
+      name: child.directory ? `${child.name}/` : child.name,
+      path: child.directory ? `${child.path}/` : child.path,
+      note: notes.get(key(child.path)),
+    })
+    drawRows(child, order, notes, out, `${trail}${last ? '   ' : '\u2502  '}`)
   }
 }
 

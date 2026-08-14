@@ -5,67 +5,69 @@ export const styles = stylex.create({
     marginBlock: '1.5rem',
     marginInline: 0,
   },
-  // The root the tree hangs from, named once. The tree draws structure; the
-  // caption and the prose beside it say what the structure is for.
-  caption: {
-    color: 'var(--ink-muted)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-meta)',
-    marginBlockEnd: '0.5rem',
-  },
-  // The tree renders in a shadow root, so no rule here reaches inside it.
-  // Custom properties do: they inherit across the boundary, and the library
-  // reads `--trees-theme-*` for palette slots and `--trees-*-override` for
-  // everything with no palette slot of its own. Selection, hover and the
-  // focus ring are all mixed from the accent, so setting the accent sets
-  // those three too.
+  // The same frame every other exhibit on the site wears: the surface, one
+  // hairline, the site's one corner.
   frame: {
-    '--trees-theme-sidebar-bg': 'var(--surface)',
-    '--trees-theme-sidebar-fg': 'var(--ink)',
-    '--trees-theme-sidebar-header-fg': 'var(--ink-muted)',
-    '--trees-theme-sidebar-border': 'var(--border)',
-    '--trees-accent-override': 'var(--accent)',
-    '--trees-indent-guide-bg-override': 'var(--border-strong)',
-    '--trees-font-family-override': 'var(--font-mono)',
-    '--trees-font-size-override': 'var(--text-nav)',
     backgroundColor: 'var(--surface)',
-    // Longhands: StyleX drops the `border` shorthand silently.
     borderColor: 'var(--border)',
+    borderRadius: '8px',
     borderStyle: 'solid',
     borderWidth: 1,
-    borderRadius: '6px',
-    paddingBlock: '0.5rem',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-nav)',
+    lineHeight: 1.7,
+    overflowX: 'auto',
+    paddingBlock: '0.75rem',
+    paddingInline: '1rem',
   },
-  // The library gives its host `height: 100%`, so the height a tree gets is
-  // the height this element is given.
-  host: (height: number) => ({
-    height: `${String(height)}px`,
-  }),
-  // The purposes beside the tree, when the fence carries them: the path in
-  // the chrome face, its purpose in prose, one line each.
-  // One grid for every row, so one column width serves them all. A grid per
-  // row let each one size its own first column, and the purposes came out
-  // at five different left edges.
-  notes: {
-    columnGap: '0.75rem',
+  // The root the rows hang from, printed as the listing's first line.
+  root: {
+    color: 'var(--ink-muted)',
+    margin: 0,
+  },
+  rows: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(6rem, max-content) minmax(0, 1fr)',
-    marginBlock: '0.75rem 0',
-    rowGap: '0.3rem',
+    gridTemplateColumns: 'max-content',
   },
-  noteRow: {
+  /* Two columns when any row has something to say, and one when none does.
+   *
+   * The first column takes the width of the longest row of structure, so
+   * every note starts at the same left edge and the column of purposes
+   * reads straight down. The second takes what is left and wraps inside it.
+   */
+  rowsAnnotated: {
+    columnGap: '1.5rem',
+    gridTemplateColumns: 'max-content minmax(0, 1fr)',
+  },
+  // Each row spans the grid's own columns rather than making its own, so
+  // one width serves them all.
+  row: {
     display: 'contents',
   },
-  notePath: {
+  name: {
     color: 'var(--ink-strong)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-meta)',
-    margin: 0,
+    whiteSpace: 'pre',
   },
-  noteText: {
+  // The box-drawing run. It is structure, not text: it sits back so the
+  // names read as the content and the lines as the frame around them.
+  prefix: {
+    color: 'var(--border-strong)',
+  },
+  // A directory is named by its trailing slash. It also takes the muted ink,
+  // so a glance down the column separates the containers from the contents.
+  directory: {
     color: 'var(--ink-muted)',
+  },
+  /* The purpose, in the reading face.
+   *
+   * The structure is a filesystem and stays in the chrome face; a purpose is
+   * a sentence and belongs in the face sentences are set in. The two faces
+   * are what keeps the columns apart without a rule between them.
+   */
+  note: {
+    color: 'var(--ink-muted)',
+    fontFamily: 'var(--font-sans)',
     fontSize: 'var(--text-table)',
-    lineHeight: 1.5,
-    margin: 0,
+    whiteSpace: 'normal',
   },
 })

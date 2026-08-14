@@ -38,7 +38,26 @@ for (const control of document.querySelectorAll<HTMLElement>('[data-theme-contro
   control.addEventListener('click', () => {
     const next = NEXT[recall()]
     remember(next)
+
+    /* A colour change is not a transition.
+     *
+     * Half the chrome carries `transition: background-color, color` so that
+     * a hover arrives softly, and every one of those properties is a theme
+     * token. Flipping the theme therefore animated them: the bar, the
+     * search field and the rail crossfaded from one palette to the other
+     * over 120ms while the rest of the page changed instantly, which read
+     * as a fault rather than a fade. The attribute switches transitions off
+     * for the one frame the swap lands in.
+     *
+     * Reading `offsetWidth` between the two is what makes it one frame: it
+     * forces the style and layout the browser would otherwise batch, so the
+     * new palette is committed before transitions are allowed back.
+     */
+    const root = document.documentElement
+    root.setAttribute('data-theme-switching', '')
     show(next)
+    void root.offsetWidth
+    root.removeAttribute('data-theme-switching')
     // Every control on the page says the same thing, and there are two of
     // them while the drawer is open.
     for (const other of document.querySelectorAll<HTMLElement>('[data-theme-control]')) {

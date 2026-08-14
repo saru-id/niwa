@@ -37,6 +37,36 @@
   --text-rail: 0.8125rem;
 }
 
+/* ---- The colour swap ---------------------------------------------------
+ * A theme change is not a transition. Half the chrome softens its hover
+ * with `transition: background-color, color`, and those are theme tokens,
+ * so flipping the theme crossfaded the bar and the rail over 120ms while
+ * the rest of the page changed at once. `scripts/chrome.ts` sets this for
+ * the single frame the swap lands in.
+ */
+
+:root[data-theme-switching],
+:root[data-theme-switching] *,
+:root[data-theme-switching] *::before,
+:root[data-theme-switching] *::after {
+  transition: none !important;
+}
+
+/* ---- Search's own elements --------------------------------------------
+ * Pagefind's runtime and stylesheet arrive on the first press, not on every
+ * page, so until then `<pagefind-modal>` is an element the browser has
+ * never heard of. An unknown element is `display: inline`, and its children
+ * are drawn: the dialog's keyboard hints were rendering as a line of loose
+ * text under the footer of every page on the site.
+ *
+ * `:defined` is the state that answers exactly this. The dialog appears
+ * when its definition does, and never before.
+ */
+
+pagefind-modal:not(:defined) {
+  display: none;
+}
+
 /* ---- Scrollbars --------------------------------------------------------
  * The platform's scrollbar is a grey chrome gutter with a square track, and
  * on a page whose only edge is a hairline it is the loudest thing drawn.

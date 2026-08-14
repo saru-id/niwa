@@ -1,7 +1,6 @@
 ---
 import * as stylex from '@stylexjs/stylex'
 import type { CollectionEntry } from 'astro:content'
-import { FILE } from '../icons/chrome'
 import { collectHeadings } from '../lib/headings'
 import { areaOf } from '../lib/page'
 import { currentPath } from '../nav'
@@ -34,18 +33,6 @@ const twin = `${currentPath(Astro.url.pathname)}.md`
     <h1 {...stylex.props(styles.title)}>{title}</h1>
     <p {...stylex.props(styles.deck)}>{description}</p>
     {
-      /* The file this page is, at the path the repository keeps it at. It
-        is the page's own provenance, and on a tool about files at paths it
-        is the honest way to offer the source: not a button named after an
-        action, but the address of the thing itself. */
-    }
-    <p {...stylex.props(styles.provenance)} data-pagefind-ignore>
-      <a href={`/source${currentPath(Astro.url.pathname)}`} {...stylex.props(styles.sourceLink)}>
-        <span {...stylex.props(styles.sourceIcon)} aria-hidden="true" set:html={FILE} />
-        {file}
-      </a>
-    </p>
-    {
       /* No client directive. React renders the body once, during the build,
         and none of it reaches the browser. */
     }
@@ -61,5 +48,4 @@ const twin = `${currentPath(Astro.url.pathname)}.md`
   <script>
     import '../scripts/copy'
   </script>
-<script src="./Tree.loader.ts"></script>
 </Layout>

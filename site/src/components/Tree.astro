@@ -1,10 +1,8 @@
 ---
-/* A directory structure, server rendered.
+/* A directory structure. Static markup, no script.
  *
- * A thin wrapper: `TreeBlock` renders the figure and the SSR payload, and
- * this file adds the loader that hydrates a tree when it approaches the
- * viewport. Markdown `tree` fences render `TreeBlock` through the pipeline
- * instead, and the docs template carries the loader for them.
+ * `TreeBlock` draws the whole thing; markdown `tree` fences render the same
+ * component through the pipeline.
  */
 import type { PreparedTree } from '../lib/tree'
 import { TreeBlock } from './TreeBlock'
@@ -21,4 +19,3 @@ const { tree, label, id } = Astro.props
 ---
 
 <TreeBlock tree={tree} label={label} id={id} />
-<script src="./Tree.loader.ts"></script>
