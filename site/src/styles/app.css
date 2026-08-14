@@ -471,8 +471,28 @@ html {
   overscroll-behavior: none;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+
+  /* The scrollbar's width is reserved whether or not a scrollbar is there.
+   * Without it a short page and a long one are two different widths, so
+   * moving between them re-wraps every line on the page, and the reader
+   * sees the text settle after it has already started reading. */
+  scrollbar-gutter: stable;
 }
+
+/* `text-rendering: optimizeLegibility` was here, and it is deliberately
+ * gone.
+ *
+ * It asks the engine for the full kerning and ligature pass. Chromium
+ * resolves that without changing metrics, so the property looked free on
+ * the machine it was written on. WebKit and Gecko apply it after the first
+ * layout, which re-measures every glyph on the page and re-breaks every
+ * line: the reader watches the text reflow once, in the article and in the
+ * rail together, a moment after the page appears.
+ *
+ * It buys nothing to make up for that. Kerning and standard ligatures are
+ * already on by default in every engine the site supports; `auto` is the
+ * setting that gets them without the second pass.
+ */
 
 body {
   margin: 0;

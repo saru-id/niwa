@@ -501,6 +501,62 @@
   }
 }
 
+/* The contents themselves. The same vocabulary as the rail: a hairline the
+ * entries hang from, and the accent on that hairline for where you are. The
+ * two rails frame the page and they are drawn by one idea. */
+.toc-title {
+  margin: 0 0 0.5rem;
+  padding-inline-start: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-kicker);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-inline-start: 1px solid var(--border);
+}
+
+.toc-link {
+  position: relative;
+  display: block;
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem 0.25rem;
+  font-size: var(--text-toc);
+  line-height: 1.45;
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+/* An h3 is a step inside the section above it, and it says so by sitting
+ * one step further in. */
+.toc-link[data-depth='3'] {
+  padding-inline-start: 1.5rem;
+}
+
+.toc-link:hover {
+  color: var(--ink-strong);
+}
+
+.toc-link[aria-current] {
+  color: var(--ink-strong);
+}
+
+.toc-link[aria-current]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -1px;
+  inline-size: 2px;
+  background-color: var(--accent);
+}
+
 /* ---- The reading column ------------------------------------------------
  * The article, the table of contents, and the air around both, centred in
  * whatever the rail leaves.

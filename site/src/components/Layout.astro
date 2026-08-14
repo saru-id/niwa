@@ -2,9 +2,9 @@
 /* The page.
  *
  * Bar across the top, rail down the side, article in the middle, contents
- * on the right above 1280. All of it is HTML: the chrome hydrates nothing,
- * and the only React on a documentation page is the table of contents,
- * which follows the reader and so has something to do.
+ * on the right above 1280. All of it is HTML, and all of it stays HTML: no
+ * part of the chrome hydrates, and a documentation page mounts no React at
+ * all. The three small scripts it does load only make controls work.
  *
  * The page is the one scroller for the article. The rail scrolls only
  * itself, and only when it is taller than the window.
@@ -15,7 +15,7 @@ import Bar from './Bar.astro'
 import { Footer } from './Footer'
 import Rail from './Rail.astro'
 import Search from './Search.astro'
-import { Toc } from './Toc'
+import Toc from './Toc.astro'
 
 interface Props {
   /** Absent on the landing, where the site's name is the whole title. */
@@ -84,7 +84,7 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
     {import.meta.env.DEV && <link rel="stylesheet" href="/virtual:stylex.css" />}
   </head>
   <body>
-    <a class="skip" href="#article">Skip to content</a>
+    <a class="skip" href="#main">Skip to content</a>
 
     <Bar pathname={pathname} wide={wide} />
 
@@ -123,13 +123,19 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
       }
 
       <div class:list={['page', wide && 'page-wide']}>
-        <main class="page-article" id="article" data-pagefind-body={indexed ? '' : undefined}>
+        {
+          /* `id="main"`, not `id="article"`: the documentation template
+            renders an `<article id="article">` inside this element, and two
+            elements cannot share an id. The skip link aims here, which is
+            the outer of the two and right for every page. */
+        }
+        <main class="page-article" id="main" data-pagefind-body={indexed ? '' : undefined}>
           <slot />
         </main>
         {
           outline !== undefined && (
-            <aside class="toc" aria-label="On this page">
-              <Toc client:idle headings={outline} />
+            <aside class="toc">
+              <Toc headings={outline} />
             </aside>
           )
         }
@@ -151,6 +157,14 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
 
     <Footer />
     <Search />
+    {
+      /* Both are named unconditionally. Astro hoists and bundles a `<script>`
+        it can see at compile time, and one written inside a conditional
+        expression is not that: it is dropped from the build silently. Each
+        script looks for its own element and returns when the page has none,
+        which is the same outcome for a few hundred bytes. */
+    }
     <script src="../scripts/chrome.ts"></script>
+    <script src="../scripts/toc.ts"></script>
   </body>
 </html>
