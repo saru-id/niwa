@@ -100,15 +100,6 @@ export const styles = stylex.create({
   wideOnly: {
     display: { default: 'none', '@media (min-width: 769px)': 'flex' },
   },
-  // The hairline that separates finding a page from the two controls beside
-  // it. It travels with them, so it is not drawn on a narrow bar either. A
-  // vertical divider is as tall as its parent, and the bar's end content is
-  // as tall as its tallest control, so the height is stated here.
-  rule: {
-    blockSize: 'var(--spacing-5)',
-    display: { default: 'none', '@media (min-width: 769px)': 'inline-flex' },
-    marginInline: 'var(--spacing-1)',
-  },
   // The same two, at the foot of the drawer.
   drawerControls: {
     borderBlockStartColor: 'var(--border)',

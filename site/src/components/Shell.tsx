@@ -1,6 +1,5 @@
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { Button } from '@astryxdesign/core/Button'
-import { Divider } from '@astryxdesign/core/Divider'
 import { HStack } from '@astryxdesign/core/HStack'
 import { Kbd } from '@astryxdesign/core/Kbd'
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout'
@@ -11,7 +10,7 @@ import { DisplayIcon, MoonIcon, SearchIcon, SunIcon } from '../icons/theme'
 import { Theme } from '@astryxdesign/core/theme'
 import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
 import * as stylex from '@stylexjs/stylex'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 // `?raw` inlines the vendored file at build time. Nothing is fetched.
 import githubMark from '../icons/github.svg?raw'
 import type { Heading } from '../lib/headings'
@@ -126,13 +125,15 @@ export function Shell({
   // one for itself below the breakpoint, and this one opens at every width.
   const [navOpen, setNavOpen] = useState(false)
 
-  // The server cannot know the reader's stored choice, so it renders the one
-  // the blocking script leaves when there is nothing stored, and the control
-  // corrects itself on mount.
-  const [choice, setChoice] = useState<Choice>('system')
-  useEffect(() => {
-    setChoice(recall())
-  }, [])
+  /* The server cannot know the reader's stored choice, so it renders the
+   * one the blocking script leaves when nothing is stored. The browser
+   * reads the store in the initialiser rather than in an effect: an
+   * initialiser runs during the first render and is painted once, while an
+   * effect runs after the paint, so the control was visibly jumping from
+   * System to the stored choice on every load. */
+  const [choice, setChoice] = useState<Choice>(() =>
+    typeof document === 'undefined' ? 'system' : recall(),
+  )
   const choose = (next: Choice) => {
     remember(next)
     show(next)
@@ -164,8 +165,7 @@ export function Shell({
         endContent={<Kbd keys="mod+k" xstyle={styles.kbd} />}
         xstyle={styles.search}
       />
-      <Divider orientation="vertical" xstyle={styles.rule} />
-      <HStack gap={2} align="center" xstyle={styles.wideOnly}>
+      <HStack gap={1} align="center" xstyle={styles.wideOnly}>
         {settings}
       </HStack>
       {/* The landing has no rail, so the header carries the way in. It is a

@@ -709,3 +709,64 @@ nav[aria-label='Site'] .astryx-side-nav-section > div:first-child :is(span, span
   font-size: var(--text-nav) !important;
   font-weight: 600 !important;
 }
+
+/* ---- The header's controls ----------------------------------------------
+ * The design system gives a control a filled wash and no edge, which is the
+ * shape every framework ships and reads as a button group from a decade
+ * ago. Three changes, all in the header only:
+ *
+ * Search takes an edge and loses its fill, so it reads as the field it
+ * stands for rather than as a button that might do anything. The colour
+ * mode loses the pill around its three icons, so they read as three icons
+ * and the chosen one is marked rather than boxed. And every control in the
+ * bar is the same height, which is the thing the eye actually reads as
+ * "designed".
+ */
+
+[role='banner'] [data-search-open] {
+  background-color: transparent;
+  /* Longhands, and important: the control draws its own border width, and
+   * the system's compiled styles carry StyleX's specificity guard. */
+  border-color: var(--border) !important;
+  border-style: solid !important;
+  border-width: 1px !important;
+  block-size: 2rem;
+  color: var(--ink-muted);
+  transition:
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+[role='banner'] [data-search-open]:hover {
+  border-color: var(--border-strong) !important;
+  color: var(--ink);
+}
+
+[role='banner'] .astryx-segmented-control {
+  background-color: transparent;
+  gap: var(--spacing-0-5, 2px);
+  padding: 0;
+}
+
+[role='banner'] .astryx-segmented-control-item {
+  block-size: 2rem;
+  border-radius: var(--radius-inner);
+  color: var(--ink-muted);
+  inline-size: 2rem;
+}
+
+[role='banner'] .astryx-segmented-control-item:hover {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+[role='banner'] .astryx-segmented-control-item[aria-checked='true'],
+[role='banner'] .astryx-segmented-control-item[data-selected] {
+  background-color: var(--surface);
+  color: var(--ink-strong);
+}
+
+/* The repository sits at the same height as everything beside it. */
+[role='banner'] a[href*='github.com'] {
+  block-size: 2rem;
+}
