@@ -1,28 +1,48 @@
 ---
+/* The page.
+ *
+ * Bar across the top, rail down the side, article in the middle, contents
+ * on the right above 1280. All of it is HTML: the chrome hydrates nothing,
+ * and the only React on a documentation page is the table of contents,
+ * which follows the reader and so has something to do.
+ *
+ * The page is the one scroller for the article. The rail scrolls only
+ * itself, and only when it is taller than the window.
+ */
 import type { Heading } from '../lib/headings'
 import '../styles/app.css'
+import Bar from './Bar.astro'
 import { Footer } from './Footer'
+import Rail from './Rail.astro'
 import Search from './Search.astro'
-import { FallbackNav, Shell } from './Shell'
+import { Toc } from './Toc'
 
 interface Props {
   /** Absent on the landing, where the site's name is the whole title. */
   title?: string
   description: string
-  /** Absent when the page has no headings. The rail then does not exist. */
+  /** Absent when the page has no headings. The contents then do not exist. */
   headings?: readonly Heading[]
   /** Search indexes every page unless the page says otherwise. Opting out
    * is for pages that answer nobody's search, like the 404. */
   indexed?: boolean
   /**
-   * The page renders no rail, so the header carries the navigation at every
-   * width. Only a page that draws its own full-width bands sets it.
+   * The page draws its own full-width bands, so it takes no rail and no
+   * reading cap. Its way into the documentation is the bar's drawer, which
+   * on such a page opens at every width.
    */
-  carriesNavigation?: boolean
+  wide?: boolean
+  /**
+   * The page the rail should mark, when that is not the page's own URL. A
+   * source view is a second face of a documentation page, not a place of
+   * its own, so the rail keeps pointing at the page it is the source of.
+   */
+  navPath?: string
 }
 
-const { title, description, headings, indexed = true, carriesNavigation = false } = Astro.props
-const pathname = Astro.url.pathname
+const { title, description, headings, indexed = true, wide = false, navPath } = Astro.props
+const pathname = navPath ?? Astro.url.pathname
+const outline = headings !== undefined && headings.length > 0 ? headings : undefined
 ---
 
 <!doctype html>
@@ -33,7 +53,7 @@ const pathname = Astro.url.pathname
         first paint: a stored choice applied after it is a flash. Storage can
         be refused, and then the system preference decides.
         `data-theme` carries the same choice for the design system's tokens;
-        the header's control keeps the two in step from then on. */
+        the bar's control keeps the two in step from then on. */
     }
     <script is:inline>
       try {
@@ -56,40 +76,81 @@ const pathname = Astro.url.pathname
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     {
-      /* The dev server's StyleX stylesheet.
-        StyleX collects its rules while it transforms the sources, and serves
-        them from this route. It reaches the page through a Vite hook that
-        rewrites `index.html`, which is a file this site does not have: every
-        route is an `.astro` component. So dev pages arrived unstyled, and the
-        one line that was missing is this one. The build needs nothing: there
-        the rules are appended to the stylesheet Astro emits.
-        The route answers `no-store`, so a reload always shows the latest. */
+      /* The dev server's StyleX stylesheet. StyleX serves its collected
+        rules from this route, and reaches a page through a Vite hook that
+        rewrites `index.html` — a file this site does not have. The build
+        needs nothing: there the rules are appended to Astro's stylesheet. */
     }
     {import.meta.env.DEV && <link rel="stylesheet" href="/virtual:stylex.css" />}
   </head>
   <body>
+    <a class="skip" href="#article">Skip to content</a>
+
+    <Bar pathname={pathname} wide={wide} />
+
+    <div class:list={['shell', wide && 'shell-wide']}>
+      {
+        !wide && (
+          <>
+            <Rail pathname={pathname} />
+            {
+              /* Beside the element rather than in a module, because a
+                module is deferred and a restore the reader watches happen
+                is not a restore. This runs while the parser is still in the
+                body, before the first paint. With nothing stored the rail
+                opens at the page the reader is on. */
+            }
+            <script is:inline>
+              (function () {
+                var rail = document.currentScript.previousElementSibling
+                if (!rail) return
+                var at = null
+                try {
+                  at = sessionStorage.getItem('niwa-rail-scroll')
+                } catch (e) {}
+                if (at !== null) {
+                  rail.scrollTop = Number(at)
+                  return
+                }
+                var here = rail.querySelector('[aria-current="page"]')
+                if (here && here.offsetTop > rail.clientHeight * 0.6) {
+                  rail.scrollTop = here.offsetTop - rail.clientHeight / 2
+                }
+              })()
+            </script>
+          </>
+        )
+      }
+
+      <div class:list={['page', wide && 'page-wide']}>
+        <main class="page-article" id="article" data-pagefind-body={indexed ? '' : undefined}>
+          <slot />
+        </main>
+        {
+          outline !== undefined && (
+            <aside class="toc" aria-label="On this page">
+              <Toc client:idle headings={outline} />
+            </aside>
+          )
+        }
+      </div>
+    </div>
+
     {
-      /* `client:idle` and not `client:load`: the shell is finished HTML
-        before any of it runs. What the script adds is the drawer, the
-        table of contents following the reader, and the theme control. */
-    }
-    <Shell
-      client:idle
-      pathname={pathname}
-      headings={headings}
-      indexed={indexed}
-      carriesNavigation={carriesNavigation}
-    >
-      <slot />
-    </Shell>
-    {
-      /* Below the shell, so the skip link stays the first thing the
-        keyboard reaches. With a script this element is text, not markup. */
+      /* The drawer is the only part of the chrome that needs a script, so
+        it is the only part a reader without one loses. They are given the
+        same rail once more, below the article. With a script this element
+        is text and not markup, so there is never a second navigation
+        landmark on the page. */
     }
     <noscript>
-      <FallbackNav pathname={pathname} carriesNavigation={carriesNavigation} />
+      <div class:list={['noscript-rail', !wide && 'noscript-rail-narrow']}>
+        <Rail pathname={pathname} inDrawer />
+      </div>
     </noscript>
+
     <Footer />
     <Search />
+    <script src="../scripts/chrome.ts"></script>
   </body>
 </html>

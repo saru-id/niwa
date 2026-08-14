@@ -13,6 +13,7 @@
  */
 
 @import './astryx.css';
+@import './chrome.css';
 
 /* ---- Motion ------------------------------------------------------------
  * One rule, and it comes first so nothing declared later escapes it.
@@ -195,6 +196,7 @@
 [data-astryx-theme] {
   color-scheme: inherit;
 }
+
 
 /* The site prints three inks and the design system holds two names for
  * them, so `--color-text-primary` carries running text and a heading takes
@@ -447,83 +449,12 @@ pagefind-results mark {
 }
 
 html {
-  /* The header is sticky, so a heading jumped to must clear it. One value
-   * feeds the offset, the rails' own sticky top, and their height. */
-  --header-height: 3.75rem;
-  /* The shell measures its own header and writes this name on itself once
-   * its script runs. Until then, and for a reader with no script, the
-   * navigation column would stick to the top of the viewport and slide
-   * under the header. The site already knows the number. */
-  --appshell-header-height: var(--header-height);
   /* The page does not bounce past its own edges: the header is fixed to the
    * top of the scroll, and a rubber-band would tear it off. */
   overscroll-behavior: none;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-/* ---- Shell -------------------------------------------------------------
- * Three rules the design system's shell cannot state for itself.
- *
- * The first: it decides between the navigation column and the drawer from a
- * media query it reads in JavaScript, and the page is HTML before that runs.
- * So the server draws the column at every width, and this hides it at
- * exactly the width where the shell will hide it: no jump when the script
- * arrives, and no 260 pixel column beside a phone. A reader with no script
- * keeps the column above the breakpoint and is given the same navigation
- * below it, once, from the `<noscript>` under the shell.
- */
-
-@media (max-width: 768px) {
-  .astryx-app-shell-sidenav {
-    display: none;
-  }
-}
-
-/* The rail stays put while the page moves.
- *
- * A documentation rail that scrolls away with the article is a rail you
- * have to travel back up to use. It sits under the header, takes the rest
- * of the viewport, and scrolls its own sixty-one labels when they are
- * taller than that.
- *
- * The scrollbar is the site's, not the platform's. `scrollbar-width: thin`
- * and a transparent track leave a hairline that reads as part of the rail
- * instead of a grey chrome gutter, and the thumb only appears once the
- * pointer is in the rail. `overscroll-behavior: contain` stops a flick at
- * the end of the rail from carrying on into the page behind it.
- *
- * The element carries no attribute to name it by, so it is named by the
- * panel it holds.
- */
-.astryx-layout div:has(> .astryx-app-shell-sidenav) {
-  block-size: calc(100dvh - var(--appshell-header-height, var(--header-height)));
-  inset-block-start: var(--appshell-header-height, var(--header-height));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  position: sticky;
-  scrollbar-color: transparent transparent;
-  scrollbar-width: thin;
-  transition: scrollbar-color 120ms ease;
-}
-
-.astryx-layout div:has(> .astryx-app-shell-sidenav):hover,
-.astryx-layout div:has(> .astryx-app-shell-sidenav):focus-within {
-  scrollbar-color: var(--border-strong) transparent;
-}
-
-.astryx-app-shell-sidenav {
-  block-size: auto;
-  overflow: visible;
-}
-
-/* The keyboard hint the segmented control raises the first time it is
- * focused fades over 150ms, and that number is compiled into the shipped
- * sheet where the theme's duration tokens do not reach. The budget is 120,
- * and this is the only place on the page that leaves it. */
-[popover] {
-  transition-duration: 120ms;
 }
 
 body {
@@ -606,7 +537,22 @@ h1[id],
 h2[id],
 h3[id],
 h4[id] {
-  scroll-margin-block-start: calc(var(--header-height) + 1rem);
+  scroll-margin-block-start: calc(var(--bar-height) + 1rem);
+}
+
+/* ---- The contents' labels wrap -----------------------------------------
+ * The design system sets a nav label on one line and ends it with an
+ * ellipsis. That is right for a word or two. This site's headings are
+ * sentences, and an ellipsis hides which section the link leads to, which
+ * is the one thing a rail is for. No component prop reaches this. The site
+ * rail is the site's own and needs no such rule; the contents are the one
+ * place the design system still draws navigation.
+ */
+
+nav[aria-label='On this page'] :is(a, a *) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 /* ---- Heading anchors ----------------------------------------------------
@@ -637,239 +583,11 @@ h4:hover .anchor-heading,
   opacity: 1;
 }
 
-/* ---- Navigation labels wrap ---------------------------------------------
- * The design system sets a nav label on one line and ends it with an
- * ellipsis. That is right for a word or two. This site's labels are
- * sentences — "Adopt a machine you already use", "Presence is
- * authoritative, removal is an offer" — and an ellipsis hides which page
- * the link leads to, which is the one thing a rail is for. No component
- * prop reaches this, so the site says it here, in the two rails only.
- */
-
-:is(nav[aria-label='Site'], nav[aria-label='On this page']) :is(a, a *) {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-}
-
-/* A rail row is one element tall and no taller, so a label that takes two
- * lines overflows it and lands on the row below. The row has to grow
- * instead, and it keeps its own height as a floor.
- *
- * `!important` is the only thing that reaches it. The design system's
- * compiled styles carry StyleX's specificity guard — `:not(#\#)` three
- * times over, which scores as three ids — so no honest selector outranks
- * them. The site uses this in one other place, the reduced-motion rule,
- * and for the same reason: the declaration has to be the last word. */
-nav[aria-label='Site'] a {
-  block-size: auto !important;
-  min-block-size: var(--size-element-sm);
-  padding-block: var(--spacing-1) !important;
-}
-
-/* An identifier in a table cell does not break. `[<TARGET>...]` split
- * across two lines reads as two things, and a flag's argument is one. The
- * column widens instead, and the table already scrolls inside its own
- * wrapper, where the tail stays reachable. */
+/* An identifier in a table cell does not break. `[<TARGET>...]` split across
+ * two lines reads as two things, and a flag's argument is one. The column
+ * widens instead, and the table already scrolls inside its own wrapper,
+ * where the tail stays reachable. */
 :is(td, th) code {
   white-space: nowrap;
 }
 
-/* ---- The rail's current page --------------------------------------------
- * The design system marks the selected item with a ten percent wash, which
- * on this ground is very nearly nothing. It is the one thing a rail of
- * sixty links has to answer at a glance, so the site marks it with its
- * strongest ink and an accent edge.
- *
- * `data-selected` is the stable surface the styling guide names; the bare
- * `.selected` class beside it is the deprecated one and is not used here.
- */
-
-nav[aria-label='Site'] .astryx-side-nav-item[data-selected] {
-  /* A tinted pill, not a bar down the side. The accent at a tenth carries
-   * the mark on either ground, and the row keeps the same left edge as the
-   * ones around it — a border on one item alone shifts its text and breaks
-   * the column the rail is built on. */
-  background-color: color-mix(in oklch, var(--accent) 12%, transparent);
-  color: var(--ink-strong);
-  font-weight: 500;
-}
-
-nav[aria-label='Site'] .astryx-side-nav-item {
-  border-radius: var(--radius-inner);
-}
-
-nav[aria-label='Site'] .astryx-side-nav-item:hover:not([data-selected]) {
-  background-color: var(--surface);
-  color: var(--ink);
-}
-
-nav[aria-label='Site'] .astryx-side-nav-section > div:first-child :is(span, span span) {
-  color: var(--ink-strong) !important;
-  font-size: var(--text-nav) !important;
-  font-weight: 600 !important;
-}
-
-/* ---- The header's controls ----------------------------------------------
- * The design system gives a control a filled wash and no edge, which is the
- * shape every framework ships and reads as a button group from a decade
- * ago. Three changes, all in the header only:
- *
- * Search takes an edge and loses its fill, so it reads as the field it
- * stands for rather than as a button that might do anything. The colour
- * mode loses the pill around its three icons, so they read as three icons
- * and the chosen one is marked rather than boxed. And every control in the
- * bar is the same height, which is the thing the eye actually reads as
- * "designed".
- */
-
-[role='banner'] [data-search-open] {
-  background-color: transparent;
-  /* Longhands, and important: the control draws its own border width, and
-   * the system's compiled styles carry StyleX's specificity guard. */
-  border-color: var(--border) !important;
-  border-style: solid !important;
-  border-width: 1px !important;
-  block-size: 2rem;
-  color: var(--ink-muted);
-  transition:
-    border-color 120ms ease,
-    color 120ms ease;
-}
-
-[role='banner'] [data-search-open]:hover {
-  border-color: var(--border-strong) !important;
-  color: var(--ink);
-}
-
-[role='banner'] .astryx-segmented-control {
-  background-color: transparent;
-  gap: var(--spacing-0-5, 2px);
-  padding: 0;
-}
-
-[role='banner'] .astryx-segmented-control-item {
-  block-size: 2rem;
-  border-radius: var(--radius-inner);
-  color: var(--ink-muted);
-  inline-size: 2rem;
-}
-
-[role='banner'] .astryx-segmented-control-item:hover {
-  background-color: var(--surface);
-  color: var(--ink);
-}
-
-[role='banner'] .astryx-segmented-control-item[aria-checked='true'],
-[role='banner'] .astryx-segmented-control-item[data-selected] {
-  background-color: var(--surface);
-  color: var(--ink-strong);
-}
-
-/* The repository sits at the same height as everything beside it. */
-[role='banner'] a[href*='github.com'] {
-  block-size: 2rem;
-}
-
-/* ---- The rail's groups --------------------------------------------------
- * A group opens the one you are standing in and closes the rest, so the
- * whole rail fits a window and never scrolls away from you.
- *
- * The marker is drawn here because a `::marker` is reachable from CSS and
- * from nothing else. It is a chevron that turns a quarter when the group
- * opens, in the same 120ms the rest of the site moves in.
- */
-
-nav[aria-label='Site'] [data-nav-group] > summary {
-  list-style: none;
-}
-
-nav[aria-label='Site'] [data-nav-group] > summary::-webkit-details-marker {
-  display: none;
-}
-
-nav[aria-label='Site'] [data-nav-group] > summary::after {
-  border-block-end: 1.5px solid currentcolor;
-  border-inline-end: 1.5px solid currentcolor;
-  block-size: 0.4em;
-  color: var(--ink-muted);
-  content: '';
-  inline-size: 0.4em;
-  rotate: -45deg;
-  transition: rotate 120ms ease;
-  translate: 0 -0.1em;
-}
-
-nav[aria-label='Site'] [data-nav-group][open] > summary::after {
-  rotate: 45deg;
-  translate: 0 -0.2em;
-}
-
-nav[aria-label='Site'] [data-nav-group] > summary:hover {
-  background-color: var(--surface);
-}
-
-/* The longest group is Commands, at twenty entries. With the rail's own air
- * that ran a little past a short window, so the row is set to the height it
- * needs for one line and no more: the whole rail then fits, and a rail that
- * fits is a rail that never scrolls inside itself and never loses its place
- * when a page loads. Two lines still grow the row, because the labels here
- * are sentences. */
-nav[aria-label='Site'] .astryx-side-nav-item {
-  min-block-size: 1.5rem !important;
-  padding-block: 0.125rem !important;
-}
-
-/* ---- The bar sits on the page's own columns -----------------------------
- * A row of things distributed by flexbox across the full width of the
- * window is the shape every framework's navigation bar has had for a
- * decade, and the reason is that nothing in it lines up with anything under
- * it: the name floats near the corner, the search box lands in the middle
- * of a paragraph's column, and the right-hand icons overhang the table of
- * contents. Measured on this page before this rule: the rail ran 0→260 and
- * the article 293→977, while the bar's own pieces sat at 8, 141, 862 and
- * 1138. Four positions, none of them a column.
- *
- * So the bar is a grid of the same two columns the page below it is: the
- * navigation column, then everything else. The name stands over the rail
- * and takes the rail's own indent; search begins where the article begins;
- * the utilities end with the page. The bar stops being a strip laid over
- * the layout and becomes the top of it.
- */
-
-[role='banner'] .astryx-top-nav {
-  /* Important, as everywhere the design system's compiled styles are the
-   * last word: it sets the bar to flex, and flex sizes the first cluster to
-   * its text rather than to the column it has to stand over. */
-  display: grid !important;
-  grid-template-columns: 260px minmax(0, 1fr);
-  padding-inline: 0;
-}
-
-[role='banner'] .astryx-top-nav > :first-child {
-  padding-inline-start: var(--spacing-6);
-}
-
-[role='banner'] .astryx-top-nav > :last-child {
-  justify-content: space-between;
-  margin-inline: auto;
-  max-inline-size: 1040px;
-  padding-inline: var(--spacing-8);
-  inline-size: 100%;
-}
-
-/* Below the rail's width there is no navigation column to stand over, so
- * the bar is one row again and the name returns to the edge. */
-@media (max-width: 1023px) {
-  [role='banner'] .astryx-top-nav {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  [role='banner'] .astryx-top-nav > :first-child {
-    padding-inline-start: var(--spacing-3);
-  }
-
-  [role='banner'] .astryx-top-nav > :last-child {
-    padding-inline: var(--spacing-3);
-  }
-}

@@ -1,0 +1,563 @@
+/* The site's chrome: the bar across the top and the rail down the side.
+ *
+ * Written as plain CSS, not StyleX, and the reason is that this is the one
+ * part of the site that is a singleton. There is one bar and one rail per
+ * page, they are drawn in `.astro` files that emit plain markup, and almost
+ * every rule below is either a pseudo-element or a relationship between two
+ * elements: the guide a group hangs its pages from, the segment that marks
+ * the page you are on, the divider the bar shares with the rail. Atomic
+ * classes buy nothing when nothing is reused, and they cannot express the
+ * relationships at all. The brief allows plain CSS where StyleX adds
+ * nothing; this is that place.
+ *
+ * The whole thing is one metaphor, and the metaphor is niwa's own. This is a
+ * tool about files at paths, and its documentation is a tree of pages. So
+ * the rail is drawn as a tree: a directory name, a hairline guide dropping
+ * from it, and the pages indented against that guide. The page you are
+ * standing on replaces its length of the guide with the accent. That is the
+ * whole identity budget for the chrome, spent once, in the one place a
+ * reader looks on every page.
+ */
+
+/* ---- Frame -------------------------------------------------------------
+ * Three numbers. The rail's width, the bar's height, and the air the bar
+ * and the rail both hold their contents in.
+ */
+
+:root {
+  --rail-width: 17rem;
+  --bar-height: 3.25rem;
+  --chrome-gutter: 1.25rem;
+
+  /* The rail sets its own reading size. These labels are page titles, and
+   * several of them are sentences; at the body size the rail is a wall of
+   * text, and at the nav size it still runs long. Thirteen pixels is the
+   * size a rail of sentences wants, and it is the size the rest of this
+   * class of software sets its navigation at. */
+  --text-rail: 0.8125rem;
+}
+
+/* ---- The page grid -----------------------------------------------------
+ * Rail | everything else, with the bar spanning both above them.
+ *
+ * The rail is a column in the flow rather than a fixed panel, so the page
+ * remains the one scroller for the article. The rail scrolls only itself,
+ * and only when it is taller than the window.
+ */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+}
+
+/* Below the rail's width there is one column, and the rail becomes the
+ * drawer the bar opens. */
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A page that draws its own full-width bands has no rail at any width. */
+.shell-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---- The bar -----------------------------------------------------------
+ * Identity at one end, tools at the other, and nothing in between.
+ *
+ * The space in the middle is deliberate and it is empty. Everything that
+ * wanted to live there — a second row of section links, the page's own path
+ * spelled out again — is either already in the rail or already in the
+ * heading directly below. The bar's job is to say what site this is and to
+ * hold the three controls that belong to no page.
+ */
+
+.bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  align-items: center;
+  min-block-size: var(--bar-height);
+  border-block-end: 1px solid var(--border);
+  /* The page slides under the bar rather than up to it. The alpha is high
+   * enough that text never shows through as more than a suggestion, and the
+   * blur is small enough to cost nothing. A browser without
+   * `backdrop-filter` gets the flat ground, which is the same bar without
+   * the suggestion. */
+  background-color: color-mix(in oklab, var(--ground) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+@supports not (backdrop-filter: blur(8px)) {
+  .bar {
+    background-color: var(--ground);
+  }
+}
+
+/* The identity sits over the rail's column and shares the rail's divider,
+ * so the bar and the columns below it read as one grid rather than as a
+ * toolbar laid on top of a page. */
+.bar-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: stretch;
+  padding-inline: var(--chrome-gutter);
+  border-inline-end: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--ink-strong);
+}
+
+.bar-identity:hover .bar-wordmark {
+  color: var(--ink-strong);
+}
+
+/* One filled circle in the accent, at the cap height of the word beside it. */
+.bar-dot {
+  inline-size: 0.4375rem;
+  block-size: 0.4375rem;
+  border-radius: 50%;
+  background-color: var(--accent);
+  flex: none;
+}
+
+.bar-wordmark {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+}
+
+/* A fact about what these pages describe, said where the name is. */
+.bar-version {
+  font-family: var(--font-mono);
+  font-size: var(--text-kicker);
+  color: var(--ink-muted);
+  letter-spacing: 0;
+}
+
+.bar-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  padding-inline: var(--chrome-gutter);
+}
+
+@media (max-width: 900px) {
+  .bar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .bar-identity {
+    border-inline-end: 0;
+  }
+}
+
+/* ---- The bar's controls ------------------------------------------------
+ * Three of them, and they are the site's whole control vocabulary: a way
+ * into search, the colour mode, and the repository. They share one shape so
+ * that the cluster reads as one object.
+ */
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  block-size: 1.875rem;
+  padding-inline: 0.4375rem;
+  border: 0;
+  border-radius: var(--radius-inner, 5px);
+  background-color: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-rail);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.control:hover {
+  background-color: var(--surface);
+  color: var(--ink-strong);
+}
+
+.control svg {
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex: none;
+}
+
+/* The way into search reads as a field, because it opens one. It is quiet:
+ * the surface and a hairline, no fill and no accent. On a narrow window it
+ * drops the word and the badge and becomes the magnifier alone, where the
+ * width would crowd the wordmark. */
+.control-search {
+  inline-size: 12.5rem;
+  justify-content: flex-start;
+  padding-inline: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+}
+
+.control-search:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface);
+}
+
+.control-search .kbd {
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-kicker);
+  color: var(--ink-muted);
+}
+
+@media (max-width: 1080px) {
+  .control-search {
+    inline-size: auto;
+    justify-content: center;
+    padding-inline: 0.4375rem;
+    border-color: transparent;
+    background-color: transparent;
+  }
+
+  .control-search .search-word,
+  .control-search .kbd {
+    display: none;
+  }
+}
+
+/* The repository's slug rides beside its mark while there is room. The mark
+ * is drawn at 1em in `currentColor`, so it needs no size and no ink here. */
+@media (max-width: 1080px) {
+  .control-repo .repo-slug {
+    display: none;
+  }
+}
+
+/* The drawer's button exists only where the rail does not: below the rail's
+ * width, and on a page that draws no rail at any width. */
+.control-menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .control-menu {
+    display: inline-flex;
+  }
+}
+
+.bar-wide .control-menu {
+  display: inline-flex;
+}
+
+.bar-wide .bar-identity {
+  border-inline-end: 0;
+}
+
+.bar-wide {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* ---- The colour mode's face -------------------------------------------
+ * Which of the three icons shows is decided here rather than in script, so
+ * the control is correct in the first paint. The states are the same three
+ * the theme module names: no class follows the system, and the two classes
+ * are explicit overrides.
+ */
+
+.mode-icon {
+  display: none;
+}
+
+:root:not(.theme-light):not(.theme-dark) .mode-icon[data-mode='system'],
+:root.theme-light .mode-icon[data-mode='light'],
+:root.theme-dark .mode-icon[data-mode='dark'] {
+  display: inline-flex;
+}
+
+/* Said to a screen reader and to nothing else. */
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- The rail ----------------------------------------------------------
+ * A tree of pages, drawn the way the tool draws a tree of files.
+ *
+ * It sticks under the bar and scrolls only itself. Six groups of pages is
+ * taller than a window, and the alternative — folding every group but one —
+ * hides forty pages to save a scrollbar. So the rail scrolls, and the two
+ * costs of scrolling are paid instead: the position is restored on the next
+ * page, and the page you are on is scrolled into view when there is nothing
+ * stored.
+ */
+
+.rail {
+  position: sticky;
+  inset-block-start: var(--bar-height);
+  align-self: start;
+  block-size: calc(100dvh - var(--bar-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-inline-end: 1px solid var(--border);
+  padding-block: 1.25rem 3rem;
+  padding-inline: var(--chrome-gutter);
+  /* The scrollbar is the site's, not the platform's, and at rest it is not
+   * drawn at all: a permanent thumb sits a few pixels from the rail's own
+   * divider and reads as a second, brighter border. It appears when the
+   * pointer is in the rail or the keyboard is, which is when it is worth
+   * anything. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 120ms ease;
+}
+
+.rail:hover,
+.rail:focus-within {
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@media (max-width: 900px) {
+  .rail {
+    display: none;
+  }
+}
+
+/* The directory name. It is not a control: nothing folds, so nothing here
+ * is pressable, and it carries no marker to suggest otherwise. It sits at
+ * the guide's own left edge, and the pages hang indented from it. */
+.rail-group + .rail-group {
+  margin-block-start: 1.5rem;
+}
+
+.rail-label {
+  margin: 0 0 0.4375rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-kicker);
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* The guide the group's pages hang from. One hairline, the full height of
+ * the group, exactly where the directory name starts. */
+.rail-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-inline-start: 1px solid var(--border);
+}
+
+.rail-item {
+  position: relative;
+  display: block;
+  padding-block: 0.3125rem;
+  padding-inline: 0.75rem 0.5rem;
+  border-start-end-radius: var(--radius-inner, 5px);
+  border-end-end-radius: var(--radius-inner, 5px);
+  font-size: var(--text-rail);
+  line-height: 1.45;
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.rail-item:hover {
+  background-color: var(--surface);
+  color: var(--ink-strong);
+}
+
+/* The page you are standing on. Its ink goes to full strength, and its
+ * length of the guide goes to the accent: the rail says where you are by
+ * lighting up the structure, not by painting a block behind a word.
+ *
+ * The segment is two pixels, drawn over the one pixel guide and half a
+ * pixel outside it, so it covers the hairline exactly.
+ */
+.rail-item[aria-current='page'] {
+  color: var(--ink-strong);
+  font-weight: 500;
+}
+
+.rail-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -1px;
+  inline-size: 2px;
+  background-color: var(--accent);
+}
+
+/* ---- The drawer --------------------------------------------------------
+ * The rail, below the width the rail has a column of its own.
+ *
+ * A native dialog, so the browser supplies the focus trap, the Escape key
+ * and the scrim, and the site supplies none of them.
+ */
+
+.drawer {
+  margin: 0;
+  margin-inline-end: auto;
+  inline-size: min(20rem, 86vw);
+  max-inline-size: none;
+  block-size: 100dvh;
+  max-block-size: 100dvh;
+  padding: 0;
+  border: 0;
+  border-inline-end: 1px solid var(--border);
+  background-color: var(--ground);
+  color: var(--ink);
+}
+
+.drawer::backdrop {
+  background-color: rgb(0 0 0 / 0.4);
+}
+
+:root.theme-dark .drawer::backdrop {
+  background-color: rgb(0 0 0 / 0.66);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) .drawer::backdrop {
+    background-color: rgb(0 0 0 / 0.66);
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: var(--bar-height);
+  padding-inline: var(--chrome-gutter);
+  border-block-end: 1px solid var(--border);
+}
+
+.drawer-close {
+  margin-inline-start: auto;
+}
+
+.drawer .rail {
+  position: static;
+  display: block;
+  block-size: calc(100dvh - var(--bar-height));
+  border-inline-end: 0;
+}
+
+/* The rail a reader with no script is given, below the article. It stands
+ * in for the drawer, which is the one part of the chrome a script opens. A
+ * page that has a rail of its own only needs it below the rail's width. */
+.noscript-rail {
+  border-block-start: 1px solid var(--border);
+  padding-block: 1.5rem;
+  padding-inline: var(--chrome-gutter);
+}
+
+.noscript-rail .rail {
+  position: static;
+  display: block;
+  block-size: auto;
+  overflow: visible;
+  border-inline-end: 0;
+  padding: 0;
+}
+
+@media (min-width: 901px) {
+  .noscript-rail-narrow {
+    display: none;
+  }
+}
+
+/* ---- The table of contents --------------------------------------------
+ * The last thing to appear and the first thing to go.
+ */
+
+.toc {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .toc {
+    display: block;
+    position: sticky;
+    inset-block-start: var(--bar-height);
+    align-self: start;
+    inline-size: 15rem;
+    padding-block: 1.75rem;
+    padding-inline-end: var(--chrome-gutter);
+  }
+}
+
+/* ---- The reading column ------------------------------------------------
+ * The article, the table of contents, and the air around both, centred in
+ * whatever the rail leaves.
+ */
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
+  padding-inline: var(--chrome-gutter);
+}
+
+@media (min-width: 1280px) {
+  .page {
+    grid-template-columns: minmax(0, 46rem) 15rem;
+    column-gap: 2.5rem;
+  }
+}
+
+.page-article {
+  inline-size: 100%;
+  max-inline-size: 46rem;
+  margin-inline: auto;
+  padding-block: 2.5rem 4rem;
+}
+
+/* A page that draws its own full-width bands takes neither the cap nor the
+ * air: it was drawn for the width it is given. */
+.page-wide {
+  display: block;
+  padding-inline: 0;
+}
+
+.page-wide .page-article {
+  max-inline-size: none;
+  padding-block: 0;
+}
+
+/* ---- Skip link ---------------------------------------------------------
+ * The first thing the keyboard reaches, and it is not visible until then.
+ */
+
+.skip {
+  position: absolute;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
+  z-index: 40;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-inner, 5px);
+  background-color: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+  color: var(--ink-strong);
+  font-size: var(--text-rail);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}

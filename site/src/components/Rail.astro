@@ -1,0 +1,52 @@
+---
+/* The rail: every page the site has, as a tree.
+ *
+ * Six directories and the pages inside them. No group folds, and that is
+ * the decision this file turns on. Folding all but one keeps the rail
+ * inside a window, and the price is that forty of the site's pages are
+ * behind a control at any moment — a reader cannot see the shape of the
+ * documentation, only the shape of the section they already found. So
+ * every group stands open, the rail is taller than a window, and it
+ * scrolls. `scripts/chrome.ts` pays the two costs that come with scrolling:
+ * it restores the position across a page load, and it brings the current
+ * page into view when there is nothing stored.
+ *
+ * Nothing here hydrates. It is a list of links, and a list of links is
+ * finished the moment the HTML arrives.
+ */
+import { NAV, currentPath } from '../nav'
+
+interface Props {
+  pathname: string
+  /** Inside the drawer the rail is the whole width it is given. */
+  inDrawer?: boolean
+}
+
+const { pathname, inDrawer = false } = Astro.props
+const here = currentPath(pathname)
+---
+
+<nav class="rail" aria-label="Documentation" data-rail data-rail-drawer={inDrawer ? '' : undefined}>
+  {
+    NAV.map((group) => (
+      <div class="rail-group">
+        {/* The directory's name. Nothing folds, so nothing here is a
+          control, and it carries no marker suggesting one. */}
+        <h2 class="rail-label">{group.label}</h2>
+        <ul class="rail-items">
+          {group.entries.map((entry) => (
+            <li>
+              <a
+                class="rail-item"
+                href={entry.path}
+                aria-current={entry.path === here ? 'page' : undefined}
+              >
+                {entry.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+</nav>

@@ -1,0 +1,108 @@
+---
+/* The bar: what site this is, and the three controls that belong to no page.
+ *
+ * Identity at one end, tools at the other, and the space between them is
+ * empty on purpose. Everything that wanted to sit there was already
+ * somewhere better: the section links are the rail, and the page's own name
+ * is the heading directly below. A bar filled to look busy is the shape
+ * every framework ships, and it is what made this one look borrowed.
+ *
+ * The identity stands over the rail's column and carries the rail's own
+ * divider up through the bar, so the two read as one grid instead of a
+ * toolbar laid across a page.
+ *
+ * Only the colour mode and the drawer need script, and both are wired by
+ * `scripts/chrome.ts` off the attributes below. Search is wired by
+ * `scripts/search.ts`, which is already listening on the document.
+ */
+import githubMark from '../icons/github.svg?raw'
+import { CLOSE, DISPLAY, MENU, MOON, SEARCH, SUN } from '../icons/chrome'
+import { SITE } from '../nav'
+import Rail from './Rail.astro'
+
+interface Props {
+  pathname: string
+  /** The page draws no rail, so the drawer is the way in at every width. */
+  wide?: boolean
+}
+
+const { pathname, wide = false } = Astro.props
+---
+
+<header class:list={['bar', wide && 'bar-wide']} data-bar>
+  <a class="bar-identity" href="/">
+    <span class="bar-dot" aria-hidden="true"></span>
+    <span class="bar-wordmark">niwa</span>
+    <span class="bar-version">{SITE.version}</span>
+  </a>
+
+  <div class="bar-tools">
+    {
+      /* The hint is for the eye; `aria-keyshortcuts` is the same fact said
+        the way a screen reader says it. niwa is a macOS tool, so the key is
+        spelled out rather than resolved in the browser, which would flicker
+        on every load. */
+    }
+    <button
+      type="button"
+      class="control control-search"
+      data-search-open
+      aria-label="Search the documentation"
+      aria-haspopup="dialog"
+      aria-keyshortcuts="Meta+K Control+K"
+    >
+      <Fragment set:html={SEARCH} />
+      <span class="search-word">Search</span>
+      <kbd class="kbd" aria-hidden="true">⌘K</kbd>
+    </button>
+
+    {
+      /* One control, not three. A reader sets this once and never returns
+        to it, so it takes the room of one thing: the icon says where the
+        mode stands, and pressing it moves to the next. The server cannot
+        know the stored choice, so it renders all three and the stylesheet
+        shows the one the blocking script in the head has already chosen. */
+    }
+    <button type="button" class="control control-theme" data-theme-control>
+      <span class="mode-icon" data-mode="system"><Fragment set:html={DISPLAY} /></span>
+      <span class="mode-icon" data-mode="light"><Fragment set:html={SUN} /></span>
+      <span class="mode-icon" data-mode="dark"><Fragment set:html={MOON} /></span>
+      <span class="sr-only" data-theme-label>Colour mode</span>
+    </button>
+
+    <a class="control control-repo" href={SITE.repository}>
+      <Fragment set:html={githubMark} />
+      <span class="repo-slug">{SITE.slug}</span>
+    </a>
+
+    <button
+      type="button"
+      class="control control-menu"
+      data-drawer-open
+      aria-label="Open navigation"
+      aria-haspopup="dialog"
+    >
+      <Fragment set:html={MENU} />
+    </button>
+  </div>
+</header>
+
+{
+  /* The rail, below the width it has a column of its own. A native dialog,
+    so the browser supplies the focus trap, the Escape key and the scrim. */
+}
+<dialog class="drawer" data-drawer aria-label="Navigation">
+  <div class="drawer-head">
+    <span class="bar-dot" aria-hidden="true"></span>
+    <span class="bar-wordmark">niwa</span>
+    <button
+      type="button"
+      class="control drawer-close"
+      data-drawer-close
+      aria-label="Close navigation"
+    >
+      <Fragment set:html={CLOSE} />
+    </button>
+  </div>
+  <Rail pathname={pathname} inDrawer />
+</dialog>
