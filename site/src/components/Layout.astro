@@ -56,13 +56,19 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
         the bar's control keeps the two in step from then on. */
     }
     <script is:inline>
-      try {
-        const t = localStorage.getItem('niwa-theme')
-        if (t === 'light' || t === 'dark') {
-          document.documentElement.classList.add('theme-' + t)
-          document.documentElement.setAttribute('data-theme', t)
+      ;(function () {
+        var t = null
+        try {
+          t = localStorage.getItem('niwa-theme')
+        } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          // Nothing stored, so the platform decides the first one. From then
+          // on the reader's own choice is what is read back.
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         }
-      } catch {}
+        document.documentElement.classList.add('theme-' + t)
+        document.documentElement.setAttribute('data-theme', t)
+      })()
     </script>
     <meta charset="utf-8" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

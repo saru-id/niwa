@@ -31,10 +31,10 @@ export const SITE = {
   version: '0.1.0',
   // The repository's public home. No remote exists today; the address is
   // settled at deploy, and the deploy checklist confirms it.
-  repository: 'https://github.com/saru/niwa',
+  repository: 'https://github.com/saru-id/niwa',
   /** The name the header prints beside the mark. A test binds it to the URL. */
-  slug: 'saru/niwa',
-  license: 'https://github.com/saru/niwa#license',
+  slug: 'saru-id/niwa',
+  license: 'https://github.com/saru-id/niwa#license',
   index: '/llms.txt',
 } as const
 

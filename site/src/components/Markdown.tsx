@@ -44,37 +44,70 @@ const styles = stylex.create({
     margin: '1.5rem 0',
     position: 'relative',
   },
+  /* The fence's two labels, at its top right.
+   *
+   * The language is the outer one, hard against the same edge the code's
+   * own padding stops at, so the badge and the right end of a line of code
+   * share a margin. The copy control sits inside it, which is the order
+   * that keeps the badge still: the control is only drawn on hover, and a
+   * control that appeared to the right would push the language sideways
+   * every time the pointer crossed the fence.
+   *
+   * The row carries the fence's own surface, because it stands over a
+   * `<pre>` that scrolls sideways underneath it. Without that, a long first
+   * line slides under the labels and the two sets of glyphs overlap.
+   */
   controls: {
     alignItems: 'center',
+    backgroundColor: 'var(--surface)',
+    borderStartEndRadius: '8px',
     display: 'flex',
-    gap: '0.5rem',
+    gap: '0.75rem',
+    paddingBlock: '0.125rem',
+    paddingInlineStart: '0.75rem',
     position: 'absolute',
-    right: '0.5rem',
-    top: '0.5rem',
+    insetInlineEnd: '1px',
+    insetBlockStart: '1px',
+    // Clear of the frame's own corner, and level with the first line of
+    // code rather than floating above it.
+    marginBlockStart: '0.625rem',
+    marginInlineEnd: '1.25rem',
   },
   badge: {
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
+    letterSpacing: '0.04em',
+    lineHeight: 1,
+    // The language never moves and never reacts; it is a label, not a
+    // control, and the fence has one of those already.
+    userSelect: 'none',
   },
   copy: {
     // Longhands throughout: StyleX 0.19 silently drops the `background`
     // and `border` shorthands, so a shorthand here styles nothing.
-    backgroundColor: 'transparent',
+    backgroundColor: { default: 'transparent', ':hover': 'var(--ground)' },
     borderStyle: 'none',
-    color: 'var(--ink-muted)',
+    borderRadius: '4px',
+    color: { default: 'var(--ink-muted)', ':hover': 'var(--ink-strong)' },
     cursor: 'pointer',
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-kicker)',
+    lineHeight: 1,
     // Eleven pixel type draws a box under the 24 pixel target minimum. The
-    // padding grows the box and the equal negative margin gives the space
-    // back to the layout, so the label sits where it always sat.
-    margin: '-6px',
+    // padding grows the box and the equal negative block margin gives the
+    // height back to the row, so the label stays level with the language
+    // beside it.
+    marginBlock: '-6px',
     opacity: {
       default: 'var(--copy-shown)',
       ':focus-visible': 1,
     },
-    padding: '6px',
+    paddingBlock: '6px',
+    paddingInline: '5px',
+    transitionDuration: '120ms',
+    transitionProperty: 'opacity, color, background-color',
+    transitionTimingFunction: 'ease',
   },
   pre: {
     backgroundColor: 'var(--surface)',
@@ -106,12 +139,6 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
   return (
     <div data-code-block="" {...stylex.props(styles.block)}>
       <div {...stylex.props(styles.controls)}>
-        {/* The badge names the fence verbatim. A fence with no language and
-          a fence declaring `plaintext` are the same thing downstream, and
-          neither has anything to announce. */}
-        {lang && lang !== 'plaintext' ? (
-          <span {...stylex.props(styles.badge)}>{lang}</span>
-        ) : null}
         {/* The label is its own element so the swap `copy.ts` makes has a
           live region to announce from. The button's name is still its
           contents, so the name changes with the label. */}
@@ -120,6 +147,13 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
             Copy
           </span>
         </button>
+        {/* The badge names the fence verbatim, and it comes last so that it
+          holds the right edge. A fence with no language and a fence
+          declaring `plaintext` are the same thing downstream, and neither
+          has anything to announce. */}
+        {lang && lang !== 'plaintext' ? (
+          <span {...stylex.props(styles.badge)}>{lang}</span>
+        ) : null}
       </div>
       {/* A fence wider than its column scrolls sideways, and the tab stop is
         what lets a keyboard reach the part that is off screen. */}

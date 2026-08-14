@@ -32,8 +32,14 @@
 }
 
 /* ---- Theme -------------------------------------------------------------
- * Three states, controlled by a class on <html>. No class follows the
- * system. `theme-light` and `theme-dark` are explicit overrides.
+ * Two states, controlled by a class on <html>. The blocking script in the
+ * head always writes one of them: the reader's stored choice, or the
+ * platform's answer the first time there is nothing stored.
+ *
+ * The bare `:root` values below and the `prefers-color-scheme` block after
+ * them are therefore not the common path. They are what a reader with no
+ * script gets, whose page carries no class at all and who is served the
+ * platform's choice and nothing else.
  */
 
 :root {
@@ -178,7 +184,7 @@
   color-scheme: light;
 }
 
-/* The design system reads the same three states, through `color-scheme`.
+/* The design system reads the same two states, through `color-scheme`.
  *
  * Its tokens hold `light-dark()` pairs, and `light-dark()` resolves from
  * `color-scheme`. Its own switch is a `data-theme` attribute on `<html>`,
@@ -213,7 +219,6 @@
 diffs-container {
   color-scheme: inherit;
 }
-
 
 /* The site prints three inks and the design system holds two names for
  * them, so `--color-text-primary` carries running text and a heading takes

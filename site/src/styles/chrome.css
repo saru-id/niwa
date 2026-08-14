@@ -37,6 +37,56 @@
   --text-rail: 0.8125rem;
 }
 
+/* ---- Scrollbars --------------------------------------------------------
+ * The platform's scrollbar is a grey chrome gutter with a square track, and
+ * on a page whose only edge is a hairline it is the loudest thing drawn.
+ * The design system ships nothing for this, so the site draws its own.
+ *
+ * Two spellings of one design, because the two engines expose different
+ * hooks and neither covers both. `scrollbar-width` and `scrollbar-color`
+ * are the standard pair and are all Firefox reads; the `::-webkit-` rules
+ * are what Chrome and Safari read, and they can round the thumb and inset
+ * it, which the standard pair cannot.
+ *
+ * The thumb is the border colour at rest and the muted ink under the
+ * pointer — the same step every other control on the site takes on hover.
+ * The track is nothing at all. The transparent border plus `background-clip`
+ * is what insets the thumb: it makes a ten pixel gutter carry a six pixel
+ * bar with air on both sides, instead of a bar that touches the content.
+ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  inline-size: 10px;
+  block-size: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ink-muted);
+  background-clip: content-box;
+}
+
+/* Where a horizontal and a vertical bar meet, on a fence wide enough to
+ * need both. The platform fills it with a grey square. */
+::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
 /* ---- The page grid -----------------------------------------------------
  * Rail | everything else, with the bar spanning both above them.
  *
@@ -124,10 +174,21 @@
   flex: none;
 }
 
+/* The name and the version are one object with one baseline. Centring two
+ * different type sizes against each other leaves the small one floating in
+ * the middle of the large one's box; sitting them on a shared baseline is
+ * what makes the pair read as a name and its number. */
+.bar-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4375rem;
+}
+
 .bar-wordmark {
   font-family: var(--font-mono);
   font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: -0.01em;
   color: var(--ink-strong);
 }
@@ -136,6 +197,7 @@
 .bar-version {
   font-family: var(--font-mono);
   font-size: var(--text-kicker);
+  line-height: 1;
   color: var(--ink-muted);
   letter-spacing: 0;
 }
@@ -210,10 +272,23 @@
   background-color: var(--surface);
 }
 
+/* The shortcut, drawn as the key it names. It is a box of its own, so it
+ * centres its glyphs itself rather than inheriting the page's line height
+ * and sitting low in the field. */
 .control-search .kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-inline-start: auto;
+  min-inline-size: 1.75rem;
+  block-size: 1.125rem;
+  padding-inline: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--ground);
   font-family: var(--font-mono);
   font-size: var(--text-kicker);
+  line-height: 1;
   color: var(--ink-muted);
 }
 
@@ -265,20 +340,37 @@
 }
 
 /* ---- The colour mode's face -------------------------------------------
- * Which of the three icons shows is decided here rather than in script, so
- * the control is correct in the first paint. The states are the same three
- * the theme module names: no class follows the system, and the two classes
- * are explicit overrides.
+ * Which of the two icons shows is decided here rather than in script, so
+ * the control is correct in the first paint.
+ *
+ * A page always carries one of the two classes: the blocking script in the
+ * head reads the stored choice, and falls back to the platform's. The last
+ * pair of rules is for a reader with no script at all, who has no class and
+ * whose page is coloured by `prefers-color-scheme` alone — the control is
+ * inert for them, but it should still name the mode they are looking at.
  */
 
 .mode-icon {
   display: none;
 }
 
-:root:not(.theme-light):not(.theme-dark) .mode-icon[data-mode='system'],
 :root.theme-light .mode-icon[data-mode='light'],
 :root.theme-dark .mode-icon[data-mode='dark'] {
   display: inline-flex;
+}
+
+:root:not(.theme-light):not(.theme-dark) .mode-icon[data-mode='light'] {
+  display: inline-flex;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light):not(.theme-dark) .mode-icon[data-mode='light'] {
+    display: none;
+  }
+
+  :root:not(.theme-light):not(.theme-dark) .mode-icon[data-mode='dark'] {
+    display: inline-flex;
+  }
 }
 
 /* Said to a screen reader and to nothing else. */
@@ -315,19 +407,30 @@
   border-inline-end: 1px solid var(--border);
   padding-block: 1.25rem 3rem;
   padding-inline: var(--chrome-gutter);
-  /* The scrollbar is the site's, not the platform's, and at rest it is not
-   * drawn at all: a permanent thumb sits a few pixels from the rail's own
-   * divider and reads as a second, brighter border. It appears when the
-   * pointer is in the rail or the keyboard is, which is when it is worth
-   * anything. */
-  scrollbar-width: thin;
+  /* The rail takes the site's scrollbar one step further and hides the
+   * thumb entirely at rest: a permanent bar sits a few pixels from the
+   * rail's own divider and reads as a second, brighter border. It appears
+   * when the pointer is in the rail or the keyboard is, which is when it is
+   * worth anything. */
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 120ms ease;
+}
+
+.rail::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  background-clip: content-box;
+  transition: background-color 120ms ease;
 }
 
 .rail:hover,
 .rail:focus-within {
   scrollbar-color: var(--border-strong) transparent;
+}
+
+.rail:hover::-webkit-scrollbar-thumb,
+.rail:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  background-clip: content-box;
 }
 
 @media (max-width: 900px) {

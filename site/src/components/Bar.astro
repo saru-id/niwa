@@ -16,7 +16,7 @@
  * `scripts/search.ts`, which is already listening on the document.
  */
 import githubMark from '../icons/github.svg?raw'
-import { CLOSE, DISPLAY, MENU, MOON, SEARCH, SUN } from '../icons/chrome'
+import { CLOSE, MENU, MOON, SEARCH, SUN } from '../icons/chrome'
 import { SITE } from '../nav'
 import Rail from './Rail.astro'
 
@@ -32,8 +32,12 @@ const { pathname, wide = false } = Astro.props
 <header class:list={['bar', wide && 'bar-wide']} data-bar>
   <a class="bar-identity" href="/">
     <span class="bar-dot" aria-hidden="true"></span>
-    <span class="bar-wordmark">niwa</span>
-    <span class="bar-version">{SITE.version}</span>
+    {/* The name and the version share a baseline, so the small type sits on
+      the line the word sits on rather than in the middle of its box. */}
+    <span class="bar-name">
+      <span class="bar-wordmark">niwa</span>
+      <span class="bar-version">{SITE.version}</span>
+    </span>
   </a>
 
   <div class="bar-tools">
@@ -57,14 +61,12 @@ const { pathname, wide = false } = Astro.props
     </button>
 
     {
-      /* One control, not three. A reader sets this once and never returns
-        to it, so it takes the room of one thing: the icon says where the
-        mode stands, and pressing it moves to the next. The server cannot
-        know the stored choice, so it renders all three and the stylesheet
-        shows the one the blocking script in the head has already chosen. */
+      /* Two modes, one control. The icon says which one is on and pressing
+        it goes to the other. The server cannot know the stored choice, so
+        it renders both and the stylesheet shows the one the blocking script
+        in the head has already settled on `<html>`. */
     }
     <button type="button" class="control control-theme" data-theme-control>
-      <span class="mode-icon" data-mode="system"><Fragment set:html={DISPLAY} /></span>
       <span class="mode-icon" data-mode="light"><Fragment set:html={SUN} /></span>
       <span class="mode-icon" data-mode="dark"><Fragment set:html={MOON} /></span>
       <span class="sr-only" data-theme-label>Colour mode</span>

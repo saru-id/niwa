@@ -13,13 +13,13 @@
 import { recall, remember, show, type Choice } from './theme'
 
 /* ---- The colour mode --------------------------------------------------
- * Three states in one control. The icon says where the mode stands now and
- * pressing it moves to the next; which icon shows is decided by the
- * stylesheet off the class on `<html>`, so it is right before this runs.
+ * Two states in one control. The icon says which mode is on and pressing it
+ * goes to the other; which icon shows is decided by the stylesheet off the
+ * class on `<html>`, so it is right before this runs.
  */
 
-const NEXT: Record<Choice, Choice> = { system: 'light', light: 'dark', dark: 'system' }
-const NAME: Record<Choice, string> = { system: 'system', light: 'light', dark: 'dark' }
+const NEXT: Record<Choice, Choice> = { light: 'dark', dark: 'light' }
+const NAME: Record<Choice, string> = { light: 'light', dark: 'dark' }
 
 function label(choice: Choice): string {
   return `Colour mode: ${NAME[choice]}. Switch to ${NAME[NEXT[choice]]}.`
