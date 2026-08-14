@@ -75,6 +75,24 @@ export const styles = stylex.create({
   bar: {
     minHeight: 'var(--header-height)',
   },
+  /* The mark the site opens every page with, at the size of the word beside
+   * it. One filled circle in the accent: the whole identity budget the
+   * brief gives the chrome, spent in one place. */
+  dot: {
+    backgroundColor: 'var(--accent)',
+    blockSize: '0.5rem',
+    borderRadius: '50%',
+    display: 'inline-block',
+    inlineSize: '0.5rem',
+  },
+  /* The version, beside the name. It is a fact about what these pages
+   * describe, and it belongs where the name is rather than only at the
+   * foot of the page. */
+  version: {
+    color: 'var(--ink-muted)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-kicker)',
+  },
   /* The way in to search reads as a field, not as a button: a stated width
    * with the label at one end and the shortcut at the other. A button that
    * says only "Search" is the shape every framework ships by default, and a

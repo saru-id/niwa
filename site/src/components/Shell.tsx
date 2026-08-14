@@ -1,19 +1,19 @@
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { Button } from '@astryxdesign/core/Button'
+import { IconButton } from '@astryxdesign/core/IconButton'
 import { HStack } from '@astryxdesign/core/HStack'
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout'
 import { MobileNav } from '@astryxdesign/core/MobileNav'
 import { Outline } from '@astryxdesign/core/Outline'
-import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
 import { DisplayIcon, MoonIcon, SearchIcon, SunIcon } from '../icons/theme'
 import { Theme } from '@astryxdesign/core/theme'
-import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
+import { TopNav, TopNavHeading, TopNavItem } from '@astryxdesign/core/TopNav'
 import * as stylex from '@stylexjs/stylex'
 import { useState, type ReactNode } from 'react'
 // `?raw` inlines the vendored file at build time. Nothing is fetched.
 import githubMark from '../icons/github.svg?raw'
 import type { Heading } from '../lib/headings'
-import { SITE } from '../nav'
+import { SITE, currentPath } from '../nav'
 import { recall, remember, show, type Choice } from '../scripts/theme'
 import { niwaTheme } from '../theme/niwa'
 import { FRAME, styles } from './Shell.styles'
@@ -64,24 +64,36 @@ interface Props {
  * script in the head and by nothing else; this is a view of it. The bar and
  * the drawer each show one, and both read the same state, so the two can
  * never disagree. */
+/* The colour mode, in one control instead of three.
+ *
+ * A reader sets this once and never returns to it, so it takes the room of
+ * one thing rather than three: the icon says where the mode stands now, and
+ * pressing it moves to the next. The label and the title both name the
+ * destination, so the pointer and the screen reader are told the same fact
+ * before the press rather than after it.
+ */
+const NEXT: Record<Choice, Choice> = { system: 'light', light: 'dark', dark: 'system' }
+const MODE_ICON: Record<Choice, () => ReactNode> = {
+  system: () => <DisplayIcon />,
+  light: () => <SunIcon />,
+  dark: () => <MoonIcon />,
+}
+const MODE_NAME: Record<Choice, string> = { system: 'system', light: 'light', dark: 'dark' }
+
 function ThemeControl({ choice, onChoose }: { choice: Choice; onChoose: (choice: Choice) => void }) {
+  const next = NEXT[choice]
   return (
-    <SegmentedControl
-      label="Theme"
+    <IconButton
+      label={`Colour mode: ${MODE_NAME[choice]}. Switch to ${MODE_NAME[next]}.`}
+      icon={MODE_ICON[choice]()}
+      variant="ghost"
       size="sm"
-      value={choice}
+      tooltip={`Colour mode: ${MODE_NAME[choice]}`}
       data-theme-control
-      onChange={(value) => {
-        onChoose(value as Choice)
+      onClick={() => {
+        onChoose(next)
       }}
-    >
-      {/* The names are the labels a screen reader reads and the tooltips a
-        pointer finds; the eye reads the icons. Three words spelled out sit
-        in the header of every page for a choice made once. */}
-      <SegmentedControlItem value="system" label="System" icon={<DisplayIcon />} isLabelHidden />
-      <SegmentedControlItem value="light" label="Light" icon={<SunIcon />} isLabelHidden />
-      <SegmentedControlItem value="dark" label="Dark" icon={<MoonIcon />} isLabelHidden />
-    </SegmentedControl>
+    />
   )
 }
 
@@ -107,6 +119,37 @@ function RepositoryLink() {
         />
       }
     />
+  )
+}
+
+/* The site's four areas, in the bar.
+ *
+ * The rail lists the pages inside one area; this lists the areas. A reader
+ * who lands deep in the reference can see the whole shape of the
+ * documentation and move across it without going back to a start page. The
+ * rail's own group opens itself from the address, so the two agree without
+ * either knowing about the other.
+ */
+const AREAS = [
+  { href: '/start', label: 'Start' },
+  { href: '/concepts', label: 'Concepts' },
+  { href: '/guides', label: 'Guides' },
+  { href: '/reference', label: 'Reference' },
+] as const
+
+function AreaTabs({ pathname }: { pathname: string }) {
+  const here = currentPath(pathname)
+  return (
+    <>
+      {AREAS.map((area) => (
+        <TopNavItem
+          key={area.href}
+          label={area.label}
+          href={area.href}
+          isSelected={here === area.href || here.startsWith(`${area.href}/`)}
+        />
+      ))}
+    </>
   )
 }
 
@@ -264,7 +307,18 @@ export function Shell({
           <TopNav
             label="Header"
             xstyle={styles.bar}
-            heading={<TopNavHeading heading="niwa" headingHref="/" xstyle={styles.wordmark} />}
+            heading={
+              <TopNavHeading
+                heading="niwa"
+                headingHref="/"
+                xstyle={styles.wordmark}
+                logo={<span {...stylex.props(styles.dot)} aria-hidden="true" />}
+                headerEndContent={
+                  <span {...stylex.props(styles.version)}>{SITE.version}</span>
+                }
+              />
+            }
+            startContent={<AreaTabs pathname={pathname} />}
             endContent={controls}
           />
         }
