@@ -481,33 +481,40 @@ html {
   }
 }
 
-/* The other two release the navigation column.
+/* The rail stays put while the page moves.
  *
- * A shell that grows with its content holds the column to one viewport and
- * gives it a scrollbar of its own. This rail is sixty-one labels long and no
- * viewport holds it, so that scrollbar is always drawn — and a rail that
- * scrolls apart from the page is the thing this shell must not do. Released,
- * the column is as tall as the page: its hairline runs the whole way down,
- * and the one scrollbar the window has reaches every label in it.
+ * A documentation rail that scrolls away with the article is a rail you
+ * have to travel back up to use. It sits under the header, takes the rest
+ * of the viewport, and scrolls its own sixty-one labels when they are
+ * taller than that.
  *
- * The height is two declarations because the column answers to two things.
- * A flex child with no height of its own stretches, which is what makes it
- * as tall as the tallest column beside it. The floor is for the pages that
- * are shorter than a window, where without it the hairline would stop above
- * the fold and leave a stub.
- *
- * The shell also sticks the column, and that stays: an element that already
- * fills its container has nowhere to travel to.
+ * The scrollbar is the site's, not the platform's. `scrollbar-width: thin`
+ * and a transparent track leave a hairline that reads as part of the rail
+ * instead of a grey chrome gutter, and the thumb only appears once the
+ * pointer is in the rail. `overscroll-behavior: contain` stops a flick at
+ * the end of the rail from carrying on into the page behind it.
  *
  * The element carries no attribute to name it by, so it is named by the
  * panel it holds.
  */
 .astryx-layout div:has(> .astryx-app-shell-sidenav) {
-  height: auto;
-  min-height: calc(100dvh - var(--appshell-header-height, 0px));
+  block-size: calc(100dvh - var(--appshell-header-height, var(--header-height)));
+  inset-block-start: var(--appshell-header-height, var(--header-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: sticky;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+  transition: scrollbar-color 120ms ease;
+}
+
+.astryx-layout div:has(> .astryx-app-shell-sidenav):hover,
+.astryx-layout div:has(> .astryx-app-shell-sidenav):focus-within {
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 .astryx-app-shell-sidenav {
+  block-size: auto;
   overflow: visible;
 }
 
@@ -679,21 +686,24 @@ nav[aria-label='Site'] a {
  */
 
 nav[aria-label='Site'] .astryx-side-nav-item[data-selected] {
-  background-color: var(--surface);
-  /* Longhands, and important: the system draws its own border on this
-   * element, and its compiled styles carry StyleX's specificity guard. */
-  border-inline-start-color: var(--accent) !important;
-  border-inline-start-style: solid !important;
-  border-inline-start-width: 2px !important;
+  /* A tinted pill, not a bar down the side. The accent at a tenth carries
+   * the mark on either ground, and the row keeps the same left edge as the
+   * ones around it — a border on one item alone shifts its text and breaks
+   * the column the rail is built on. */
+  background-color: color-mix(in oklch, var(--accent) 12%, transparent);
   color: var(--ink-strong);
   font-weight: 500;
 }
 
-/* A group's title heads the links beneath it, so it cannot be quieter or
- * smaller than they are. The system ships it muted at 13px above items at
- * 14px, which inverts the two. The component's own theming hook reaches
- * the section container, not the title inside it, so the title is named
- * here — and important, for the same specificity guard. */
+nav[aria-label='Site'] .astryx-side-nav-item {
+  border-radius: var(--radius-inner);
+}
+
+nav[aria-label='Site'] .astryx-side-nav-item:hover:not([data-selected]) {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
 nav[aria-label='Site'] .astryx-side-nav-section > div:first-child :is(span, span span) {
   color: var(--ink-strong) !important;
   font-size: var(--text-nav) !important;

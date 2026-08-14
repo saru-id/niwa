@@ -75,9 +75,22 @@ export const styles = stylex.create({
   bar: {
     minHeight: 'var(--header-height)',
   },
+  /* The way in to search reads as a field, not as a button: a stated width
+   * with the label at one end and the shortcut at the other. A button that
+   * says only "Search" is the shape every framework ships by default, and a
+   * reader has to guess whether it opens a box or runs one. Below the
+   * breakpoint it collapses to its icon, where a fixed width would crowd
+   * the wordmark. */
+  search: {
+    inlineSize: { default: 'auto', '@media (min-width: 769px)': '15rem' },
+    justifyContent: 'flex-start',
+  },
   // A touch device has no command key, so the hint is not shown there.
+  // The shortcut sits at the far end of the field; the magnifier and the
+  // word stay together at the near end, the way they do in a real one.
   kbd: {
     display: { default: 'none', '@media (min-width: 640px)': 'inline-flex' },
+    marginInlineStart: 'auto',
   },
   // The theme control and the repository link ride in the bar while there
   // is room for them, and in the drawer below the breakpoint where the bar

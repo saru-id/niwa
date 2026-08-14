@@ -34,11 +34,13 @@ export function Footer() {
           <Text type="supporting" color="secondary" xstyle={styles.version}>
             niwa {SITE.version}
           </Text>
-          {LINKS.map((link) => (
-            <Link key={link.href} href={link.href} type="supporting" xstyle={styles.link}>
-              {link.label}
-            </Link>
-          ))}
+          <HStack gap={0} align="center" wrap="wrap" xstyle={styles.links}>
+            {LINKS.map((link) => (
+              <Link key={link.href} href={link.href} type="supporting" xstyle={styles.link}>
+                {link.label}
+              </Link>
+            ))}
+          </HStack>
         </HStack>
       </footer>
     </Theme>

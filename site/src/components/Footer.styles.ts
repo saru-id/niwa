@@ -6,8 +6,16 @@ export const styles = stylex.create({
     borderBlockStartStyle: 'solid',
     borderBlockStartWidth: '1px',
   },
+  /* The version sits at one end and the three links at the other, so the
+   * foot of the page has the same two edges every band above it has. It is
+   * given room: a hairline with a line of type pressed against it reads as
+   * the page having run out rather than having ended. */
   line: {
-    paddingBlock: '1.25rem',
+    justifyContent: 'space-between',
+    paddingBlock: 'var(--spacing-8)',
+  },
+  links: {
+    columnGap: 'var(--spacing-5)',
   },
   // The face the rest of the site's chrome is set in. The design system
   // carries the size and the ink; the site carries the face.

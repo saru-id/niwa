@@ -7,6 +7,7 @@ import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout'
 import { MobileNav } from '@astryxdesign/core/MobileNav'
 import { Outline } from '@astryxdesign/core/Outline'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
+import { DisplayIcon, MoonIcon, SearchIcon, SunIcon } from '../icons/theme'
 import { Theme } from '@astryxdesign/core/theme'
 import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
 import * as stylex from '@stylexjs/stylex'
@@ -76,9 +77,12 @@ function ThemeControl({ choice, onChoose }: { choice: Choice; onChoose: (choice:
         onChoose(value as Choice)
       }}
     >
-      <SegmentedControlItem value="system" label="System" />
-      <SegmentedControlItem value="light" label="Light" />
-      <SegmentedControlItem value="dark" label="Dark" />
+      {/* The names are the labels a screen reader reads and the tooltips a
+        pointer finds; the eye reads the icons. Three words spelled out sit
+        in the header of every page for a choice made once. */}
+      <SegmentedControlItem value="system" label="System" icon={<DisplayIcon />} isLabelHidden />
+      <SegmentedControlItem value="light" label="Light" icon={<SunIcon />} isLabelHidden />
+      <SegmentedControlItem value="dark" label="Dark" icon={<MoonIcon />} isLabelHidden />
     </SegmentedControl>
   )
 }
@@ -150,12 +154,15 @@ export function Shell({
         already listening before this button has any script of its own. */}
       <Button
         label="Search"
+        aria-label="Search the documentation"
+        icon={<SearchIcon />}
         variant="secondary"
         size="sm"
         data-search-open
         aria-haspopup="dialog"
         aria-keyshortcuts="Meta+K Control+K"
         endContent={<Kbd keys="mod+k" xstyle={styles.kbd} />}
+        xstyle={styles.search}
       />
       <Divider orientation="vertical" xstyle={styles.rule} />
       <HStack gap={2} align="center" xstyle={styles.wideOnly}>
