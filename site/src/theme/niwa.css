@@ -290,6 +290,10 @@
     line-height: var(--text-display-3-leading);
   }
 
+  .astryx-side-nav-item {
+    color: var(--ink-muted);
+  }
+
   .astryx-code {
     background-color: transparent;
     color: var(--ink-strong);

@@ -436,12 +436,6 @@ pagefind-results mark {
   --text-toc: 0.8125rem;
   --text-meta: 0.75rem;
   --text-kicker: 0.6875rem;
-
-  /* Prose only. Code, output, tables and trees run the full column and
-   * scroll past it. 31rem lands at seventy-one rendered characters on the
-   * longest line of `/concepts/model` in the system sans, counted character
-   * by character; verify by counting a real line before changing it. */
-  --measure: 31rem;
 }
 
 /* ---- Base --------------------------------------------------------------- */
@@ -470,21 +464,51 @@ html {
 }
 
 /* ---- Shell -------------------------------------------------------------
- * Two rules the design system's shell cannot state for itself.
+ * Three rules the design system's shell cannot state for itself.
  *
- * It decides between the navigation column and the drawer from a media
- * query it reads in JavaScript, and the page is HTML before that runs. So
- * the server draws the column at every width, and this hides it at exactly
- * the width where the shell will hide it: no jump when the script arrives,
- * and no 260 pixel column beside a phone. A reader with no script keeps the
- * column above the breakpoint and is given the same navigation below it,
- * once, from the `<noscript>` under the shell.
+ * The first: it decides between the navigation column and the drawer from a
+ * media query it reads in JavaScript, and the page is HTML before that runs.
+ * So the server draws the column at every width, and this hides it at
+ * exactly the width where the shell will hide it: no jump when the script
+ * arrives, and no 260 pixel column beside a phone. A reader with no script
+ * keeps the column above the breakpoint and is given the same navigation
+ * below it, once, from the `<noscript>` under the shell.
  */
 
 @media (max-width: 768px) {
   .astryx-app-shell-sidenav {
     display: none;
   }
+}
+
+/* The other two release the navigation column.
+ *
+ * A shell that grows with its content holds the column to one viewport and
+ * gives it a scrollbar of its own. This rail is sixty-one labels long and no
+ * viewport holds it, so that scrollbar is always drawn — and a rail that
+ * scrolls apart from the page is the thing this shell must not do. Released,
+ * the column is as tall as the page: its hairline runs the whole way down,
+ * and the one scrollbar the window has reaches every label in it.
+ *
+ * The height is two declarations because the column answers to two things.
+ * A flex child with no height of its own stretches, which is what makes it
+ * as tall as the tallest column beside it. The floor is for the pages that
+ * are shorter than a window, where without it the hairline would stop above
+ * the fold and leave a stub.
+ *
+ * The shell also sticks the column, and that stays: an element that already
+ * fills its container has nowhere to travel to.
+ *
+ * The element carries no attribute to name it by, so it is named by the
+ * panel it holds.
+ */
+.astryx-layout div:has(> .astryx-app-shell-sidenav) {
+  height: auto;
+  min-height: calc(100dvh - var(--appshell-header-height, 0px));
+}
+
+.astryx-app-shell-sidenav {
+  overflow: visible;
 }
 
 /* The keyboard hint the segmented control raises the first time it is
@@ -503,16 +527,6 @@ body {
   font-size: var(--text-body);
   line-height: 1.65;
   overflow-wrap: break-word;
-}
-
-/* The measure, applied to the reading. The page furniture carries it through
- * its own styles; the markdown body is written by the renderer, which has no
- * class of ours to hang it on, so it is named by element here. These four
- * elements and no others, because a table, a figure, a fence, a tree and the
- * nav all run the full column on purpose. Two type selectors lose to any
- * class, so a component that sets a width of its own still wins. */
-article :is(p, ul, ol, blockquote) {
-  max-width: var(--measure);
 }
 
 /* Meaning never travels by color alone, so a prose link is underlined at
@@ -631,18 +645,9 @@ h4:hover .anchor-heading,
   white-space: normal;
 }
 
-/* A row built for one line has no room between two. The rail gets its
- * spacing back, so a wrapped label reads as one item and not as two. The
- * items are flex children of a group, not list items, so the gap goes on
- * the group and the padding on the row itself. */
-nav[aria-label='Site'] details > div {
-  display: flex;
-  flex-direction: column;
-  row-gap: 0.25rem;
-}
-
-/* A rail row is a fixed 28 pixels tall, so a wrapped label overflows it and
- * lands on the row below. The row has to grow instead.
+/* A rail row is one element tall and no taller, so a label that takes two
+ * lines overflows it and lands on the row below. The row has to grow
+ * instead, and it keeps its own height as a floor.
  *
  * `!important` is the only thing that reaches it. The design system's
  * compiled styles carry StyleX's specificity guard — `:not(#\#)` three
@@ -651,8 +656,8 @@ nav[aria-label='Site'] details > div {
  * and for the same reason: the declaration has to be the last word. */
 nav[aria-label='Site'] a {
   block-size: auto !important;
-  min-block-size: 1.75rem;
-  padding-block: 0.25rem !important;
+  min-block-size: var(--size-element-sm);
+  padding-block: var(--spacing-1) !important;
 }
 
 /* An identifier in a table cell does not break. `[<TARGET>...]` split
@@ -661,4 +666,36 @@ nav[aria-label='Site'] a {
  * wrapper, where the tail stays reachable. */
 :is(td, th) code {
   white-space: nowrap;
+}
+
+/* ---- The rail's current page --------------------------------------------
+ * The design system marks the selected item with a ten percent wash, which
+ * on this ground is very nearly nothing. It is the one thing a rail of
+ * sixty links has to answer at a glance, so the site marks it with its
+ * strongest ink and an accent edge.
+ *
+ * `data-selected` is the stable surface the styling guide names; the bare
+ * `.selected` class beside it is the deprecated one and is not used here.
+ */
+
+nav[aria-label='Site'] .astryx-side-nav-item[data-selected] {
+  background-color: var(--surface);
+  /* Longhands, and important: the system draws its own border on this
+   * element, and its compiled styles carry StyleX's specificity guard. */
+  border-inline-start-color: var(--accent) !important;
+  border-inline-start-style: solid !important;
+  border-inline-start-width: 2px !important;
+  color: var(--ink-strong);
+  font-weight: 500;
+}
+
+/* A group's title heads the links beneath it, so it cannot be quieter or
+ * smaller than they are. The system ships it muted at 13px above items at
+ * 14px, which inverts the two. The component's own theming hook reaches
+ * the section container, not the title inside it, so the title is named
+ * here — and important, for the same specificity guard. */
+nav[aria-label='Site'] .astryx-side-nav-section > div:first-child :is(span, span span) {
+  color: var(--ink-strong) !important;
+  font-size: var(--text-nav) !important;
+  font-weight: 600 !important;
 }

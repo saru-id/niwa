@@ -2,43 +2,73 @@ import * as stylex from '@stylexjs/stylex'
 
 /* The shell's own arithmetic. Everything else is a component prop.
  *
- * The three regions are budgeted in pixels before anything is written into
- * them: the navigation column is the design system's own 260, the reading
- * column is 44rem, and the table of contents is 13rem. The reading column
- * and the rail beside it are centred together inside whatever the
- * navigation column leaves.
+ * The frame is budgeted in pixels before anything is written into it. The
+ * design system owns the navigation column, which is its own 260; these are
+ * the two numbers beside it.
+ *
+ * READING is the measure. 720 pixels of the system sans at 16px is about
+ * ninety characters on the longest line of `/concepts/model`, counted
+ * character by character; ninety is the top of what one column of running
+ * text can hold. It is also the width the rest of an article wants, because
+ * a fence, a screen, a table and a tree share this column, and everything in
+ * an article ends at this one right edge.
+ *
+ * ROW is that column, the table of contents, and the air around both. It is
+ * the number `Layout` takes: `contentWidth` caps the whole start|content|end
+ * row, not the content alone. So the reading column carries a cap of its own
+ * as well, for the widths below 1280 where the table of contents is gone and
+ * the row would hand the column everything it has.
+ *
+ *     32  +   720   +  32 | 32 +    192   +  32
+ *    air     reading   air  air  contents   air
+ *     \_________________/    \_______________/
+ *            784                    256
+ *     \_______________________________________/
+ *                       1040
+ *
+ * 32 is spacing step 8, the one step both slots are given.
  */
+export const FRAME = {
+  /** `Layout contentWidth`: the reading column and the contents, centred. */
+  row: 1040,
+  /** The reading column's own cap, its air included. */
+  reading: 784,
+  /** `LayoutPanel width` for the table of contents, its air included. */
+  outline: 256,
+  /** The spacing step both slots carry. */
+  padding: 8,
+} as const
 
 export const styles = stylex.create({
-  // The reading column and the table of contents, centred as a pair.
-  body: {
+  // The reading column. `Layout` centres the row; this centres the column
+  // inside whatever the row gives it once the contents are gone.
+  //
+  // A slot publishes its own padding so that dense data can bleed back out
+  // to the slot's edges, which is right for a table that is the page. In an
+  // article a table is one block among fences, screens and trees, and they
+  // all end where the prose ends. So the column publishes nothing to bleed
+  // into, and the table keeps the cell padding it falls back to.
+  reading: {
+    '--container-padding-inline-end': '0px',
+    '--container-padding-inline-start': '0px',
     marginInline: 'auto',
-    maxWidth: 'calc(44rem + 3.5rem + 13rem)',
+    maxWidth: FRAME.reading,
     width: '100%',
-  },
-  // A page that renders no rail keeps its own bands, so the shell adds no
-  // column of its own and lets the page run the width it was drawn for.
-  bare: {
-    width: '100%',
-  },
-  column: {
-    minWidth: 0,
   },
   // The last thing to appear and the first thing to go. Its content is not
-  // repeated anywhere, so nothing is lost when it goes.
+  // repeated anywhere, so nothing is lost when it goes. Below 1280 the row
+  // has no room for both it and the measure, and the measure wins.
+  //
+  // It follows the reader by sticking, and it does not scroll: on this site
+  // the page is the only scroller. A table of contents is a dozen lines, so
+  // there is nothing for a second scrollbar to reach.
   outline: {
     alignSelf: 'start',
     display: { default: 'none', '@media (min-width: 1280px)': 'block' },
-    // 13rem is the budget, and the reading column gives way first: without
-    // this the rail is the flex item that loses, and it loses all of it.
-    flexShrink: 0,
     insetBlockStart: 'var(--header-height)',
-    maxHeight: 'calc(100dvh - var(--header-height))',
-    overflowY: 'auto',
     position: 'sticky',
-    width: '13rem',
   },
-  // One number decides the header's height, the two rails' sticky top, and
+  // One number decides the header's height, the outline's sticky top, and
   // the room a heading jumped to has to clear. The shell measures its own
   // header and would have set a second number beside that one, so the bar
   // is pinned to the number the site already has.
@@ -57,6 +87,15 @@ export const styles = stylex.create({
   wideOnly: {
     display: { default: 'none', '@media (min-width: 769px)': 'flex' },
   },
+  // The hairline that separates finding a page from the two controls beside
+  // it. It travels with them, so it is not drawn on a narrow bar either. A
+  // vertical divider is as tall as its parent, and the bar's end content is
+  // as tall as its tallest control, so the height is stated here.
+  rule: {
+    blockSize: 'var(--spacing-5)',
+    display: { default: 'none', '@media (min-width: 769px)': 'inline-flex' },
+    marginInline: 'var(--spacing-1)',
+  },
   // The same two, at the foot of the drawer.
   drawerControls: {
     borderBlockStartColor: 'var(--border)',
@@ -71,6 +110,12 @@ export const styles = stylex.create({
     fontSize: '1rem',
     fontWeight: 600,
     letterSpacing: '-0.01em',
+  },
+  // The vendored mark is drawn at 1em in `currentColor`, so it takes the
+  // size and the ink of the label beside it and needs nothing else.
+  mark: {
+    alignItems: 'center',
+    display: 'inline-flex',
   },
   // The navigation a reader with no script is given, below the shell. It is
   // inside a `<noscript>`, so with a script it is not in the document at

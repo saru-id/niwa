@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { LANDING, NAV, SITE, currentPath, groupOpens } from './nav'
+import { LANDING, NAV, SITE, currentPath } from './nav'
 
 describe('the sidebar', () => {
   it('carries six groups in the order the brief fixes', () => {
@@ -21,10 +21,6 @@ describe('the sidebar', () => {
   it('describes sixty-two pages, the landing included', () => {
     const pages = NAV.flatMap((group) => group.entries).length + 1
     expect(pages).toBe(62)
-  })
-
-  it('folds Commands and nothing else', () => {
-    expect(NAV.filter((group) => group.folded).map((group) => group.label)).toEqual(['Commands'])
   })
 
   it('gives every entry a path, a title, and a job', () => {
@@ -48,19 +44,13 @@ describe('the current page', () => {
     expect(currentPath('/concepts/model')).toBe('/concepts/model')
     expect(currentPath('/')).toBe('/')
   })
+})
 
-  it('opens a folded group only from inside it', () => {
-    const commands = NAV[3]
-    expect(commands).toBeDefined()
-    if (!commands) return
-    expect(groupOpens(commands, '/concepts/model')).toBe(false)
-    expect(groupOpens(commands, '/reference/cli/apply/')).toBe(true)
-  })
-
-  it('leaves the other groups open everywhere', () => {
-    for (const group of NAV.filter((candidate) => !candidate.folded)) {
-      expect(groupOpens(group, '/reference/cli/apply')).toBe(true)
-    }
+describe('the repository', () => {
+  // The header prints the slug beside the mark and links to the URL. The two
+  // are one address said twice, so they are checked against each other.
+  it('is named by the address it links to', () => {
+    expect(SITE.repository.endsWith(`/${SITE.slug}`)).toBe(true)
   })
 })
 

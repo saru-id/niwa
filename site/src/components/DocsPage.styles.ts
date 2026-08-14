@@ -8,7 +8,6 @@ export const styles = stylex.create({
     letterSpacing: '-0.015em',
     lineHeight: 1.15,
     marginBlock: '0.6rem 0',
-    maxWidth: 'var(--measure)',
     // A title is short enough to balance, and a one-word second line reads
     // as a mistake.
     textWrap: 'balance',
@@ -18,7 +17,6 @@ export const styles = stylex.create({
   deck: {
     color: 'var(--ink-muted)',
     marginBlock: '0.75rem 2rem',
-    maxWidth: 'var(--measure)',
     textWrap: 'pretty',
   },
   foot: {

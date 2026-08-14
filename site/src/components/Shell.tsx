@@ -1,25 +1,34 @@
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { Button } from '@astryxdesign/core/Button'
+import { Divider } from '@astryxdesign/core/Divider'
 import { HStack } from '@astryxdesign/core/HStack'
 import { Kbd } from '@astryxdesign/core/Kbd'
-import { Link } from '@astryxdesign/core/Link'
+import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout'
 import { MobileNav } from '@astryxdesign/core/MobileNav'
 import { Outline } from '@astryxdesign/core/Outline'
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl'
-import { StackItem } from '@astryxdesign/core/Stack'
 import { Theme } from '@astryxdesign/core/theme'
 import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
+import * as stylex from '@stylexjs/stylex'
 import { useEffect, useState, type ReactNode } from 'react'
+// `?raw` inlines the vendored file at build time. Nothing is fetched.
+import githubMark from '../icons/github.svg?raw'
 import type { Heading } from '../lib/headings'
 import { SITE } from '../nav'
 import { recall, remember, show, type Choice } from '../scripts/theme'
 import { niwaTheme } from '../theme/niwa'
-import { styles } from './Shell.styles'
+import { FRAME, styles } from './Shell.styles'
 import { SiteNav } from './SiteNav'
 
 /* The page shell.
  *
- * Frame: navigation 260 | reading 44rem | table of contents 13rem.
+ * Frame: navigation 260 | reading 720 | table of contents 192, with the
+ * arithmetic and its reasons in `Shell.styles.ts`.
+ *
+ * Nothing inside the shell scrolls. The page is the one scroller: the shell
+ * grows with its content, the reading column grows with it, and the
+ * navigation column stands in the flow beside them. `app.css` releases the
+ * one pane the design system would otherwise pin to the viewport.
  *
  * Responsive contract, declared before the content:
  *   > 768px   navigation column | reading column, and above 1280 the
@@ -34,7 +43,7 @@ import { SiteNav } from './SiteNav'
  * drawer through context. Splitting it would render it twice.
  */
 
-// The sticky header the rails clear, in the unit `offset` is measured in.
+// The sticky header the outline clears, in the unit `offset` is measured in.
 // `--header-height` is 3.75rem and the site does not scale its root.
 const HEADER_HEIGHT = 60
 
@@ -74,6 +83,31 @@ function ThemeControl({ choice, onChoose }: { choice: Choice; onChoose: (choice:
   )
 }
 
+/* The repository, named the way the repository names itself: the mark and
+ * the slug. There is no remote yet, so there is no count of anything to
+ * print beside them.
+ *
+ * The mark is one glyph and the design system has no component for artwork,
+ * so it rides in a span. The file is drawn at 1em in `currentColor`, which
+ * is why the span carries no size and no ink of its own. */
+function RepositoryLink() {
+  return (
+    <Button
+      label={SITE.slug}
+      variant="ghost"
+      size="sm"
+      href={SITE.repository}
+      icon={
+        <span
+          {...stylex.props(styles.mark)}
+          aria-hidden="true"
+          dangerouslySetInnerHTML={{ __html: githubMark }}
+        />
+      }
+    />
+  )
+}
+
 export function Shell({
   pathname,
   headings,
@@ -104,9 +138,7 @@ export function Shell({
   const settings = (
     <>
       <ThemeControl choice={choice} onChoose={choose} />
-      <Link href={SITE.repository} isStandalone>
-        Repository
-      </Link>
+      <RepositoryLink />
     </>
   )
 
@@ -125,11 +157,22 @@ export function Shell({
         aria-keyshortcuts="Meta+K Control+K"
         endContent={<Kbd keys="mod+k" xstyle={styles.kbd} />}
       />
-      <HStack gap={1} align="center" xstyle={styles.wideOnly}>
+      <Divider orientation="vertical" xstyle={styles.rule} />
+      <HStack gap={2} align="center" xstyle={styles.wideOnly}>
         {settings}
       </HStack>
+      {/* The landing has no rail, so the header carries the way in. It is a
+        link to where a reader starts, not a drawer named after itself:
+        "Navigation" tells nobody where they would arrive. The drawer is
+        still there below the rail's width, where the shell's own toggle
+        opens it. */}
       {carriesNavigation && (
-        <Button label="Navigation" variant="ghost" size="sm" onClick={() => setNavOpen(true)} />
+        <Button
+          label="Documentation"
+          href="/start"
+          variant="ghost"
+          size="sm"
+        />
       )}
     </>
   )
@@ -145,37 +188,55 @@ export function Shell({
       onOpenChange={carriesNavigation ? setNavOpen : undefined}
     >
       <SiteNav pathname={pathname} inDrawer />
-      <HStack gap={1} align="center" wrap="wrap" xstyle={styles.drawerControls}>
+      <HStack gap={2} align="center" wrap="wrap" xstyle={styles.drawerControls}>
         {settings}
       </HStack>
     </MobileNav>
   )
 
+  /* The reading frame. A page that carries its own full-width bands takes
+   * neither the cap nor the padding: it was drawn for the width it is
+   * given, and it has no headings to put in a table of contents. */
   const content = (
-    <HStack
-      gap={10}
-      align="start"
-      paddingInline={5}
-      paddingBlock={10}
-      xstyle={carriesNavigation ? styles.bare : styles.body}
-    >
-      <StackItem size="fill" xstyle={styles.column} data-pagefind-body={indexed ? '' : undefined}>
-        {children}
-      </StackItem>
-      {outline !== undefined && (
-        <Outline
-          label="On this page"
-          density="compact"
-          offset={HEADER_HEIGHT}
-          xstyle={styles.outline}
-          items={outline.map((heading) => ({
-            id: heading.id,
-            label: heading.text,
-            level: heading.depth,
-          }))}
-        />
-      )}
-    </HStack>
+    <Layout
+      height="auto"
+      contentWidth={carriesNavigation ? undefined : FRAME.row}
+      end={
+        outline === undefined ? undefined : (
+          /* The panel takes no landmark role of its own. The table of
+             contents inside it is already a navigation landmark with this
+             name, and a second landmark around it would say the same name
+             twice. */
+          <LayoutPanel
+            isScrollable={false}
+            padding={FRAME.padding}
+            width={FRAME.outline}
+            xstyle={styles.outline}
+          >
+            <Outline
+              label="On this page"
+              density="compact"
+              offset={HEADER_HEIGHT}
+              items={outline.map((heading) => ({
+                id: heading.id,
+                label: heading.text,
+                level: heading.depth,
+              }))}
+            />
+          </LayoutPanel>
+        )
+      }
+      content={
+        <LayoutContent
+          isScrollable={false}
+          padding={carriesNavigation ? 0 : FRAME.padding}
+          xstyle={carriesNavigation ? undefined : styles.reading}
+          data-pagefind-body={indexed ? '' : undefined}
+        >
+          {children}
+        </LayoutContent>
+      }
+    />
   )
 
   return (

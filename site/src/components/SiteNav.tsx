@@ -1,6 +1,6 @@
-import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav'
+import { SideNav, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav'
 import * as stylex from '@stylexjs/stylex'
-import { NAV, currentPath, groupOpens } from '../nav'
+import { NAV, currentPath } from '../nav'
 
 /* The site's navigation, from `src/nav.ts`.
  *
@@ -9,33 +9,51 @@ import { NAV, currentPath, groupOpens } from '../nav'
  * the drawer below it. Nothing is rendered twice, so nothing has to be
  * hidden.
  *
- * The groups are `<details>` rather than the design system's collapsible
- * nav item. That item opens from React state, and a reader with no script
- * would meet the twenty command pages sealed shut behind `inert`. A
- * disclosure opens in the browser, with no script at all, which is the one
- * thing the fold has to do.
+ * A group is a `SideNavSection`, which is the design system's own name for
+ * one: it draws the title, the rhythm and the padding, and it names the
+ * group to a screen reader through `role="group"`. Nothing here draws any of
+ * that by hand.
+ *
+ * Every group stands open. A section has no disclosure, and the one nav
+ * item that does opens from React state, so a reader with no script would
+ * meet the twenty command pages sealed shut behind `inert`. A rail that is
+ * wholly present is worth more than a rail that is short.
  */
 
+/* Both rails set `--text-label-size`, and it is the same decision in both.
+ *
+ * These labels are sentences, not the word or two a nav item is usually
+ * given. At the theme's label size most of them take two lines, and the
+ * section titles above them are then the smaller type on the rail, which
+ * stands its own hierarchy on its head. The size is set on the token the
+ * items read, so it reaches them through the design system rather than past
+ * it, and only inside this rail. The leading is a ratio, so it follows on
+ * its own.
+ */
 const styles = stylex.create({
+  // The column stands at the edge of the window, so its own air is the only
+  // air its labels get. The design system gives the list eight pixels,
+  // which is right for a rail inside a padded shell and not for this one.
+  rail: {
+    '--text-label-size': 'var(--text-nav)',
+    paddingBlock: 'var(--spacing-4) var(--spacing-6)',
+    paddingInline: 'var(--spacing-3)',
+  },
+  // Inside the drawer the list is the whole width it is given, and the
+  // drawer has already drawn the air around it. Its height is its content:
+  // a rail that fills its parent scrolls inside a drawer that also scrolls,
+  // and one list behind two scrollbars is a list nobody can reach the end
+  // of.
   drawer: {
+    '--text-label-size': 'var(--text-nav)',
+    height: 'auto',
     width: '100%',
   },
+  // Six groups need to read as six. The design system spaces sections for a
+  // rail of two or three; this one earns a clear step between them.
   group: {
-    marginBlockStart: 'var(--spacing-4)',
-  },
-  // The summary is the group's own label, so it reads as the design
-  // system's section titles do and answers the pointer as a control.
-  label: {
-    color: { default: 'var(--ink-muted)', ':hover': 'var(--ink-strong)' },
-    cursor: 'pointer',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-nav)',
-    fontWeight: 500,
-    paddingBlock: 'var(--spacing-1)',
-    paddingInline: 'var(--spacing-2)',
-    transitionDuration: 'var(--duration-fast)',
-    transitionProperty: 'color',
-    transitionTimingFunction: 'ease',
+    paddingBlockEnd: 'var(--spacing-1)',
+    paddingBlockStart: 'var(--spacing-4)',
   },
 })
 
@@ -49,10 +67,9 @@ export function SiteNav({ pathname, inDrawer = false }: Props) {
   const here = currentPath(pathname)
 
   return (
-    <SideNav aria-label="Site" xstyle={inDrawer ? styles.drawer : undefined}>
+    <SideNav aria-label="Site" xstyle={inDrawer ? styles.drawer : styles.rail}>
       {NAV.map((group) => (
-        <details key={group.label} open={groupOpens(group, pathname)} {...stylex.props(styles.group)}>
-          <summary {...stylex.props(styles.label)}>{group.label}</summary>
+        <SideNavSection key={group.label} title={group.label} xstyle={styles.group}>
           {group.entries.map((entry) => (
             <SideNavItem
               key={entry.path}
@@ -62,7 +79,7 @@ export function SiteNav({ pathname, inDrawer = false }: Props) {
               size="sm"
             />
           ))}
-        </details>
+        </SideNavSection>
       ))}
     </SideNav>
   )

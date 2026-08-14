@@ -18,7 +18,6 @@ export const styles = stylex.create({
   list: {
     listStyle: 'none',
     marginBlock: 0,
-    maxWidth: 'var(--measure)',
     paddingInline: 0,
   },
   item: {

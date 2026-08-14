@@ -134,6 +134,16 @@ export const niwaTheme = defineTheme({
   },
 
   components: {
+    // A link the reader has not chosen sits a step back from the group
+    // title above it. The selected state is not expressible here — the
+    // component takes no `state` prop — so `app.css` marks it, off the
+    // `data-selected` attribute the styling guide names as the stable
+    // surface.
+    'side-nav-item': {
+      base: {
+        color: 'var(--ink-muted)',
+      },
+    },
     // The site tightens a heading. Its colour is not set here: the design
     // system writes its own rule for `color="primary"` after every theme
     // override and at a weight this cannot reach, so `app.css` settles it.

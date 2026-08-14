@@ -23,7 +23,6 @@ export const styles = stylex.create({
   deck: {
     color: 'var(--ink-muted)',
     marginBlock: '0.75rem 0',
-    maxWidth: 'var(--measure)',
     textWrap: 'pretty',
   },
   // The chapter rule: a full-width hairline above every h2, with air on
@@ -51,7 +50,6 @@ export const styles = stylex.create({
   },
   p: {
     marginBlock: '1rem',
-    maxWidth: 'var(--measure)',
   },
   // A run of entries: each is a name and a line about it, and the list
   // reads down the page rather than across it.

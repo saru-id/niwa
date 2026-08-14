@@ -14,14 +14,14 @@ export interface NavEntry {
   readonly job: string
 }
 
-/** One sidebar group. Two levels, no third. */
+/**
+ * One sidebar group. Two levels, no third.
+ *
+ * No group folds. A fold that a reader with no script cannot open is a page
+ * the rail hides, so every group is a section and every section is open.
+ */
 export interface NavGroup {
   readonly label: string
-  /**
-   * Folded at rest. Twenty command pages would swamp the rail, so Commands
-   * closes unless the reader is already inside it. Nothing else folds.
-   */
-  readonly folded: boolean
   readonly entries: readonly NavEntry[]
 }
 
@@ -32,6 +32,8 @@ export const SITE = {
   // The repository's public home. No remote exists today; the address is
   // settled at deploy, and the deploy checklist confirms it.
   repository: 'https://github.com/saru/niwa',
+  /** The name the header prints beside the mark. A test binds it to the URL. */
+  slug: 'saru/niwa',
   license: 'https://github.com/saru/niwa#license',
   index: '/llms.txt',
 } as const
@@ -50,7 +52,6 @@ export const LANDING: NavEntry = {
 export const NAV: readonly NavGroup[] = [
   {
     label: 'Start',
-    folded: false,
     entries: [
       {
         path: '/start',
@@ -81,7 +82,6 @@ export const NAV: readonly NavGroup[] = [
   },
   {
     label: 'Concepts',
-    folded: false,
     entries: [
       {
         path: '/concepts',
@@ -147,7 +147,6 @@ export const NAV: readonly NavGroup[] = [
   },
   {
     label: 'Guides',
-    folded: false,
     entries: [
       {
         path: '/guides',
@@ -208,7 +207,6 @@ export const NAV: readonly NavGroup[] = [
   },
   {
     label: 'Commands',
-    folded: true,
     entries: [
       {
         path: '/reference/cli/niwa',
@@ -314,7 +312,6 @@ export const NAV: readonly NavGroup[] = [
   },
   {
     label: 'Luau API',
-    folded: false,
     entries: [
       {
         path: '/reference/api',
@@ -360,7 +357,6 @@ export const NAV: readonly NavGroup[] = [
   },
   {
     label: 'Reference',
-    folded: false,
     entries: [
       {
         path: '/reference',
@@ -398,11 +394,4 @@ export const NAV: readonly NavGroup[] = [
 export function currentPath(pathname: string): string {
   const trimmed = pathname.replace(/\/+$/, '')
   return trimmed === '' ? '/' : trimmed
-}
-
-/** A folded group still opens when the reader is standing inside it. */
-export function groupOpens(group: NavGroup, pathname: string): boolean {
-  if (!group.folded) return true
-  const here = currentPath(pathname)
-  return group.entries.some((entry) => entry.path === here)
 }
