@@ -326,6 +326,24 @@ packages are alpha or beta and treat a minor as breaking.
   that reason.
 - License: Apache-2.0.
 
+### @pierre/diffs
+
+- Does: renders each documentation page's own markdown file, at the path
+  the repository keeps it at, on the `/source/<page>` routes.
+- Why not our own: the site already highlights code, but not with line
+  numbers, a file header, or a per-line address, and those are what a
+  source view is for. Its server path emits declarative shadow DOM, so
+  the file arrives complete with no client script — the same bargain
+  `@pierre/trees` takes, on a site that ships almost no JavaScript.
+- Maintenance and weight: 1.3.5, released steadily, pinned exactly. It
+  carries Shiki, which is a second highlighter beside TanStack Highlight;
+  it is confined to the source routes and reaches no other page, and it
+  costs those pages no JavaScript at all.
+- Colour: it renders both palettes and picks between them with
+  `color-scheme`, so one rule in `app.css` hands that choice back to the
+  reader's control and the file follows the page.
+- License: Apache-2.0.
+
 ### @astryxdesign/core
 
 - Does: the design system the site's interface is built from. It ships

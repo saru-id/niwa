@@ -1,0 +1,68 @@
+---
+/* Every documentation page, as the file it is written in.
+ *
+ * niwa is a tool about files at paths, and its documentation is a directory
+ * of markdown. So each page has a second face: the real file, read off disk
+ * at build, at the path the repository keeps it at, frontmatter and all.
+ * Nothing is reconstructed and nothing is prettied — a source view that
+ * shows a cleaned-up version of the source is not a source view.
+ *
+ * The page renders through `@pierre/diffs`, whose server path emits
+ * declarative shadow DOM. No client directive appears below, and the file
+ * arrives highlighted with no script.
+ */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { getCollection } from 'astro:content'
+import Layout from '../../components/Layout.astro'
+import { renderSource, SourceFile } from '../../components/SourceFile'
+import { styles } from '../../components/Source.styles'
+import * as stylex from '@stylexjs/stylex'
+import { FILE } from '../../icons/chrome'
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs')
+  return docs.map((entry) => ({
+    params: { slug: entry.id },
+    props: {
+      title: entry.data.title,
+      // The path the repository keeps the file at, which is also the path
+      // the page prints. One fact, said once.
+      path: entry.filePath ?? `src/content/docs/${entry.id}.md`,
+    },
+  }))
+}
+
+const { title, path } = Astro.props
+const page = `/${Astro.params.slug ?? ''}`.replace(/\/$/, '') || '/'
+
+// Read at build, in Node, from the repository itself. `filePath` is given
+// relative to the project root, which is where the build runs.
+const contents = readFileSync(resolve(process.cwd(), path), 'utf8')
+const preloaded = await renderSource(path, contents)
+---
+
+<Layout
+  title={`${title} · source`}
+  description={`The markdown source of the ${title} page.`}
+  indexed={false}
+  navPath={page}
+>
+  <div {...stylex.props(styles.head)}>
+    <p {...stylex.props(styles.kicker)}>
+      <span {...stylex.props(styles.icon)} aria-hidden="true" set:html={FILE} />
+      Source
+    </p>
+    <h1 {...stylex.props(styles.title)}>{title}</h1>
+    <p {...stylex.props(styles.back)}>
+      <a href={page}>Read the rendered page</a>
+      <span aria-hidden="true"> · </span>
+      <a href={`${page}.md`}>Plain markdown</a>
+    </p>
+  </div>
+
+  {/* No client directive. The file is finished HTML. */}
+  <div {...stylex.props(styles.frame)}>
+    <SourceFile {...preloaded} />
+  </div>
+</Layout>

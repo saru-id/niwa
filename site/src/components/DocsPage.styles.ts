@@ -19,6 +19,28 @@ export const styles = stylex.create({
     marginBlock: '0.75rem 2rem',
     textWrap: 'pretty',
   },
+  // The deck's bottom margin is the air before the article, so the
+  // provenance line takes that air back and sits with the deck.
+  provenance: {
+    marginBlock: '-1.25rem 2rem',
+  },
+  sourceLink: {
+    alignItems: 'center',
+    color: 'var(--ink-muted)',
+    display: 'inline-flex',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-meta)',
+    gap: '0.375rem',
+    // Block padding on an inline box costs the line no height, and it takes
+    // the target past the 24 pixel minimum.
+    paddingBlock: '6px',
+    textDecorationColor: 'var(--border-strong)',
+  },
+  sourceIcon: {
+    blockSize: '0.8125rem',
+    display: 'inline-flex',
+    inlineSize: '0.8125rem',
+  },
   foot: {
     marginBlockStart: '2.5rem',
   },
