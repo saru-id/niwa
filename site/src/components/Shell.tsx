@@ -7,13 +7,13 @@ import { MobileNav } from '@astryxdesign/core/MobileNav'
 import { Outline } from '@astryxdesign/core/Outline'
 import { DisplayIcon, MoonIcon, SearchIcon, SunIcon } from '../icons/theme'
 import { Theme } from '@astryxdesign/core/theme'
-import { TopNav, TopNavHeading, TopNavItem } from '@astryxdesign/core/TopNav'
+import { TopNav, TopNavHeading } from '@astryxdesign/core/TopNav'
 import * as stylex from '@stylexjs/stylex'
 import { useState, type ReactNode } from 'react'
 // `?raw` inlines the vendored file at build time. Nothing is fetched.
 import githubMark from '../icons/github.svg?raw'
 import type { Heading } from '../lib/headings'
-import { SITE, currentPath } from '../nav'
+import { SITE } from '../nav'
 import { recall, remember, show, type Choice } from '../scripts/theme'
 import { niwaTheme } from '../theme/niwa'
 import { FRAME, styles } from './Shell.styles'
@@ -119,37 +119,6 @@ function RepositoryLink() {
         />
       }
     />
-  )
-}
-
-/* The site's four areas, in the bar.
- *
- * The rail lists the pages inside one area; this lists the areas. A reader
- * who lands deep in the reference can see the whole shape of the
- * documentation and move across it without going back to a start page. The
- * rail's own group opens itself from the address, so the two agree without
- * either knowing about the other.
- */
-const AREAS = [
-  { href: '/start', label: 'Start' },
-  { href: '/concepts', label: 'Concepts' },
-  { href: '/guides', label: 'Guides' },
-  { href: '/reference', label: 'Reference' },
-] as const
-
-function AreaTabs({ pathname }: { pathname: string }) {
-  const here = currentPath(pathname)
-  return (
-    <>
-      {AREAS.map((area) => (
-        <TopNavItem
-          key={area.href}
-          label={area.label}
-          href={area.href}
-          isSelected={here === area.href || here.startsWith(`${area.href}/`)}
-        />
-      ))}
-    </>
   )
 }
 
@@ -318,7 +287,6 @@ export function Shell({
                 }
               />
             }
-            startContent={<AreaTabs pathname={pathname} />}
             endContent={controls}
           />
         }

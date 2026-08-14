@@ -819,3 +819,57 @@ nav[aria-label='Site'] .astryx-side-nav-item {
   min-block-size: 1.5rem !important;
   padding-block: 0.125rem !important;
 }
+
+/* ---- The bar sits on the page's own columns -----------------------------
+ * A row of things distributed by flexbox across the full width of the
+ * window is the shape every framework's navigation bar has had for a
+ * decade, and the reason is that nothing in it lines up with anything under
+ * it: the name floats near the corner, the search box lands in the middle
+ * of a paragraph's column, and the right-hand icons overhang the table of
+ * contents. Measured on this page before this rule: the rail ran 0→260 and
+ * the article 293→977, while the bar's own pieces sat at 8, 141, 862 and
+ * 1138. Four positions, none of them a column.
+ *
+ * So the bar is a grid of the same two columns the page below it is: the
+ * navigation column, then everything else. The name stands over the rail
+ * and takes the rail's own indent; search begins where the article begins;
+ * the utilities end with the page. The bar stops being a strip laid over
+ * the layout and becomes the top of it.
+ */
+
+[role='banner'] .astryx-top-nav {
+  /* Important, as everywhere the design system's compiled styles are the
+   * last word: it sets the bar to flex, and flex sizes the first cluster to
+   * its text rather than to the column it has to stand over. */
+  display: grid !important;
+  grid-template-columns: 260px minmax(0, 1fr);
+  padding-inline: 0;
+}
+
+[role='banner'] .astryx-top-nav > :first-child {
+  padding-inline-start: var(--spacing-6);
+}
+
+[role='banner'] .astryx-top-nav > :last-child {
+  justify-content: space-between;
+  margin-inline: auto;
+  max-inline-size: 1040px;
+  padding-inline: var(--spacing-8);
+  inline-size: 100%;
+}
+
+/* Below the rail's width there is no navigation column to stand over, so
+ * the bar is one row again and the name returns to the edge. */
+@media (max-width: 1023px) {
+  [role='banner'] .astryx-top-nav {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  [role='banner'] .astryx-top-nav > :first-child {
+    padding-inline-start: var(--spacing-3);
+  }
+
+  [role='banner'] .astryx-top-nav > :last-child {
+    padding-inline: var(--spacing-3);
+  }
+}
