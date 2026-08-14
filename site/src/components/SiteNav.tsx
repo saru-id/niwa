@@ -1,4 +1,4 @@
-import { SideNav, SideNavItem, SideNavSection } from '@astryxdesign/core/SideNav'
+import { SideNav, SideNavItem } from '@astryxdesign/core/SideNav'
 import * as stylex from '@stylexjs/stylex'
 import { NAV, currentPath } from '../nav'
 
@@ -9,51 +9,60 @@ import { NAV, currentPath } from '../nav'
  * the drawer below it. Nothing is rendered twice, so nothing has to be
  * hidden.
  *
- * A group is a `SideNavSection`, which is the design system's own name for
- * one: it draws the title, the rhythm and the padding, and it names the
- * group to a screen reader through `role="group"`. Nothing here draws any of
- * that by hand.
+ * Six groups, and only the one you are standing in is open. Sixty-one
+ * sentence-length labels laid out flat is a rail two thousand pixels tall:
+ * it cannot fit a window, so it scrolls inside itself, and every page load
+ * returns that scroll to the top and loses your place. Opened one group at
+ * a time the whole rail fits, so it never scrolls and never resets.
  *
- * Every group stands open. A section has no disclosure, and the one nav
- * item that does opens from React state, so a reader with no script would
- * meet the twenty command pages sealed shut behind `inert`. A rail that is
- * wholly present is worth more than a rail that is short.
+ * The disclosure is a `<details>`, not the design system's collapsible nav
+ * item, and that is the reason this file draws two elements by hand. The
+ * component's disclosure opens from React state and renders its children
+ * `inert` when closed, which would seal the twenty command pages away from
+ * a reader with no script. `<details open>` is decided by the server, so
+ * the rail is right in the HTML and stays operable with nothing running.
+ * Everything below the summary is the design system's own item.
  */
 
-/* Both rails set `--text-label-size`, and it is the same decision in both.
- *
- * These labels are sentences, not the word or two a nav item is usually
- * given. At the theme's label size most of them take two lines, and the
- * section titles above them are then the smaller type on the rail, which
- * stands its own hierarchy on its head. The size is set on the token the
- * items read, so it reaches them through the design system rather than past
- * it, and only inside this rail. The leading is a ratio, so it follows on
- * its own.
- */
 const styles = stylex.create({
-  // The column stands at the edge of the window, so its own air is the only
-  // air its labels get. The design system gives the list eight pixels,
-  // which is right for a rail inside a padded shell and not for this one.
+  /* Both rails set `--text-label-size`, and it is the same decision in
+   * both. These labels are sentences, not the word or two a nav item is
+   * usually given, and at the theme's label size most take two lines. The
+   * size is set on the token the items read, so it reaches them through the
+   * design system rather than past it, and only inside this rail. */
   rail: {
     '--text-label-size': 'var(--text-nav)',
-    paddingBlock: 'var(--spacing-4) var(--spacing-6)',
+    paddingBlock: 'var(--spacing-2) var(--spacing-4)',
     paddingInline: 'var(--spacing-3)',
   },
   // Inside the drawer the list is the whole width it is given, and the
-  // drawer has already drawn the air around it. Its height is its content:
-  // a rail that fills its parent scrolls inside a drawer that also scrolls,
-  // and one list behind two scrollbars is a list nobody can reach the end
-  // of.
+  // drawer has already drawn the air around it.
   drawer: {
     '--text-label-size': 'var(--text-nav)',
     height: 'auto',
     width: '100%',
   },
-  // Six groups need to read as six. The design system spaces sections for a
-  // rail of two or three; this one earns a clear step between them.
   group: {
-    paddingBlockEnd: 'var(--spacing-1)',
-    paddingBlockStart: 'var(--spacing-4)',
+    marginBlockEnd: 'var(--spacing-0-5, 2px)',
+  },
+  /* The row that opens a group. It is the same height and the same shape as
+   * an item below it, so the rail reads as one column of rows rather than
+   * as headings with lists hanging off them. The marker is drawn by the
+   * rule in `app.css`, which can reach a `::marker` and a rotation. */
+  summary: {
+    alignItems: 'center',
+    borderRadius: 'var(--radius-inner)',
+    color: { default: 'var(--ink-strong)', ':hover': 'var(--ink-strong)' },
+    cursor: 'pointer',
+    display: 'flex',
+    fontSize: 'var(--text-nav)',
+    fontWeight: 600,
+    justifyContent: 'space-between',
+    minBlockSize: 'var(--size-element-sm)',
+    paddingInline: 'var(--spacing-2)',
+    transitionDuration: 'var(--duration-fast)',
+    transitionProperty: 'background-color',
+    transitionTimingFunction: 'ease',
   },
 })
 
@@ -68,19 +77,23 @@ export function SiteNav({ pathname, inDrawer = false }: Props) {
 
   return (
     <SideNav aria-label="Site" xstyle={inDrawer ? styles.drawer : styles.rail}>
-      {NAV.map((group) => (
-        <SideNavSection key={group.label} title={group.label} xstyle={styles.group}>
-          {group.entries.map((entry) => (
-            <SideNavItem
-              key={entry.path}
-              label={entry.title}
-              href={entry.path}
-              isSelected={entry.path === here}
-              size="sm"
-            />
-          ))}
-        </SideNavSection>
-      ))}
+      {NAV.map((group) => {
+        const holdsHere = group.entries.some((entry) => entry.path === here)
+        return (
+          <details key={group.label} open={holdsHere} data-nav-group {...stylex.props(styles.group)}>
+            <summary {...stylex.props(styles.summary)}>{group.label}</summary>
+            {group.entries.map((entry) => (
+              <SideNavItem
+                key={entry.path}
+                label={entry.title}
+                href={entry.path}
+                isSelected={entry.path === here}
+                size="sm"
+              />
+            ))}
+          </details>
+        )
+      })}
     </SideNav>
   )
 }

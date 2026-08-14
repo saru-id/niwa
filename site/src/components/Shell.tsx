@@ -1,7 +1,6 @@
 import { AppShell } from '@astryxdesign/core/AppShell'
 import { Button } from '@astryxdesign/core/Button'
 import { HStack } from '@astryxdesign/core/HStack'
-import { Kbd } from '@astryxdesign/core/Kbd'
 import { Layout, LayoutContent, LayoutPanel } from '@astryxdesign/core/Layout'
 import { MobileNav } from '@astryxdesign/core/MobileNav'
 import { Outline } from '@astryxdesign/core/Outline'
@@ -153,6 +152,11 @@ export function Shell({
         said the way a screen reader says it. The click is answered by
         `scripts/search.ts`, which is bound to the document and so is
         already listening before this button has any script of its own. */}
+      {/* The shortcut is written out rather than resolved. The design
+        system's own key component reads the platform in the browser, so
+        the server sends one spelling and the browser replaces it, and the
+        hint flickers on every load. niwa is a macOS tool; the key is the
+        command key. */}
       <Button
         label="Search"
         aria-label="Search the documentation"
@@ -162,7 +166,11 @@ export function Shell({
         data-search-open
         aria-haspopup="dialog"
         aria-keyshortcuts="Meta+K Control+K"
-        endContent={<Kbd keys="mod+k" xstyle={styles.kbd} />}
+        endContent={
+          <kbd {...stylex.props(styles.kbd)} aria-hidden="true">
+            ⌘K
+          </kbd>
+        }
         xstyle={styles.search}
       />
       <HStack gap={1} align="center" xstyle={styles.wideOnly}>

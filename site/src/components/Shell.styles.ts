@@ -88,9 +88,20 @@ export const styles = stylex.create({
   // A touch device has no command key, so the hint is not shown there.
   // The shortcut sits at the far end of the field; the magnifier and the
   // word stay together at the near end, the way they do in a real one.
+  // The shortcut sits at the far end of the field; the magnifier and the
+  // word stay together at the near end, the way they do in a real one. A
+  // touch device has no command key, so it is not shown there.
   kbd: {
+    alignItems: 'center',
+    backgroundColor: 'var(--surface)',
+    borderRadius: 'var(--radius-inner)',
+    color: 'var(--ink-muted)',
     display: { default: 'none', '@media (min-width: 640px)': 'inline-flex' },
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-meta)',
     marginInlineStart: 'auto',
+    paddingBlock: '0.1rem',
+    paddingInline: 'var(--spacing-1)',
   },
   // The theme control and the repository link ride in the bar while there
   // is room for them, and in the drawer below the breakpoint where the bar

@@ -770,3 +770,52 @@ nav[aria-label='Site'] .astryx-side-nav-section > div:first-child :is(span, span
 [role='banner'] a[href*='github.com'] {
   block-size: 2rem;
 }
+
+/* ---- The rail's groups --------------------------------------------------
+ * A group opens the one you are standing in and closes the rest, so the
+ * whole rail fits a window and never scrolls away from you.
+ *
+ * The marker is drawn here because a `::marker` is reachable from CSS and
+ * from nothing else. It is a chevron that turns a quarter when the group
+ * opens, in the same 120ms the rest of the site moves in.
+ */
+
+nav[aria-label='Site'] [data-nav-group] > summary {
+  list-style: none;
+}
+
+nav[aria-label='Site'] [data-nav-group] > summary::-webkit-details-marker {
+  display: none;
+}
+
+nav[aria-label='Site'] [data-nav-group] > summary::after {
+  border-block-end: 1.5px solid currentcolor;
+  border-inline-end: 1.5px solid currentcolor;
+  block-size: 0.4em;
+  color: var(--ink-muted);
+  content: '';
+  inline-size: 0.4em;
+  rotate: -45deg;
+  transition: rotate 120ms ease;
+  translate: 0 -0.1em;
+}
+
+nav[aria-label='Site'] [data-nav-group][open] > summary::after {
+  rotate: 45deg;
+  translate: 0 -0.2em;
+}
+
+nav[aria-label='Site'] [data-nav-group] > summary:hover {
+  background-color: var(--surface);
+}
+
+/* The longest group is Commands, at twenty entries. With the rail's own air
+ * that ran a little past a short window, so the row is set to the height it
+ * needs for one line and no more: the whole rail then fits, and a rail that
+ * fits is a rail that never scrolls inside itself and never loses its place
+ * when a page loads. Two lines still grow the row, because the labels here
+ * are sentences. */
+nav[aria-label='Site'] .astryx-side-nav-item {
+  min-block-size: 1.5rem !important;
+  padding-block: 0.125rem !important;
+}
