@@ -36,13 +36,14 @@ describe('isCommandLineFetch', () => {
 })
 
 describe('wrangler.toml', () => {
-  // The Worker only decides for the apex. /install.sh and every other path
-  // are static assets, so no test of the recognition covers them: the
-  // configuration is what keeps them out of the Worker.
+  // The Worker decides for the apex and for the release downloads, and for
+  // nothing else. /install.sh and every other path are static assets, so no
+  // test of the recognition covers them: the configuration is what keeps
+  // them out of the Worker.
   const config = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8')
 
-  it('runs the Worker first for the apex only', () => {
-    expect(config).toContain('run_worker_first = ["/"]')
+  it('runs the Worker first for the apex and the releases, and nothing else', () => {
+    expect(config).toContain('run_worker_first = ["/", "/release/*"]')
   })
 
   it('binds the asset store the Worker reads the installer from', () => {

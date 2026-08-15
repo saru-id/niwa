@@ -2,7 +2,12 @@
 *.profraw
 
 # The site's build and install artifacts.
-site/node_modules
+#
+# `node_modules/` and `.wrangler/` are matched at any depth, not just under
+# `site/`. Running wrangler from the site installs miniflare into a
+# node_modules at the repository root, and a rule anchored to `site/` does
+# not see it — which is how 3,354 files of it once reached a commit.
+node_modules/
+.wrangler/
 site/dist
 site/.astro
-site/.wrangler

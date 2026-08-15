@@ -8,9 +8,11 @@ send_metrics = false
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-# The Worker sees the apex and nothing else. Every other path, including
-# /install.sh itself, is served straight from the asset store.
-run_worker_first = ["/"]
+# The Worker sees the apex and the release paths, and nothing else. Every
+# other path, including /install.sh itself, is served straight from the asset
+# store. `/release/*` has no asset behind it, so it has to run first or
+# `not_found_handling` would answer a download with the 404 page.
+run_worker_first = ["/", "/release/*"]
 # A path with no asset behind it gets the site's own 404 page. Without this
 # the reader gets an empty body and no way back.
 not_found_handling = "404-page"
