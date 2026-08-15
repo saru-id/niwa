@@ -2,6 +2,16 @@ name = "niwa-site"
 main = "worker/index.ts"
 compatibility_date = "2026-08-13"
 
+# The address, in the repository rather than in a dashboard.
+#
+# `custom_domain` makes the deploy itself bind niwa.rs to this Worker and
+# write the DNS record for it, so the domain is part of the configuration
+# that is reviewed and version controlled, and a fresh account reaches the
+# same state from `wrangler deploy` alone. The zone was already on the
+# account and carried no A, AAAA or CNAME at the apex — only mail hardening
+# — so this record replaces nothing.
+routes = [{ pattern = "niwa.rs", custom_domain = true }]
+
 # The tool sends nothing the user did not ask for, and neither does its build.
 send_metrics = false
 
