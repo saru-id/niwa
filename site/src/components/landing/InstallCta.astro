@@ -1,13 +1,27 @@
 ---
-/* The command again, at the end.
+/* The last screen: the garden again, the command, and the three doors.
  *
- * A reader who came down the whole page arrives ready to run it, and asking
- * them to scroll back for it would be the page's one avoidable friction. The
- * fence is the documentation's, so it copies the way every other fence on
- * the site copies.
+ * The page opens in the painting and it closes in it. Everything between is
+ * words and terminal output on flat ground, which is right — evidence
+ * should be read, not decorated — but a page whose whole identity is a
+ * painting cannot spend its last screen looking like anything else. The art
+ * here is the same file the hero loaded, held at the pond and turned almost
+ * all the way down, so it costs one already-decoded image and no new bytes.
+ *
+ * A reader who came down the whole page arrives ready to run the command,
+ * and asking them to scroll back for it would be the page's one avoidable
+ * friction. The fence is the documentation's, so it copies the way every
+ * other fence on the site copies.
+ *
+ * The three doors sit under it rather than in a section of their own. They
+ * are what a reader does *instead* of installing, and the honest place for
+ * that is beside the command, not a screen earlier where they interrupt the
+ * argument on its way to the point.
  */
 import { Markdown } from '../Markdown'
+import { heroDesktop, heroOriginal } from '../../lib/hero-art'
 import { INSTALL_COMMAND } from './command'
+import DocsDoors from './DocsDoors.astro'
 
 // The file a refused fence names. This component holds its own markdown.
 const SELF = 'src/components/landing/InstallCta.astro'
@@ -16,9 +30,37 @@ const FENCE = ['```shell', INSTALL_COMMAND, '```'].join('\n')
 ---
 
 <section class="install" id="install" aria-labelledby="install-title">
-  <h2 id="install-title">Grow your setup.</h2>
-  <div class="install-fence">
-    {/* No client directive. React runs once, during the build. */}
-    <Markdown source={FENCE} file={SELF} />
+  {
+    /* Decorative: the hero's own picture, second showing. It is not eager
+      and it is not preloaded — by the time a reader is here the file has
+      been in the cache since the first paint. */
+  }
+  <div class="install-art" aria-hidden="true">
+    <picture>
+      <source type="image/avif" srcset={heroDesktop.src} />
+      <img
+        src={heroOriginal.src}
+        alt=""
+        width={heroOriginal.width}
+        height={heroOriginal.height}
+        loading="lazy"
+        decoding="async"
+        draggable="false"
+      />
+    </picture>
+  </div>
+
+  <div class="install-inner">
+    <div class="install-say">
+      <h2 id="install-title">Grow your setup.</h2>
+      <p>One command. It writes nothing until you have read the plan and said yes.</p>
+    </div>
+
+    <div class="install-fence">
+      {/* No client directive. React runs once, during the build. */}
+      <Markdown source={FENCE} file={SELF} />
+    </div>
+
+    <DocsDoors />
   </div>
 </section>

@@ -2,20 +2,43 @@
 /* The limits, said on the front page rather than buried in the reference.
  *
  * A tool that changes a machine has to state what it will not change, and
- * the honest place for that is beside the pitch.
+ * the honest place for that is beside the pitch. It is also, read the right
+ * way round, the strongest thing on the page: every refusal here is a
+ * promise about what the tool will not do behind your back.
+ *
+ * Each refusal is named before it is explained. Three loose paragraphs made
+ * a reader take the whole block or none of it; a named thing can be scanned
+ * and the one that matters to this reader can be found.
  */
+
+/** What niwa refuses, and why that is the better answer. */
+const REFUSALS = [
+  {
+    name: 'It never applies on its own.',
+    why: 'The watcher notices and notifies. Applying is your call, unless you declare a schedule yourself.',
+  },
+  {
+    name: 'Undo is not a time machine.',
+    why: 'It restores what the last apply changed. It is not a rollback of the whole world, and it does not pretend to be.',
+  },
+  {
+    name: 'No dependency graph.',
+    why: 'One plan, in your order. Program order is the order, so there is nothing to out-guess you.',
+  },
+]
 ---
 
 <section class="boundary" aria-labelledby="boundary-title">
   <h2 id="boundary-title">What niwa will not do</h2>
-  <p>
-    It never applies on its own. The watcher notices and notifies; applying is your call,
-    unless you declare a schedule yourself.
-  </p>
-  <p>Undo restores what the last apply changed. It is not a rollback of the whole world.</p>
-  <p>
-    One plan, in your order. Program order is the order; there is no dependency graph to
-    out-guess you.
-  </p>
+  <ul class="boundary-refusals">
+    {
+      REFUSALS.map((refusal) => (
+        <li>
+          <h3>{refusal.name}</h3>
+          <p>{refusal.why}</p>
+        </li>
+      ))
+    }
+  </ul>
   <p class="onward"><a href="/concepts/limits">Every refusal, with its reason</a></p>
 </section>

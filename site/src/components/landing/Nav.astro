@@ -1,11 +1,28 @@
 ---
 /* The landing's header.
  *
- * Fixed glass over the garden, and the only navigation this page draws: the
- * mark, the places further down the page, the way into the documentation,
- * and the repository. Below the landing's breakpoint the words go and the
- * mark and the repository stay, which is what fits across a phone without
- * crowding.
+ * The documentation's bar keeps its middle empty on purpose: over there the
+ * section links are the rail and the page's name is the heading below, so
+ * anything set between identity and tools would have been put there to fill
+ * the space. This page is the opposite case. It is one scroll with a handful
+ * of stops in it, and where the reader has got to is a real fact the chrome
+ * can hold. So this bar has a middle, and the middle is the trail.
+ *
+ * Three registers:
+ *
+ * - The mark and the version: the drawings, and one fact in mono.
+ * - The trail: places on this page. A hairline runs under them with the
+ *   lantern's own warm on the stop the reader is at, and that shape is what
+ *   says these are not controls — every word on this bar is mono, because
+ *   the display face goes soft at this size on a screen with one pixel per
+ *   pixel and chrome has to hold up on every screen.
+ * - The ways out: places that are not this page. Each is a mark and a word,
+ *   and which one the page would rather you took is said in ink alone.
+ *
+ * That division is the whole rule, and it is what the old header had no
+ * answer for: it set an anchor to `#config` beside a route to `/start` in
+ * one group and left `#install` in the other, so neither group meant
+ * anything, and it gave the repository the only emphasis on the bar.
  *
  * The seedling is a raster and the wordmark is drawn, and they are composed
  * here rather than baked into one file: the leaf veins do not survive
@@ -14,52 +31,106 @@
 import seedling from '../../assets/art/seedling.png'
 import wordmark from '../../assets/art/wordmark.svg'
 import githubMark from '../../icons/github.svg?raw'
+import { BOOK } from '../../icons/chrome'
 import { navSeedling } from '../../lib/hero-art'
 import { SITE } from '../../nav'
+
+/*
+ * The page's own stops, in the order it tells them.
+ *
+ * Every id here is a section on this page and every section the trail can
+ * light is in here. The list renders the links and the script watches the
+ * sections it names, so the two cannot drift: a stop with no section lights
+ * for nothing, and a section with no stop is simply not on the trail.
+ */
+const TRAIL = [
+  { id: 'why', label: 'Why niwa' },
+  { id: 'config', label: 'Config' },
+  { id: 'drift', label: 'Drift' },
+  { id: 'install', label: 'Install' },
+] as const
 ---
 
 <header class="site-header">
   <div class="site-header-inner">
-    <div class="header-left">
-      <a class="mini-mark" href="#top" aria-label="niwa home">
-        <picture>
-          <source type="image/avif" srcset={navSeedling.src} />
-          <img
-            class="brand-seedling"
-            src={seedling.src}
-            alt=""
-            width={seedling.width}
-            height={seedling.height}
-            fetchpriority="low"
-            draggable="false"
-          />
-        </picture>
-        {
-          /* The drawing carries the name, and the link above already says
-            it in words. The span is where that is stated, because the
-            drawing is a shared asset and says nothing about where it hangs. */
-        }
+    <a class="mini-mark" href="#top" aria-label="niwa home">
+      <picture>
+        <source type="image/avif" srcset={navSeedling.src} />
         <img
-          class="brand-wordmark"
-          src={wordmark.src}
+          class="brand-seedling"
+          src={seedling.src}
           alt=""
-          width="849"
-          height="286"
+          width={seedling.width}
+          height={seedling.height}
+          fetchpriority="low"
           draggable="false"
         />
+      </picture>
+      {
+        /* The drawing carries the name, and the link above already says
+          it in words. The span is where that is stated, because the
+          drawing is a shared asset and says nothing about where it hangs. */
+      }
+      <img
+        class="brand-wordmark"
+        src={wordmark.src}
+        alt=""
+        width="849"
+        height="286"
+        draggable="false"
+      />
+      {
+        /* The version the documentation's bar prints beside the same mark.
+          It is a fact about the build and not a word of the page, so it is
+          set in mono like every other fact a machine supplied. */
+      }
+      <span class="mark-version">{SITE.version}</span>
+    </a>
+
+    {
+      /* The path and its light are one span with one child: the light is
+        placed and sized from two custom properties the script writes, so
+        the stylesheet owns how it moves and the script owns only where it
+        is. Both are decoration for a reader who can see the trail, and the
+        current stop is said in `aria-current` for one who cannot. */
+    }
+    <nav class="trail" aria-label="Sections of this page" data-trail>
+      <ul class="trail-stops">
+        {
+          TRAIL.map((stop) => (
+            <li>
+              <a href={`#${stop.id}`} data-trail-stop={stop.id}>
+                {stop.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <span class="trail-path" aria-hidden="true">
+        <span class="trail-light"></span>
+      </span>
+    </nav>
+
+    <nav class="site-ways" aria-label="Documentation and source">
+      {
+        /* The two ways are one shape: a mark and a word. Which of them the
+          page would rather you took is said in ink and nothing else — no
+          frame, no fill, no arrow. A bordered control here was the only
+          closed box in the composition, and it read as imported. */
+      }
+      <a class="way way-docs" href="/start">
+        <Fragment set:html={BOOK} />
+        <span>Docs</span>
       </a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#why">Why niwa</a>
-        <a href="#config">Config</a>
-        <a href="/start">Docs</a>
-      </nav>
-    </div>
-    <nav class="site-nav site-nav-actions" aria-label="Project navigation">
-      <a class="repo-link" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
+      {
+        /* The icon is `aria-hidden` and the slug beside it goes at the width
+          the bar drops its words, so neither can name this link at every
+          width. The label does, and it says the same thing at both. */
+      }
+      <a class="way way-repo" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
         <Fragment set:html={githubMark} />
-        <span>{SITE.slug}</span>
+        <span class="way-slug">{SITE.slug}</span>
       </a>
-      <a href="#install">Install</a>
     </nav>
   </div>
 </header>

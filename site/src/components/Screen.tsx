@@ -46,8 +46,30 @@ const roles = stylex.create({
   accent: { color: 'var(--role-accent)' },
 })
 
-export function Screen({ fixture, command }: { fixture: string; command?: string }) {
+/**
+ * `provenance` is the snapshot's own path, printed under the screen.
+ *
+ * The documentation prints it, because a page that quotes the tool should
+ * say which run it quoted and a reader should be able to open the file. The
+ * landing does not: three lines of `tests/snapshots/snapshots__…` under a
+ * four-line screen is more path than screen, and that page says where its
+ * screens come from once, in a sentence, rather than under every one.
+ */
+export function Screen({
+  fixture,
+  command,
+  provenance = true,
+}: {
+  fixture: string
+  command?: string
+  provenance?: boolean
+}) {
   const screen = readScreen(fixture)
+  const caption = provenance
+    ? command === undefined
+      ? screen.source
+      : `${command} · ${screen.source}`
+    : command
   return (
     <figure {...stylex.props(EXHIBIT.block)}>
       <pre {...stylex.props(EXHIBIT.frame, EXHIBIT.air, styles.screen)} tabIndex={0}>
@@ -68,9 +90,9 @@ export function Screen({ fixture, command }: { fixture: string; command?: string
           ))}
         </samp>
       </pre>
-      <figcaption {...stylex.props(styles.caption)}>
-        {command === undefined ? screen.source : `${command} · ${screen.source}`}
-      </figcaption>
+      {caption === undefined ? null : (
+        <figcaption {...stylex.props(styles.caption)}>{caption}</figcaption>
+      )}
     </figure>
   )
 }

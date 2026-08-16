@@ -21,24 +21,35 @@ import { SAMPLE_HEIGHT, SAMPLE_WIDTH } from './water'
 
 const OPEN_WATER = [40, 70, 90, 200]
 
+/** A gradient the module built, standing in for the browser's own. */
+interface Gradient {
+  readonly kind: 'linear'
+  /** The two ends it runs between. */
+  readonly from: readonly [number, number]
+  readonly to: readonly [number, number]
+  readonly stops: readonly (readonly [number, string])[]
+}
+
 interface Call {
   readonly name: string
   readonly args: readonly unknown[]
   /** The state in force when the call was made. */
   readonly composite: string
-  readonly strokeStyle: string
+  readonly strokeStyle: string | Gradient
   readonly lineWidth: number
+  readonly alpha: number
 }
 
 function recorder() {
   const calls: Call[] = []
   let composite = 'source-over'
-  let strokeStyle = ''
+  let strokeStyle: string | Gradient = ''
   let lineWidth = 0
+  let alpha = 1
   const record =
     (name: string) =>
     (...args: unknown[]) => {
-      calls.push({ name, args, composite, strokeStyle, lineWidth })
+      calls.push({ name, args, composite, strokeStyle, lineWidth, alpha })
     }
   const context = {
     save: record('save'),
@@ -50,6 +61,22 @@ function recorder() {
     stroke: record('stroke'),
     drawImage: record('drawImage'),
     setTransform: record('setTransform'),
+    // A crest is stroked with a gradient laid across the ring, so the ink a
+    // test reads is an object rather than a color string. This stands in for
+    // the browser's, holding what the module asked for.
+    createLinearGradient(x0: number, y0: number, x1: number, y1: number) {
+      const stops: (readonly [number, string])[] = []
+
+      return {
+        kind: 'linear' as const,
+        from: [x0, y0] as const,
+        to: [x1, y1] as const,
+        stops,
+        addColorStop(offset: number, color: string) {
+          stops.push([offset, color] as const)
+        },
+      }
+    },
     get globalCompositeOperation() {
       return composite
     },
@@ -59,7 +86,7 @@ function recorder() {
     get strokeStyle() {
       return strokeStyle
     },
-    set strokeStyle(value: string) {
+    set strokeStyle(value: string | Gradient) {
       strokeStyle = value
     },
     get lineWidth() {
@@ -67,6 +94,14 @@ function recorder() {
     },
     set lineWidth(value: number) {
       lineWidth = value
+    },
+    // The crest's own strength rides here rather than in the ink, so one
+    // gradient can serve every ring in a train.
+    get globalAlpha() {
+      return alpha
+    },
+    set globalAlpha(value: number) {
+      alpha = value
     },
   }
 
@@ -131,19 +166,47 @@ const NARROW = computeScene(
   1,
 )
 
+/** A wall of a screen, where the art is contained in a much larger frame. */
+const LARGE = computeScene(
+  { left: 0, top: 0, width: 2253, height: 1440 },
+  ART,
+  false,
+  1,
+)
+
 /** A point of open water, and two more measured from it. */
 const STRUCK = { nx: 0.47, ny: 0.75 }
-/** Under 12 canvas pixels from the strike on the wide scene. */
+/** Under a step from the strike on the wide scene. */
 const NEAR = 0.474
-/** Over 12 canvas pixels from it. */
+/** Over a step from it. */
 const FAR = 0.49
 
 /** The wide scene's normalized coordinate a distance across from the strike. */
 const across = (pixels: number) => STRUCK.nx + pixels / WIDE.frame.width
 
-/** The life and reach every ring below is given, with the spread held at 0. */
+/** The life every ring below is given, with the spread held at 0. */
 const LIFE = 940
-const REACH = 38
+
+/*
+ * The module's own sizes, which are fractions of the frame's shorter side
+ * rather than canvas pixels: a ripple is as large as the pond it lies on. A
+ * test that wants pixels multiplies them by the scene it is drawing in.
+ */
+const BIRTH = 0.006
+const REACH = 0.052
+const REACH_SPREAD = 0.022
+const SPAWN_STEP = 0.014
+const CREST = 0.0027
+const GAIN = 2.3
+
+/** The frame's shorter side, which every size above is measured against. */
+const short = (scene: Scene) => Math.min(scene.frame.width, scene.frame.height)
+
+/** How far a ring has opened at a point in its life. */
+const opening = (progress: number) => 1 - (1 - progress) ** 1.9
+
+/** The step throttle in canvas pixels, on the wide scene. */
+const STEP = short(WIDE) * SPAWN_STEP
 
 let clock = 0
 
@@ -176,19 +239,19 @@ function started(scene: Scene = WIDE) {
   return ripples
 }
 
-/** One drawn ring: the ellipse asked for, and the ink it was drawn in. */
+/** One drawn crest: the ellipse asked for, and the ink it was drawn in. */
 interface Mark {
   x: number
   y: number
   radiusX: number
   radiusY: number
   tilt: number
-  ink: string
+  ink: Gradient
   alpha: number
   width: number
 }
 
-/** Every ring drawn in these calls, in the order they were drawn. */
+/** Every crest drawn in these calls, in the order they were drawn. */
 function marks(calls: readonly Call[]): Mark[] {
   const drawn: Mark[] = []
   let ellipse: Call | null = null
@@ -202,9 +265,11 @@ function marks(calls: readonly Call[]): Mark[] {
     if (call.name !== 'stroke' || !ellipse) continue
 
     const [x, y, radiusX, radiusY, tilt] = ellipse.args as number[]
-    const ink = /^rgba\((\d+, \d+, \d+), ([\d.e+-]+)\)$/.exec(call.strokeStyle)
 
-    expect(ink, `unreadable stroke ${call.strokeStyle}`).not.toBeNull()
+    expect(
+      typeof call.strokeStyle === 'object' && call.strokeStyle.kind === 'linear',
+      `a crest is stroked with a gradient, not ${String(call.strokeStyle)}`,
+    ).toBe(true)
 
     drawn.push({
       x,
@@ -212,8 +277,8 @@ function marks(calls: readonly Call[]): Mark[] {
       radiusX,
       radiusY,
       tilt,
-      ink: String(ink?.[1]),
-      alpha: Number(ink?.[2]),
+      ink: call.strokeStyle as Gradient,
+      alpha: call.alpha,
       width: call.lineWidth,
     })
     ellipse = null
@@ -299,33 +364,77 @@ describe('a ring struck on the water', () => {
     // Half of the ring's life, so every term below is off its own middle.
     ripples.draw(context, WIDE, clock + LIFE / 2)
 
-    const fade = Math.pow(0.5, 1.7) * 0.8
-    const radius = 5 + 0.5 * REACH
+    const side = short(WIDE)
+    const birth = side * BIRTH
+    const opened = opening(0.5)
+    const radius = birth + opened * side * REACH
+    // The clock's fall and the crest's own spreading, which are two different
+    // things and both of them here.
+    const fade = 0.5 * Math.sqrt(birth / radius) * 0.8 * GAIN
     const squash = 0.2 + STRUCK.ny * 0.11
+    const thinning = 0.58 + 0.42 * (1 - opened)
     const drawn = marks(calls)
 
-    expect(drawn).toHaveLength(2)
+    // A strike raises a train of three, not one ring.
+    expect(drawn).toHaveLength(3)
 
-    const [front, trail] = drawn
+    const [front, second, third] = drawn
 
     expect(front.x).toBeCloseTo(STRUCK.nx * WIDE.frame.width, 9)
     expect(front.y).toBeCloseTo(STRUCK.ny * WIDE.frame.height, 9)
     expect(front.radiusX).toBeCloseTo(radius, 9)
     expect(front.radiusY).toBeCloseTo(radius * squash, 9)
     expect(front.tilt).toBe(-0.035)
-    expect(front.ink).toBe('183, 231, 225')
-    expect(front.alpha).toBeCloseTo(fade * 0.9, 9)
-    expect(front.width).toBe(1.65)
+    expect(front.alpha).toBeCloseTo(fade, 9)
+    expect(front.width).toBeCloseTo(side * CREST * 1.6 * thinning, 9)
 
-    // The second ring follows 8 pixels back, thinner and fainter.
-    expect(trail.x).toBe(front.x)
-    expect(trail.y).toBe(front.y)
-    expect(trail.radiusX).toBeCloseTo(radius - 8, 9)
-    expect(trail.radiusY).toBeCloseTo((radius - 8) * squash, 9)
-    expect(trail.tilt).toBe(-0.035)
-    expect(trail.ink).toBe('183, 231, 225')
-    expect(trail.alpha).toBeCloseTo(fade * 0.42, 9)
-    expect(trail.width).toBe(0.95)
+    // The two behind it stand at fractions of the leading crest's own radius,
+    // so the train spreads as it travels rather than holding a fixed gap.
+    expect(second.x).toBe(front.x)
+    expect(second.y).toBe(front.y)
+    expect(second.radiusX).toBeCloseTo(radius * 0.72, 9)
+    expect(second.radiusY).toBeCloseTo(radius * 0.72 * squash, 9)
+    expect(second.alpha).toBeCloseTo(fade * 0.6, 9)
+    expect(second.width).toBeCloseTo(side * CREST * 1.15 * thinning, 9)
+
+    expect(third.radiusX).toBeCloseTo(radius * 0.5, 9)
+    expect(third.alpha).toBeCloseTo(fade * 0.3, 9)
+    expect(third.width).toBeCloseTo(side * CREST * 0.9 * thinning, 9)
+  })
+
+  test('takes the lantern on the face turned towards it', () => {
+    const ripples = started()
+    const { calls, context } = recorder()
+
+    ripples.pointer(STRUCK.nx, STRUCK.ny, 'move')
+    ripples.draw(context, WIDE, clock + LIFE / 2)
+
+    const side = short(WIDE)
+    const radius = side * BIRTH + opening(0.5) * side * REACH
+    const squash = 0.2 + STRUCK.ny * 0.11
+    const x = STRUCK.nx * WIDE.frame.width
+    const y = STRUCK.ny * WIDE.frame.height
+    const drawn = marks(calls)
+
+    // One gradient serves the whole train: the crests behind the leading one
+    // stand inside it and take the middle of it.
+    expect(new Set(drawn.map((mark) => mark.ink)).size).toBe(1)
+
+    const { from, to, stops } = drawn[0].ink
+
+    // It runs across the leading crest, from the lantern's side to the far
+    // one. Up and to the right is where the lantern stands.
+    expect(from[0]).toBeCloseTo(x + radius * 0.82, 9)
+    expect(from[1]).toBeCloseTo(y + radius * squash * -0.57, 9)
+    expect(to[0]).toBeCloseTo(x - radius * 0.82, 9)
+    expect(to[1]).toBeCloseTo(y - radius * squash * -0.57, 9)
+    expect(from[0]).toBeGreaterThan(to[0])
+    expect(from[1]).toBeLessThan(to[1])
+
+    // The lit end is whole and the far end keeps only the sky.
+    expect(stops.map(([offset]) => offset)).toEqual([0, 0.42, 1])
+    expect(stops[0][1]).toBe('rgba(246, 251, 228, 1)')
+    expect(stops[2][1]).toBe('rgba(143, 201, 216, 0.3)')
   })
 
   test('opens from a mark rather than from nothing', () => {
@@ -337,10 +446,34 @@ describe('a ring struck on the water', () => {
 
     const drawn = marks(calls)
 
-    // The trailing ring is 8 pixels behind a 5 pixel start, so only the front
-    // one exists on the frame the strike lands.
-    expect(drawn).toHaveLength(1)
-    expect(drawn[0].radiusX).toBe(5)
+    // The whole train stands on the frame the strike lands: it is born at a
+    // mark rather than at a point, so the crests are apart from the start.
+    expect(drawn).toHaveLength(3)
+    expect(drawn[0].radiusX).toBeCloseTo(short(WIDE) * BIRTH, 9)
+  })
+
+  test('is as large as the pond it lies on', () => {
+    const ripples = started()
+    const laptop = recorder()
+    const wall = recorder()
+
+    ripples.pointer(STRUCK.nx, STRUCK.ny, 'move')
+    ripples.draw(laptop.context, WIDE, clock + LIFE / 2)
+
+    const large = started(LARGE)
+
+    large.pointer(STRUCK.nx, STRUCK.ny, 'move')
+    large.draw(wall.context, LARGE, clock + LIFE / 2)
+
+    const near = marks(laptop.calls)[0]
+    const far = marks(wall.calls)[0]
+
+    // The ring is the same fraction of either frame, which is the whole point
+    // of measuring it in one: held in canvas pixels it would be the same coin
+    // on a laptop and on a wall. The crest's own thickness goes with it.
+    expect(near.radiusX / short(WIDE)).toBeCloseTo(far.radiusX / short(LARGE), 9)
+    expect(near.width / short(WIDE)).toBeCloseTo(far.width / short(LARGE), 9)
+    expect(far.radiusX).toBeGreaterThan(near.radiusX * 1.5)
   })
 
   test('sits where the art puts it, not where the canvas starts', () => {
@@ -414,7 +547,7 @@ describe('a ring struck on the water', () => {
     expect(ripples.draw(context, WIDE, clock + LIFE + 1)).toBe(false)
   })
 
-  test('is given up to 190 milliseconds and 18 pixels more than the least', () => {
+  test('is given up to 190 milliseconds and a spread more reach than the least', () => {
     vi.spyOn(Math, 'random').mockReturnValue(1)
 
     const ripples = started()
@@ -426,9 +559,10 @@ describe('a ring struck on the water', () => {
     expect(ripples.draw(context, WIDE, clock + LIFE + 191)).toBe(false)
 
     const opened = marks(calls)[0]
+    const side = short(WIDE)
 
     // The ring drawn at the end of its life has opened its whole reach.
-    expect(opened.radiusX).toBeCloseTo(5 + REACH + 18, 9)
+    expect(opened.radiusX).toBeCloseTo(side * BIRTH + side * (REACH + REACH_SPREAD), 9)
   })
 
   test('goes with the effect when it is disposed', () => {
@@ -550,14 +684,22 @@ describe('the strength of a strike', () => {
       (mark) => Math.abs(mark.x - 0.5 * WIDE.frame.width) < 1e-9,
     )
 
-    expect(pass).toHaveLength(2)
-    expect(press).toHaveLength(2)
-    // Both rings are the same age, so all that is left between them is the
-    // strength each was struck with: 1.25 against 0.8.
-    expect(press[0].alpha / pass[0].alpha).toBeCloseTo(1.25 / 0.8, 9)
-    expect(press[1].alpha / pass[1].alpha).toBeCloseTo(1.25 / 0.8, 9)
-    expect(pass[0].alpha).toBeCloseTo(Math.pow(0.5, 1.7) * 0.8 * 0.9, 9)
-    expect(press[0].alpha).toBeCloseTo(Math.pow(0.5, 1.7) * 1.25 * 0.9, 9)
+    expect(pass).toHaveLength(3)
+    expect(press).toHaveLength(3)
+
+    const side = short(WIDE)
+    const birth = side * BIRTH
+    const radius = birth + opening(0.5) * side * REACH
+    const fade = 0.5 * Math.sqrt(birth / radius) * GAIN
+
+    // Both trains are the same age and the same size, so all that is left
+    // between them is the strength each was struck with: 1.25 against 0.8.
+    for (let crest = 0; crest < 3; crest += 1) {
+      expect(press[crest].alpha / pass[crest].alpha).toBeCloseTo(1.25 / 0.8, 9)
+    }
+
+    expect(pass[0].alpha).toBeCloseTo(fade * 0.8, 9)
+    expect(press[0].alpha).toBeCloseTo(fade * 1.25, 9)
   })
 })
 
@@ -587,9 +729,12 @@ describe('the throttles between a pointer and the pool', () => {
     expect(struckTwice(FAR, 1095)).toBe(2)
   })
 
-  test('hold a second ring back until it is 12 canvas pixels away', () => {
-    expect(struckTwice(across(11.9), 1200)).toBe(1)
-    expect(struckTwice(across(12.1), 1200)).toBe(2)
+  // The step is a fraction of the frame like every other size here, so a
+  // pointer crossing a wall-sized pond is held to the same share of it that a
+  // pointer crossing a phone is.
+  test('hold a second ring back until it is a step away', () => {
+    expect(struckTwice(across(STEP - 0.1), 1200)).toBe(1)
+    expect(struckTwice(across(STEP + 0.1), 1200)).toBe(2)
   })
 
   test('let a ring through once both are clear', () => {

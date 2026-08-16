@@ -29,6 +29,41 @@ class FakeElement extends Target {
       else this.classes.delete(name)
     },
   }
+
+  /* What the trail writes and reads. The attributes are the current stop's
+   * announcement, the properties are where the light was put, and the box is
+   * the layout the script measures: a stop carries its own offset inside the
+   * trail, and a section carries where it sits down the document. */
+  readonly attributes = new Map<string, string>()
+  readonly properties = new Map<string, string>()
+  offsetLeft = 0
+  offsetWidth = 0
+  /** Where this element's top edge sits down the page, before any scroll. */
+  documentTop = 0
+
+  readonly style = {
+    setProperty: (name: string, value: string): void => {
+      this.properties.set(name, value)
+    },
+  }
+
+  readonly matched: FakeElement[] = []
+
+  setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value)
+  }
+
+  removeAttribute(name: string): void {
+    this.attributes.delete(name)
+  }
+
+  querySelectorAll(): FakeElement[] {
+    return this.matched
+  }
+
+  getBoundingClientRect(): { top: number } {
+    return { top: this.documentTop - (globalThis.window?.scrollY ?? 0) }
+  }
 }
 
 const COMMAND = 'curl -fsSL https://niwa.rs | sh -s'
@@ -58,8 +93,34 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   command.dataset.command = COMMAND
   command.parentElement = line
 
+  /* The trail: three stops in a nav, and the section each one names. The
+   * offsets are a plausible row of words, and the tops are a page with the
+   * garden above the first section. `install` has no stop pointing at it
+   * from `sections` alone — the pairing is the `data-trail-stop` attribute,
+   * exactly as it is on the page. */
+  const trail = new FakeElement()
+  const STOPS = [
+    { id: 'why', left: 0, width: 69, top: 1170 },
+    { id: 'config', left: 95, width: 45, top: 1700 },
+    { id: 'install', left: 166, width: 42, top: 5230 },
+  ]
+  const sections = new Map<string, FakeElement>()
+
+  for (const stop of STOPS) {
+    const link = new FakeElement()
+    link.dataset.trailStop = stop.id
+    link.offsetLeft = stop.left
+    link.offsetWidth = stop.width
+    trail.matched.push(link)
+
+    const section = new FakeElement()
+    section.documentTop = stop.top
+    sections.set(stop.id, section)
+  }
+
   const elements = new Map<string, FakeElement>([
     ['.site-header', bar],
+    ['[data-trail]', trail],
     ['[data-install-copy]', button],
     ['[data-install-label]', label],
     ['[data-install-status]', status],
@@ -78,6 +139,8 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   const frames: FrameRequestCallback[] = []
   const window = Object.assign(new Target(), {
     scrollY: 0,
+    innerHeight: 900,
+    innerWidth: 1440,
     requestAnimationFrame(callback: FrameRequestCallback): number {
       frames.push(callback)
       return frames.length
@@ -101,8 +164,14 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   })
 
   const document = {
+    // The page the sections sit on: the last of them ends 546 pixels down
+    // from its own top, which is where the document stops.
+    documentElement: { scrollHeight: 5776 },
     querySelector(selector: string): FakeElement | null {
       return elements.get(selector) ?? null
+    },
+    getElementById(id: string): FakeElement | null {
+      return sections.get(id) ?? null
     },
     createRange() {
       return range
@@ -118,6 +187,9 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
 
   return {
     bar,
+    trail,
+    stops: trail.matched,
+    sections,
     button,
     label,
     status,
@@ -130,6 +202,18 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
     scroll(to: number): void {
       window.scrollY = to
       window.dispatch('scroll')
+    },
+    /** The stop the trail says the reader is at, or none. */
+    current(): string | undefined {
+      return trail.matched.find((stop) => stop.attributes.has('aria-current'))?.dataset
+        .trailStop
+    },
+    /** Where the light was put, and how wide it was made. */
+    light(): { x: string | undefined; width: string | undefined } {
+      return {
+        x: trail.properties.get('--trail-x'),
+        width: trail.properties.get('--trail-width'),
+      }
     },
     frames(): number {
       const pending = frames.splice(0, frames.length)
@@ -190,6 +274,164 @@ describe('the header scroll state', () => {
     const env = environment()
     start()
     expect(env.window.options.get('scroll')).toEqual({ passive: true })
+  })
+})
+
+describe('the trail', () => {
+  /* The reading line sits at 0.42 of a 900 pixel window, so a section counts
+   * as reached once its top is 378 pixels down the viewport — that is, once
+   * the page has been scrolled to its own top less 378. It holds there while
+   * a viewport or more of page is still to come, which covers every probe
+   * below but the last two. */
+  const reaches = (top: number) => top - 900 * 0.42
+
+  /** The furthest this page scrolls: its height less one window. */
+  const BOTTOM = 5776 - 900
+
+  test('is dark in the garden, above the first section', () => {
+    const env = environment()
+    start()
+
+    expect(env.current()).toBeUndefined()
+    expect(env.light().width).toBe('0px')
+  })
+
+  test('lights the stop the reader has reached', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1170))
+    env.frames()
+    expect(env.current()).toBe('why')
+
+    env.scroll(reaches(1700))
+    env.frames()
+    expect(env.current()).toBe('config')
+
+    env.scroll(reaches(5230))
+    env.frames()
+    expect(env.current()).toBe('install')
+  })
+
+  test('lights one stop and no more', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(5230))
+    env.frames()
+
+    expect(env.stops.filter((stop) => stop.attributes.has('aria-current'))).toHaveLength(1)
+  })
+
+  // The stop behind the reader keeps the light through the sections the trail
+  // does not name, which is the whole stretch between the config and the last
+  // word. A trail whose light goes out reads as broken.
+  test('holds the last stop passed through the sections between', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700) + 1500)
+    env.frames()
+    expect(env.current()).toBe('config')
+  })
+
+  /* The last section's top stops 24 pixels short of the reading line however
+   * far the page is scrolled, because the page runs out first. A line that
+   * did not move for that left the final stop lighting over the last two
+   * dozen pixels of the scroll, which no reader would ever see. */
+  test('reaches the last stop well before the page ends', () => {
+    const env = environment()
+    start()
+
+    env.scroll(BOTTOM - 300)
+    env.frames()
+    expect(env.current()).toBe('install')
+  })
+
+  test('holds the last stop to the very bottom', () => {
+    const env = environment()
+    start()
+
+    env.scroll(BOTTOM)
+    env.frames()
+    expect(env.current()).toBe('install')
+  })
+
+  // The slide belongs to the end of the page and nowhere else: with a
+  // viewport or more still to come the line is exactly where it was, so the
+  // stop before the last one is not handed the light early.
+  test('does not slide the line while the page still has a viewport to give', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(5230) - 900)
+    env.frames()
+    expect(env.current()).toBe('config')
+  })
+
+  test('goes dark again above the first section', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700))
+    env.frames()
+    expect(env.current()).toBe('config')
+
+    env.scroll(0)
+    env.frames()
+    expect(env.current()).toBeUndefined()
+    expect(env.light().width).toBe('0px')
+  })
+
+  // The light carries eight pixels of air past each end of the word, which is
+  // the fade the stylesheet lays over each end of the gradient.
+  test('puts the light on the stop, with a pad at each end', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700))
+    env.frames()
+
+    expect(env.light()).toEqual({ x: '87px', width: '61px' })
+  })
+
+  test('says where the reader is to someone who cannot see the light', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1170))
+    env.frames()
+
+    expect(env.stops[0].attributes.get('aria-current')).toBe('location')
+  })
+
+  test('writes nothing on a frame that changed nothing', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700))
+    env.frames()
+    env.trail.properties.clear()
+
+    env.scroll(reaches(1700) + 5)
+    env.frames()
+    expect(env.trail.properties.size).toBe(0)
+  })
+
+  // The stops move when the window does, and the reader who resized never
+  // scrolled, so nothing else would have told the light to follow them.
+  test('follows the stops when the window changes width', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700))
+    env.frames()
+    env.stops[1].offsetLeft = 200
+    env.stops[1].offsetWidth = 60
+
+    env.window.innerWidth = 1100
+    env.window.dispatch('resize')
+    expect(env.light()).toEqual({ x: '192px', width: '76px' })
   })
 })
 

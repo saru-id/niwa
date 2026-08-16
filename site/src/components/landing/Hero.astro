@@ -16,9 +16,12 @@ import vine from '../../assets/art/vine.png'
 import { heroDesktop, heroMobile, heroOriginal, installerVine } from '../../lib/hero-art'
 import { INSTALL_COMMAND } from './command'
 
-// The pair mirrors LANDING_QUERY in scripts/landing/geometry.ts, which owns
-// the 780 boundary; 781 is its complement, so exactly one source matches any
-// viewport.
+// The pair splits on width alone, and deliberately does not follow
+// LANDING_QUERY: that boundary decides which composition the art is drawn
+// in, and this one decides how many bytes of it to send. An upright tablet
+// takes the covered composition and paints the art across a screen far
+// larger than a phone's, so it is served the fuller encode. 781 is the
+// width's complement, so exactly one source matches any viewport.
 const NARROW = '(max-width: 780px)'
 const WIDE = '(min-width: 781px)'
 ---

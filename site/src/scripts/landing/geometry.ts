@@ -19,7 +19,7 @@
  *   composite that should survive it must not exist: ripples draws first.
  * - The entry gates the calls. Ripples draws while it holds live ripples.
  *   The basin draws while the hero is visible and motion is not reduced.
- *   The lantern, the fireflies and the flowers add `scene.mobile` being
+ *   The lantern, the fireflies and the flowers add `scene.covered` being
  *   false to that. An effect that is not called contributes nothing to the
  *   reschedule answer.
  * - No effect calls `setTransform`: the entry applies the density transform
@@ -56,22 +56,38 @@ export interface Scene {
   frame: Rect
   /** The backing store's scale. The context carries it before any draw. */
   density: number
-  /** True below the landing's breakpoint, where the art covers the wrap. */
-  mobile: boolean
+  /**
+   * True where the art covers the wrap rather than being contained in it.
+   *
+   * It is a fact about the composition, not about the device: a phone and a
+   * tablet held upright both answer true, and the same tablet turned on its
+   * side answers false. Everything that reads it is reasoning about the
+   * covered composition — the whole wrap repainted every frame — and not
+   * about who is holding the screen.
+   */
+  covered: boolean
 }
 
 /**
- * The landing's mobile boundary, as `matchMedia` takes it.
+ * Where the landing's two compositions divide, as `matchMedia` takes it.
  *
- * This module is where the number is decided; the landing stylesheet mirrors
- * it, because the scene has to change composition on the same pixel the
- * layout changes on and a script cannot read a stylesheet for one number.
+ * Two conditions, and either one is enough. The width is the phone: below it
+ * there is no room for a column of copy beside a picture. The aspect ratio is
+ * the tablet held upright, which is wide enough for the contained
+ * composition and far too tall for it — the art is three by two, so on a
+ * portrait screen it fills a strip along the bottom and strands the promise
+ * in an empty field above it. Either way the answer is the same one: stop
+ * setting the garden beside the copy and put it behind.
+ *
+ * This module is where the boundary is decided; the landing stylesheet
+ * mirrors it, because the scene has to change composition on the same pixel
+ * the layout changes on and a script cannot read a stylesheet for one number.
  * The condition is bare because `matchMedia` treats an `@media` prefix as an
  * unparseable query and then reports no match for the life of the page.
  * Testing `innerWidth` in its place would disagree with the stylesheet by
  * the width of a scrollbar.
  */
-export const LANDING_QUERY = '(max-width: 780px)'
+export const LANDING_QUERY = '(max-width: 780px), (max-aspect-ratio: 1/1)'
 
 /**
  * The scene for one measurement of the page.
@@ -79,30 +95,32 @@ export const LANDING_QUERY = '(max-width: 780px)'
  * `wrap` is the art wrap's box, `natural` the art's own pixel size — read
  * from a decoded image; the entry awaits `img.decode()` first, because an
  * unmeasured image reads zero and zero divides into nothing usable —
- * `mobile` the breakpoint's answer, and `dpr` the screen's device pixel
+ * `covered` the boundary's answer, and `dpr` the screen's device pixel
  * ratio.
  *
- * The two compositions mirror the stylesheet. Above the breakpoint the art is
+ * The two compositions mirror the stylesheet. Outside the boundary the art is
  * contained in the wrap and anchored to its right bottom corner, so the canvas
- * is the art and the frame fills it. Below the breakpoint the art covers the
- * wrap, so the canvas is the whole wrap and the art overflows it, held at 65%
- * across and 50% down.
+ * is the art and the frame fills it. Inside it the art covers the wrap, so the
+ * canvas is the whole wrap and the art overflows it, held at 65% across and
+ * 50% down.
  */
 export function computeScene(
   wrap: Rect,
   natural: { w: number; h: number },
-  mobile: boolean,
+  covered: boolean,
   dpr: number,
 ): Scene {
-  // The caps bound the backing store's memory and fill cost. A phone
-  // repaints the whole covered wrap every frame, and past 1.25 the extra
-  // pixels cost more fill than they show. Two covers every common desktop
+  // The caps bound the backing store's memory and fill cost. The covered
+  // composition repaints the whole wrap every frame, and past 1.25 the extra
+  // pixels cost more fill than they show — which is why the cap follows the
+  // composition and not the screen: an upright tablet has the larger wrap of
+  // the two and pays the most for it. Two covers every common desktop
   // density without letting a dense display quadruple a store whose source
   // detail tops out at 1536 pixels. A screen that reports no ratio still has
   // to be drawn on, so it counts as one.
-  const density = Math.min(dpr || 1, mobile ? 1.25 : 2)
+  const density = Math.min(dpr || 1, covered ? 1.25 : 2)
 
-  if (mobile) {
+  if (covered) {
     const scale = Math.max(wrap.width / natural.w, wrap.height / natural.h)
     const width = natural.w * scale
     const height = natural.h * scale
@@ -115,7 +133,7 @@ export function computeScene(
         height,
       },
       density,
-      mobile,
+      covered,
     }
   }
 
@@ -136,7 +154,7 @@ export function computeScene(
     },
     frame: { left: 0, top: 0, width, height },
     density,
-    mobile,
+    covered,
   }
 }
 

@@ -104,6 +104,12 @@
  * Fixed glass at the top of the page. It is transparent over the first
  * viewport and thickens once the page has moved; `is-scrolled` is how the
  * page says which of the two it is.
+ *
+ * Three registers across one line, and the grid is what holds them apart:
+ * the outer columns take an equal share of whatever the middle does not
+ * want, so the trail sits on the page's centre however wide the mark and
+ * the ways out happen to be. A flex row would have hung it off whichever
+ * neighbour grew.
  */
 
 .surface-landing .site-header {
@@ -131,29 +137,29 @@
 }
 
 .surface-landing .site-header-inner {
-  display: flex;
+  display: grid;
   width: min(100%, 82rem);
   min-height: 2.1rem;
   margin: 0 auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 2rem;
 }
 
-.surface-landing .header-left {
-  display: flex;
-  min-height: 2.1rem;
-  align-items: center;
-  gap: 2.75rem;
-}
+/* ---- The mark ----------------------------------------------------------
+ * The seedling, the wordmark and the version, which is the same trio the
+ * documentation's bar prints. Nothing here is nudged into place by a
+ * transform on the group: each part states its own alignment, and the one
+ * offset below is a correction to a drawing rather than to a layout.
+ */
 
 /* The mark is a link outside any nav, so the site's underline reaches it.
- * Two images are not a phrase to underline. */
+ * Two images and a number are not a phrase to underline. */
 .surface-landing .mini-mark {
   display: inline-flex;
   min-height: 2.1rem;
-  flex: 0 0 auto;
   align-items: center;
+  justify-self: start;
   gap: 0.18rem;
   color: inherit;
   opacity: 0.96;
@@ -190,63 +196,223 @@
   transform: translateY(0.08rem);
 }
 
-.surface-landing .site-nav {
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-  transform: translateY(0.125rem);
+/* The version stands off the wordmark's last letter rather than against it,
+ * and rides up to the letters' own line: it is a note on the name, not a
+ * word of it. */
+.surface-landing .mark-version {
+  margin-left: 0.55rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: clamp(0.66rem, 0.52vw, 0.74rem);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  transform: translateY(0.06rem);
 }
 
-.surface-landing .site-nav-actions {
-  margin-left: auto;
+/* ---- The trail ---------------------------------------------------------
+ * The three stops this page makes, and where in them the reader is.
+ *
+ * They are set in the display face because they are places in a story and
+ * not controls: everything on this bar that a machine supplied — the
+ * version, the slug — is in mono, and the difference is the whole reason
+ * this header no longer reads as one strip of undifferentiated links.
+ *
+ * The path under them is a hairline, and the light on it is the lantern's
+ * own warm. The script writes where the light sits and how wide it is; the
+ * stylesheet owns everything about how it gets there. Before the story
+ * starts there is no stop to be at, and a width of zero is how the trail
+ * says so.
+ */
+
+.surface-landing .trail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.surface-landing .trail-stops {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  align-items: baseline;
+  gap: clamp(1.5rem, 1.5vw, 1.9rem);
+  list-style: none;
+}
+
+/* The stops are set in the mono, tracked open, and no larger than the words
+ * beside them. They do not change weight when they light: the light and the
+ * ink say it, and a word that thickened under the reader would push its
+ * neighbours along the path.
+ *
+ * They were the display face for a while, on the argument that a section of
+ * a story is prose and a control is not. The argument was sound and the
+ * result was not: this stack is Iowan and Palatino, whose thin strokes go
+ * soft at fifteen pixels on a screen with one pixel per pixel, which is the
+ * screen a good many readers have. A face that only holds up at twice the
+ * density is the wrong face for chrome. The trail is still not a control,
+ * and what says so is now its shape — centred, on a path, lit — which reads
+ * at any density. */
+.surface-landing .trail-stops a {
+  display: block;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: clamp(0.78rem, 0.62vw, 0.86rem);
+  font-weight: 500;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+.surface-landing .trail-stops a:hover,
+.surface-landing .trail-stops a[aria-current] {
+  color: var(--ink-strong);
+}
+
+/* The path hangs below the words rather than standing under them in flow.
+ * The bar centres what it holds, and a column of words over a rule centres
+ * the pair — which lifts the words off the line the mark and the ways out
+ * sit on. Out of flow, the trail is as tall as its words and lands where
+ * they do, and the path still takes their width from the box around them. */
+.surface-landing .trail-path {
+  position: absolute;
+  right: 0;
+  bottom: -0.66rem;
+  left: 0;
+  display: block;
+  height: 1px;
+  /* It fades out at both ends rather than stopping. A rule that ends on a
+     hard edge is a rule under three words; a line that comes out of the dark
+     and goes back into it is a path, which is what the light travels. */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border-strong) 16%,
+    var(--border-strong) 84%,
+    transparent 100%
+  );
+}
+
+.surface-landing .trail-light {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: var(--trail-width, 0);
+  height: 1px;
+  /* The lantern's core, which is the light this page is lit by. */
+  /* The fade at each end is the half of the pad the script adds around the
+     word, so the burning middle of the light is the width of the stop it is
+     under and the ends are air. */
+  background: linear-gradient(
+    90deg,
+    rgba(255, 187, 96, 0) 0%,
+    var(--accent) 12%,
+    var(--accent) 88%,
+    rgba(255, 187, 96, 0) 100%
+  );
+  transform: translateX(var(--trail-x, 0));
+  transition:
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- The ways out ------------------------------------------------------
+ * The two places that are not this page: the documentation and the
+ * repository. Each is a mark and a word, and they are deliberately the same
+ * object twice — what says a way out leaves the page is that it carries a
+ * mark, which nothing on the trail does.
+ *
+ * Which one the page would rather you took is said in ink alone. It has
+ * been said three other ways in the course of getting here: an underline,
+ * then a bordered pill, then a rule above and below. All three drew a frame
+ * around one item on a page that has no frames anywhere else, and each one
+ * read as a control lifted out of some other site. The old header had the
+ * hierarchy upside down on top of that, and the repository was the
+ * brightest thing on the bar.
+ */
+
+.surface-landing .site-ways {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 0.4rem;
   text-shadow: 0 1px 10px rgba(3, 5, 4, 0.88);
 }
 
-.surface-landing .site-nav a {
+.surface-landing .way {
   display: inline-flex;
-  min-height: 2.1rem;
+  height: 2rem;
   align-items: center;
+  padding: 0 0.5rem;
+  gap: 0.5rem;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
+  font-size: clamp(0.74rem, 0.58vw, 0.82rem);
+  font-weight: 500;
+  letter-spacing: 0.012em;
   line-height: 1;
   text-decoration: none;
-  transition: color 160ms ease;
+  transition: color 180ms ease;
 }
 
-.surface-landing .site-nav a:hover {
+/* The documentation is the errand the page would rather you ran, and the
+ * whole of how it says so is the ink: strong against the repository's
+ * muted. Nothing is drawn around it. Both ways answer a hover the same
+ * way, because they are the same kind of thing. */
+.surface-landing .way-docs {
   color: var(--ink-strong);
 }
 
-.surface-landing .site-nav .repo-link {
-  padding: 0;
-  gap: 0.45rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--ink-strong);
-}
-
-/* The mark is the site's own drawing. Its file asks for `currentColor` at
- * one em, which here would take the ink of the words beside it and a size
- * from the type: both are stated instead. The white at 88% is what the
- * composition was measured with. */
-.surface-landing .repo-link svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  fill: #ffffff;
-  opacity: 0.88;
-}
-
-.surface-landing .site-nav .repo-link:hover {
-  border-color: var(--accent);
+.surface-landing .way:hover {
   color: var(--accent-soft);
 }
 
-.surface-landing .site-nav a:focus-visible,
+/* Both marks take the ink of the word beside them and answer the hover with
+ * it, which is what both files already ask for by painting in
+ * `currentColor`. The GitHub mark stood at a fixed white before, a shade
+ * brighter than anything it sat next to and unable to respond to anything.
+ * The size is stated because each file asks for one em and would otherwise
+ * be set by the type. */
+.surface-landing .way svg {
+  width: 1.2em;
+  height: 1.2em;
+  flex: 0 0 auto;
+}
+
+.surface-landing .trail-stops a:focus-visible,
+.surface-landing .way:focus-visible,
+.surface-landing .mini-mark:focus-visible,
 .surface-landing .copy-button:focus-visible,
 .surface-landing .docs-link:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* Below this the three registers stop fitting across one line, and the
+ * trail is the one that goes: a trail read at a squeeze is worse than the
+ * scroll it describes, and it is the only thing on the bar the reader can
+ * do without. The grid closes to two columns behind it. */
+@media (max-width: 1000px) {
+  .surface-landing .site-header-inner {
+    grid-template-columns: auto 1fr;
+  }
+
+  .surface-landing .trail {
+    display: none;
+  }
+}
+
+/* The light slides because sliding is what says the stops are one path. To
+ * a reader who has asked for no motion it simply is where it is: the site's
+ * own rule stops the transition, and this one stops it being missed by the
+ * `all` the site does not use. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-landing .trail-light {
+    transition: none;
+  }
 }
 
 /* ---- The hero ----------------------------------------------------------
@@ -266,12 +432,23 @@
   isolation: isolate;
 }
 
+/* The width is the garden's whole size: the art is contained in this box and
+ * anchored to its right bottom corner, so a wider box is a bigger painting.
+ *
+ * The second term is what keeps the composition from breaking on a wide
+ * window. The art is three by two, so 88% of the width outgrows the window's
+ * height once the window is wider than about 1.6 of it, and from there the
+ * garden runs the full height of the screen with the pine jammed under the
+ * header. Capping the box at one and a half times 95svh states the same
+ * thing as a height: the garden stands at most 95% of the window tall and
+ * keeps sky above it, which is the proportion it already has on a laptop.
+ * Below that aspect the 88% still governs and nothing changes. */
 .surface-landing .hero-art-wrap {
   position: sticky;
   z-index: -1;
   top: 0;
   right: 0;
-  width: 88%;
+  width: min(88%, calc(1.5 * 95svh));
   height: 100svh;
   margin-left: auto;
   transform: translate3d(0, 0, 0);
@@ -503,9 +680,25 @@
 /* ---- The story ---------------------------------------------------------
  * Everything below the hero rides over the pinned art on its own opaque
  * ground, which is what ends the garden's hold on the window.
+ *
+ * Six screens, and they are deliberately not the same screen six times.
+ * The page used to set every section as one giant heading in the left
+ * column with its content beside it, which meant nothing was emphasised,
+ * because emphasis is a thing you can only have some of. The order below is
+ * a rhythm: the claim, wide and quiet; the exhibit, dense; the argument,
+ * lifted onto its own panel; one short beat; the refusals, sober; and the
+ * garden again at the end.
+ *
+ * The measures are shared. `--say` is the width prose is set to and no
+ * heading or paragraph on this page runs past it; `--breathe` is the air a
+ * section holds above and below its content, and it is one value so the
+ * page keeps one pulse.
  */
 
 .surface-landing .story {
+  --say: 34rem;
+  --breathe: clamp(5.5rem, 9vw, 8.5rem);
+
   position: relative;
   z-index: 2;
   background: var(--ground);
@@ -514,27 +707,9 @@
 .surface-landing .story > section {
   width: min(100% - 3rem, 76rem);
   margin: 0 auto;
-  scroll-margin-top: 5.25rem;
-}
-
-/* Two columns: the claim on the left, what backs it on the right. */
-.surface-landing .why,
-.surface-landing .config {
-  display: grid;
-  gap: clamp(4rem, 9vw, 9rem);
-  padding: clamp(7rem, 13vw, 11rem) 0;
+  padding: var(--breathe) 0;
   border-bottom: 1px solid var(--border);
-}
-
-.surface-landing .why {
-  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.2fr);
-}
-
-/* The exhibit's column is the wider of the two by more than the section
- * above it: the config's longest line is sixty-nine characters, and a fence
- * that has to scroll to show one of them is a fence a reader distrusts. */
-.surface-landing .config {
-  grid-template-columns: minmax(12rem, 0.62fr) minmax(0, 1.38fr);
+  scroll-margin-top: 5.25rem;
 }
 
 .surface-landing .story h2 {
@@ -545,39 +720,93 @@
   text-wrap: balance;
 }
 
+/* One paragraph shape for the whole story, so a line of prose is the same
+ * object wherever it stands. */
+.surface-landing .story p {
+  max-width: var(--say);
+  color: var(--ink-muted);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+/* The way on from a section: quiet, in mono, and always the last thing. */
+.surface-landing .onward {
+  margin-top: 2rem;
+  margin-bottom: 0;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+}
+
+/* ---- The claim ---------------------------------------------------------
+ * Two columns: what it is on the left, what that means on the right. The
+ * heading is the largest type on the page after the promise itself, and it
+ * is the only section that gets to be this quiet.
+ */
+
+.surface-landing .why {
+  display: grid;
+  gap: clamp(3rem, 7vw, 7rem);
+  grid-template-columns: minmax(15rem, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+}
+
 .surface-landing .why h2 {
   max-width: 10ch;
   font-size: clamp(3.25rem, 6vw, 6rem);
 }
 
-.surface-landing .why-body {
-  align-self: end;
-}
-
 .surface-landing .why-body p {
-  max-width: 34rem;
   margin-bottom: 0;
-  color: var(--ink-muted);
-  font-size: clamp(1.08rem, 1.8vw, 1.35rem);
+  font-size: clamp(1.14rem, 1.8vw, 1.42rem);
   letter-spacing: -0.015em;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 
-.surface-landing .config-copy {
-  align-self: center;
+/* The four nouns, set as a row of hairline-topped columns. They are what
+ * the sentence above would otherwise have to list, and a reader takes them
+ * faster as four objects than as four commas. */
+.surface-landing .why-covers {
+  display: grid;
+  margin: 2.75rem 0 0;
+  padding: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  list-style: none;
+}
+
+.surface-landing .why-covers li {
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-strong);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---- The exhibit -------------------------------------------------------
+ * The config, and the plan it produces. The copy column is the narrower of
+ * the two by some way: the config's longest line is sixty-nine characters,
+ * and a fence that has to scroll to show one of them is a fence a reader
+ * distrusts.
+ */
+
+.surface-landing .config {
+  display: grid;
+  gap: clamp(3rem, 6vw, 5.5rem);
+  grid-template-columns: minmax(12rem, 0.58fr) minmax(0, 1.42fr);
+  align-items: start;
 }
 
 .surface-landing .config h2 {
   max-width: 8ch;
-  font-size: clamp(3rem, 5vw, 5.1rem);
+  font-size: clamp(2.75rem, 4.6vw, 4.6rem);
 }
 
 .surface-landing .config-copy p {
-  max-width: 24rem;
   margin: 1.5rem 0 0;
-  color: var(--ink-muted);
-  font-size: 0.98rem;
-  line-height: 1.65;
+  max-width: 24rem;
 }
 
 /* The config and the plan it produces are one exhibit, so they stand in one
@@ -586,153 +815,397 @@
   min-width: 0;
 }
 
-/* ---- The daily loop and the boundary -----------------------------------
- * One measure for both, because they are one argument: here is what you do
- * with it, and here is what it will not do for you.
+/* ---- The argument ------------------------------------------------------
+ * The one thing this tool does that its neighbours do not, and the only
+ * section the page lifts off the ground to say. The panel is a shade above
+ * `--ground` with a hairline around it: enough that the eye reads it as a
+ * held thing, not enough to become a card in a grid of cards, of which
+ * this page has none.
  */
 
-.surface-landing .loop,
-.surface-landing .boundary {
-  padding: clamp(7rem, 13vw, 11rem) 0;
-  border-bottom: 1px solid var(--border);
+/* Named through the story to reach past `.story > section`, which sets the
+ * measure and the padding every other section keeps.
+ *
+ * This one is a band and not a card. It stood as a bordered box inset in
+ * the measure, and it was the only closed frame on a page built from
+ * hairlines and ground — the same mistake the header made three times over
+ * before the Docs control lost its border. Worse, `.story > section` won
+ * the padding, so the frame sat one pixel off the words inside it.
+ *
+ * So: the ground lifts, the band runs the full width of the window, and
+ * nothing is drawn around anything. The content keeps the story's own
+ * measure, so every line in here starts on the same vertical as the section
+ * above and the one below — which is what "out of place" was.
+ */
+.surface-landing .story > .drift {
+  width: 100%;
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  border: 0;
+  /* Not `--surface`, which is two and a half percent off the ground and
+     invisible on most screens — a band nobody can see is a band that earns
+     nothing. This is the pond's own deep water, and it reads as a change of
+     material rather than as a lighter grey: the page is lit by a garden, so
+     when its ground changes it should change into something in the garden. */
+  background: #061012;
 }
 
-.surface-landing .loop h2,
-.surface-landing .boundary h2,
-.surface-landing .router h2 {
-  max-width: 12ch;
-  margin-bottom: 3.25rem;
-  font-size: clamp(2.75rem, 4.5vw, 4rem);
+/* The rule the section above would draw lands on this band's top edge,
+   where it would read as a short line floating inside the ground change.
+   The ground change is the seam, so the rule goes. An engine without
+   `:has` keeps it, which is a hairline in the right place and nothing
+   worse. */
+.surface-landing .story > section:has(+ .drift) {
+  border-bottom: 0;
 }
 
-.surface-landing .motions {
+.surface-landing .drift-inner {
+  width: min(100%, 76rem);
+  margin: 0 auto;
+}
+
+/* The turn and the reason for it, across one row. Stacked in the left half
+ * they left the panel's whole top right corner empty, which is the shape of
+ * a section that ran out of things to say before it ran out of room. */
+.surface-landing .drift-lede {
+  display: grid;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+}
+
+/* Larger than the exhibit's heading above it, because it is the larger
+ * claim. It had been the smallest of the three, which said the opposite. */
+.surface-landing .drift h2 {
+  max-width: 13ch;
+  font-size: clamp(2.75rem, 5.2vw, 5.4rem);
+}
+
+.surface-landing .drift-lede p {
   margin: 0;
+  max-width: 40rem;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  line-height: 1.65;
+}
+
+.surface-landing .drift code {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* The two beats stand side by side where there is room for them, because
+ * they are one motion in two halves: the tool holds the difference, then
+ * you say which way it resolves. Stacked, that reads as two unrelated
+ * screenshots. */
+.surface-landing .drift-beats {
+  display: grid;
+  margin: clamp(3rem, 5vw, 4.5rem) 0 0;
   padding: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(2rem, 3.5vw, 3.25rem);
   list-style: none;
 }
 
-.surface-landing .motions li {
+/* Each beat is a rule, a name, a line, and the screen that proves it. The
+ * rows are declared so the screen takes whatever height is left, which is
+ * what puts the two frames on one bottom edge however many lines the tool
+ * printed into each — two boxes of different heights side by side read as
+ * an accident rather than as a pair. */
+.surface-landing .drift-beats li {
   display: grid;
-  grid-template-columns: 2.5rem 1fr;
-  gap: 1rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--border);
+  min-width: 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-strong);
+  grid-template-rows: auto auto 1fr;
 }
 
-.surface-landing .motions li > span {
-  padding-top: 0.18rem;
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-}
-
-.surface-landing .motions h3 {
-  margin-bottom: 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.018em;
+.surface-landing .drift-beats h3 {
+  margin-bottom: 0.55rem;
+  color: var(--ink-strong);
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
   line-height: 1.35;
 }
 
-.surface-landing .motions p,
-.surface-landing .boundary p {
-  max-width: 34rem;
-  margin-bottom: 0;
-  color: var(--quiet);
-  font-size: 0.9rem;
+/* Brighter than the refusals further down, which are a list to scan. These
+ * two lines are the argument itself and are meant to be read. */
+.surface-landing .drift-beats p {
+  margin: 0 0 1.35rem;
+  max-width: 30rem;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
   line-height: 1.6;
 }
 
-.surface-landing .boundary p {
-  margin-bottom: 1rem;
+.surface-landing .drift-beats figure {
+  display: grid;
+  margin: 0;
+  grid-template-rows: 1fr auto;
 }
 
-.surface-landing .onward {
-  margin-top: 0.7rem;
+.surface-landing .drift-beats pre {
+  height: 100%;
+}
+
+/* The provenance line, and the way on. Both are footnotes to the section
+ * and are set as footnotes: mono, small, and the last things in it. */
+.surface-landing .drift .drift-source {
+  margin: clamp(1.75rem, 2.5vw, 2.25rem) 0 0;
+  max-width: none;
+  color: var(--quiet);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  line-height: 1.4;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
 }
 
-.surface-landing .boundary .onward {
-  margin-top: 2rem;
+.surface-landing .drift .onward {
+  margin-top: 0.9rem;
 }
 
-/* ---- The way into the documentation ------------------------------------
- * Three doors, named by the three groups the sidebar is built from.
+/* ---- The beat ----------------------------------------------------------
+ * One claim and one line of output. It is the shortest section on the page
+ * on purpose: it sits between the two longest, and it is the pause that
+ * keeps them from reading as one.
  */
 
-.surface-landing .router {
-  padding: clamp(7rem, 13vw, 11rem) 0;
-  border-bottom: 1px solid var(--border);
+.surface-landing .converged {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding-top: clamp(4.5rem, 7vw, 6.5rem);
+  padding-bottom: clamp(4.5rem, 7vw, 6.5rem);
+  text-align: center;
 }
 
-.surface-landing .router-cards {
+.surface-landing .converged h2 {
+  font-size: clamp(2.25rem, 3.6vw, 3.4rem);
+}
+
+.surface-landing .converged p {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+}
+
+.surface-landing .converged .exhibit-frame,
+.surface-landing .converged figure {
+  margin-top: 0.9rem;
+}
+
+/* ---- The refusals ------------------------------------------------------
+ * What the tool will not do, set as a list because that is what it is. Each
+ * one stands under its own rule, which is the page's own way of saying "and
+ * another": the four nouns above are laid out the same way.
+ */
+
+.surface-landing .boundary h2 {
+  max-width: 12ch;
+  margin-bottom: 3rem;
+  font-size: clamp(2.5rem, 4.2vw, 4rem);
+}
+
+.surface-landing .boundary-refusals {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
   margin: 0;
   padding: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 3vw, 3rem);
   list-style: none;
 }
 
-.surface-landing .router-card {
-  display: block;
-  padding: 1.75rem 2rem 1.75rem 0;
-  border-top: 1px solid var(--border);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 220ms ease;
+.surface-landing .boundary-refusals li {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-strong);
 }
 
-.surface-landing .router-card:hover {
-  border-top-color: var(--accent);
+.surface-landing .boundary-refusals h3 {
+  margin-bottom: 0.55rem;
+  color: var(--ink-strong);
+  font-size: 1.02rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  line-height: 1.35;
 }
 
-.surface-landing .router-card h3 {
-  margin-bottom: 0.6rem;
-  font-size: 1.35rem;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  transition: color 180ms ease;
-}
-
-.surface-landing .router-card:hover h3 {
-  color: var(--accent-soft);
-}
-
-.surface-landing .router-card p {
-  max-width: 18rem;
+.surface-landing .boundary-refusals p {
   margin-bottom: 0;
   color: var(--quiet);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   line-height: 1.6;
 }
 
-/* ---- The last word -----------------------------------------------------
- * The command again, at the bottom, where a reader who read the whole page
- * arrives ready to run it.
+.surface-landing .boundary .onward {
+  margin-top: 2.5rem;
+}
+
+/* ---- The last screen ---------------------------------------------------
+ * The garden again. The page opened in the painting and it closes in it,
+ * and everything between was words and output on flat ground.
+ *
+ * The section runs the full width of the window rather than the story's
+ * measure, because a picture held inside a column is a picture in a box.
+ * The content keeps the measure by carrying it itself.
  */
 
-.surface-landing .install {
-  display: flex;
-  min-height: 34rem;
-  padding: clamp(7rem, 12vw, 10rem) 0 max(clamp(7rem, 12vw, 10rem), env(safe-area-inset-bottom));
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 4rem;
+/* Named through the story to reach past `.story > section`, which sets the
+ * measure every other section keeps. This one does not keep it: the picture
+ * runs the width of the window and the content carries the measure itself. */
+.surface-landing .story > .install {
+  position: relative;
+  width: 100%;
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-bottom: max(var(--breathe), env(safe-area-inset-bottom));
+  border-bottom: 0;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Turned almost all the way down and pulled to the pond. What is left is
+ * the suggestion of water behind the command, which is the note the page
+ * should end on — not a second hero competing with the first. */
+.surface-landing .install-art {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.surface-landing .install-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% 78%;
+  opacity: 0.4;
+}
+
+/* The ink over it. It is heaviest at the top, where the section has to meet
+ * the flat ground above it without a seam, and lightest low and right,
+ * which is where the water is. */
+.surface-landing .install::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    /* Down: opaque where the section meets the flat ground above it, then
+       open, and it stays open — what closes the picture before the doors is
+       the doors' own ground, which is tied to where they actually are. A
+       share of the section's height would drift with the section. */
+    linear-gradient(
+      180deg,
+      #030504 0%,
+      rgba(3, 5, 4, 0.74) 20%,
+      rgba(3, 5, 4, 0.5) 48%,
+      rgba(3, 5, 4, 0.5) 100%
+    ),
+    /* Across: heaviest under the words, lightest where the water is. */
+    linear-gradient(90deg, rgba(3, 5, 4, 0.8) 0%, rgba(3, 5, 4, 0.3) 58%, rgba(3, 5, 4, 0.1) 100%);
+  content: '';
+  pointer-events: none;
+}
+
+.surface-landing .install-inner {
+  width: min(100%, 76rem);
+  margin: 0 auto;
 }
 
 .surface-landing .install h2 {
   max-width: 9ch;
-  font-size: clamp(3.75rem, 8vw, 8rem);
+  font-size: clamp(3.5rem, 7vw, 7rem);
+  text-shadow: 0 2px 24px rgba(3, 5, 4, 0.9);
+}
+
+.surface-landing .install-say p {
+  margin: 1.5rem 0 0;
+  color: var(--ink);
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  text-shadow: 0 2px 16px rgba(3, 5, 4, 0.95);
 }
 
 /* The fence holds the installer's own measure, so the command reads at the
  * same width at the end of the page as it does at the top. */
 .surface-landing .install-fence {
   width: min(34rem, 100%);
+  margin-top: 2.5rem;
+}
+
+/* ---- The doors ---------------------------------------------------------
+ * Under the command, and quieter than it. A reader here has either decided
+ * or is looking for the reason not to; both are served by three names and
+ * one line each.
+ */
+
+/* The doors stand on ground of their own, which is what ends the picture.
+ * It is drawn from the doors rather than from the section so that it lands
+ * where they land at any size, it bleeds to both edges of the window, and
+ * it runs off the bottom — the section clips it. A door read over a koi is
+ * a door nobody reads. */
+.surface-landing .doors {
+  position: relative;
+  margin-top: clamp(4rem, 7vw, 6rem);
+}
+
+.surface-landing .doors::before {
+  position: absolute;
+  z-index: -1;
+  inset: -4.5rem calc(50% - 50vw) -100vh;
+  background: linear-gradient(180deg, rgba(3, 5, 4, 0) 0, #030504 4.5rem);
+  content: '';
+  pointer-events: none;
+}
+
+.surface-landing .doors-say {
+  margin: 0 0 1.25rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+}
+
+.surface-landing .doors-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  list-style: none;
+}
+
+.surface-landing .door {
+  display: block;
+  padding: 1.4rem 2rem 0 0;
+  border-top: 1px solid var(--border-strong);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 220ms ease;
+}
+
+.surface-landing .door:hover {
+  border-top-color: var(--accent);
+}
+
+.surface-landing .door-name {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ink-strong);
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  transition: color 180ms ease;
+}
+
+.surface-landing .door:hover .door-name {
+  color: var(--accent-soft);
+}
+
+.surface-landing .door-line {
+  display: block;
+  max-width: 18rem;
+  color: var(--quiet);
+  font-size: 0.88rem;
+  line-height: 1.6;
 }
 
 @keyframes copy-arrive {
@@ -753,14 +1226,14 @@
   }
 }
 
-/* ---- The narrow composition --------------------------------------------
- * 780px is `LANDING_QUERY` in `src/scripts/landing/geometry.ts`, where the
- * boundary is decided. The scene changes composition on the same pixel the
- * layout does, and a script cannot read a stylesheet for one number.
+/* ---- The narrow page ---------------------------------------------------
+ * What a screen 780px across or less changes because of its width alone:
+ * the header sheds its navigation, the two-column sections become one, and
+ * the type is set to the measure a phone gives it.
  *
- * Here the garden stops being a poster beside the copy and becomes the
- * field behind it: a full-height crop centred on the pond, with an ink
- * gradient over it so the promise stays readable without a card.
+ * The hero's composition is not here. It is not a width decision — an
+ * upright tablet takes the same one at 1024px across — so it is stated
+ * under `The covered composition` below, on the boundary that owns it.
  */
 
 @media (max-width: 780px) {
@@ -778,29 +1251,229 @@
     gap: 1rem;
   }
 
-  .surface-landing .header-left .site-nav {
+  /* The slug goes and the icon stands for it, which the link's own label
+     already says in words. The way into the documentation stays: a
+     documentation site whose header cannot reach the documentation is the
+     one thing this bar must not be, and the old one was exactly that on a
+     phone. */
+  .surface-landing .way-repo .way-slug {
     display: none;
   }
 
-  .surface-landing .site-nav-actions {
-    margin-left: auto;
+  .surface-landing .way-repo {
+    padding: 0 0.45rem;
   }
 
-  .surface-landing .site-nav-actions a:not(.repo-link),
-  .surface-landing .repo-link span {
-    display: none;
-  }
-
-  .surface-landing .site-nav .repo-link {
-    padding: 0;
-    border-bottom: 0;
-  }
-
-  .surface-landing .repo-link svg {
+  .surface-landing .way-repo svg {
     width: 1rem;
     height: 1rem;
   }
 
+  /* The promise is set to the width of a phone. The covered composition it
+     stands in is stated once, further down, for every screen that takes it. */
+  .surface-landing h1 {
+    font-size: clamp(2.9rem, 12.5vw, 3.45rem);
+  }
+
+  /* The vine is drawn to a bar the width of a phone. Every wider screen
+     keeps the measure the base rule gives it, upright ones included. */
+  .surface-landing .installer-vine {
+    top: -1.35rem;
+    right: -1rem;
+    width: min(21rem, 92vw);
+    opacity: 0.82;
+  }
+
+  .surface-landing .installer-vine-highlight {
+    opacity: 0.48;
+  }
+
+  /* Every column on the page becomes one. The two-column sections stack,
+     and the rows that were four and three across become lists — a hairline
+     over each one is what said "and another" in a row, and it says the same
+     thing in a column. */
+  .surface-landing .why,
+  .surface-landing .config,
+  .surface-landing .drift-lede {
+    grid-template-columns: 1fr;
+    gap: 2.75rem;
+  }
+
+  .surface-landing .why h2,
+  .surface-landing .config h2,
+  .surface-landing .drift h2 {
+    max-width: 10ch;
+  }
+
+  .surface-landing .why-covers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+  }
+
+  .surface-landing .drift-beats,
+  .surface-landing .boundary-refusals,
+  .surface-landing .doors-list {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stacked, each screen sits under its own words, so there is no pair to
+     hold on one bottom edge and a stretched frame would only add air. */
+  .surface-landing .drift-beats {
+    gap: 2.5rem;
+  }
+
+  .surface-landing .drift-beats li {
+    grid-template-rows: none;
+  }
+
+  .surface-landing .drift-beats pre {
+    height: auto;
+  }
+
+  .surface-landing .boundary-refusals {
+    gap: 1.75rem;
+  }
+
+  /* Stacked, the doors need air between them where the row had a column of
+     it, and no right padding to hold a neighbour off. */
+  .surface-landing .door {
+    padding: 1.1rem 0 1.75rem;
+  }
+
+  .surface-landing .door-line {
+    max-width: none;
+  }
+
+  /* The picture is the width of a phone, so the ink over it is heaviest
+     where a phone puts the words: everywhere. */
+  .surface-landing .install::before {
+    background:
+      linear-gradient(
+        180deg,
+        #030504 0%,
+        rgba(3, 5, 4, 0.78) 20%,
+        rgba(3, 5, 4, 0.62) 48%,
+        rgba(3, 5, 4, 0.62) 100%
+      ),
+      linear-gradient(90deg, rgba(3, 5, 4, 0.72) 0%, rgba(3, 5, 4, 0.42) 100%);
+  }
+}
+
+@media (max-width: 440px) {
+  .surface-landing .site-header {
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+  }
+
+  .surface-landing .brand-seedling {
+    height: 1.9rem;
+  }
+
+  .surface-landing .brand-wordmark {
+    height: 1.4rem;
+  }
+
+  .surface-landing .installer code {
+    font-size: 0.66rem;
+  }
+
+  .surface-landing .copy-button {
+    font-size: 0.61rem;
+  }
+
+  .surface-landing .story > section {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+/* ---- The wide composition ----------------------------------------------
+ * Above the laptop the garden keeps growing with the window and the promise
+ * beside it does not: every size in the copy has saturated by 1538px at the
+ * latest, several of them long before, and on a 2560 screen the headline is
+ * a fifth of the width standing against art that is four fifths of it. The
+ * copy resumes growing here.
+ *
+ * 1441px is the first pixel past a 1440 laptop, and every value below is a
+ * clamp whose floor is what the rule above it computes at exactly 1440. The
+ * tier therefore adds nothing at its own boundary and takes nothing from any
+ * screen under it: it only lets the sizes keep climbing where they had
+ * stopped. The rates differ per value because each one stopped at a
+ * different width, and the ceilings are all reached between 2000 and 2300px,
+ * past which the copy holds its size and the extra screen becomes air.
+ */
+
+@media (min-width: 1441px) {
+  /* 25vw passes 32rem at 2048px, so the column is unchanged until the
+     headline has finished growing and the measure is the thing holding it
+     back. The 43vw stays as the shorter-window bound it already was. */
+  .surface-landing .hero-copy {
+    width: min(clamp(32rem, 25vw, 40rem), 43vw);
+  }
+
+  /* 5.2vw is the rate the rule above already climbs at, resumed rather than
+     restarted: the old 5rem ceiling landed at 1538px and this one lands at
+     2000px. At 104px the longest line still sets to 458px, inside the
+     column's own measure, so the promise keeps its written breaks. */
+  .surface-landing h1 {
+    font-size: clamp(4.68rem, 5.2vw, 6.5rem);
+  }
+
+  .surface-landing .hero-subcopy {
+    margin-top: clamp(1.45rem, 1.5vw, 1.9rem);
+    font-size: clamp(0.96rem, 0.95vw, 1.2rem);
+  }
+
+  /* The bar follows the column it sits in, so the command keeps the full
+     measure of the copy instead of stopping at the old 34rem. */
+  .surface-landing .installer {
+    width: min(clamp(34rem, 26vw, 40rem), 100%);
+    min-height: clamp(4.35rem, 4vw, 5.25rem);
+    margin-top: clamp(1.55rem, 1.6vw, 2rem);
+    padding: clamp(1.05rem, 1.1vw, 1.35rem) clamp(1rem, 1.05vw, 1.3rem)
+      clamp(0.9rem, 0.95vw, 1.15rem);
+  }
+
+  /* The mono sizes stopped earliest of anything here — the command at
+     1219px — so their rates are the lowest: enough to keep pace with the bar
+     around them without turning a shell line into a heading. */
+  .surface-landing .installer code {
+    font-size: clamp(0.8rem, 0.62vw, 0.98rem);
+  }
+
+  .surface-landing .copy-button {
+    font-size: clamp(0.65rem, 0.5vw, 0.78rem);
+  }
+
+  /* The vine is drawn to the bar it hangs on, so it grows with it. */
+  .surface-landing .installer-vine {
+    width: min(clamp(27rem, 21vw, 32rem), 88vw);
+  }
+
+  .surface-landing .docs-link {
+    margin-top: clamp(1rem, 0.95vw, 1.3rem);
+    font-size: clamp(0.7rem, 0.55vw, 0.85rem);
+  }
+}
+
+/* ---- The covered composition -------------------------------------------
+ * The query is `LANDING_QUERY` in `src/scripts/landing/geometry.ts`, where
+ * the boundary is decided and where the reasoning behind both of its terms
+ * is written down. The scene changes composition on the same pixel the
+ * layout does, and a script cannot read a stylesheet for a query.
+ *
+ * Here the garden stops being a poster beside the copy and becomes the
+ * field behind it: a full-bleed crop centred on the pond, with an ink
+ * gradient over it so the promise stays readable without a card. A phone
+ * takes it for want of width; a tablet held upright takes it because the
+ * art is three by two and a portrait window has no shape to hold it beside
+ * the copy — the contained composition leaves the garden in a strip along
+ * the bottom with the promise stranded in the dark above it.
+ *
+ * It sits after the wide tier because a tall enough screen matches both,
+ * and the composition is the one that has to win.
+ */
+
+@media (max-width: 780px), (max-aspect-ratio: 1/1) {
   .surface-landing .hero {
     display: block;
     min-height: 100svh;
@@ -861,7 +1534,6 @@
   }
 
   .surface-landing h1 {
-    font-size: clamp(2.9rem, 12.5vw, 3.45rem);
     text-shadow:
       0 2px 3px rgba(0, 0, 0, 0.96),
       0 12px 32px rgba(0, 0, 0, 0.88);
@@ -875,69 +1547,37 @@
   .surface-landing .installer {
     margin-top: 1.5rem;
   }
-
-  .surface-landing .installer-vine {
-    top: -1.35rem;
-    right: -1rem;
-    width: min(21rem, 92vw);
-    opacity: 0.82;
-  }
-
-  .surface-landing .installer-vine-highlight {
-    opacity: 0.48;
-  }
-
-  .surface-landing .why,
-  .surface-landing .config {
-    grid-template-columns: 1fr;
-    gap: 4rem;
-  }
-
-  .surface-landing .why h2,
-  .surface-landing .config h2 {
-    max-width: 10ch;
-  }
-
-  .surface-landing .router-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .surface-landing .router-card {
-    padding-right: 0;
-  }
-
-  .surface-landing .install {
-    min-height: 30rem;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-  }
 }
 
-@media (max-width: 440px) {
-  .surface-landing .site-header {
-    padding-top: max(0.9rem, env(safe-area-inset-top));
+/* ---- The upright screen ------------------------------------------------
+ * A tablet held upright: the covered composition above, on a screen with
+ * room the phone it was drawn for does not have. Two things follow from
+ * that room, and nothing else does.
+ */
+
+@media (min-width: 781px) and (max-aspect-ratio: 1/1) {
+  /* The scrim was measured against a phone, where the copy runs most of the
+     way down the screen and everything under it is a seam to hide. Here the
+     copy ends around two thirds of the way down and the last third is
+     water: the same ramp arrives far too early and drowns the koi. The
+     stops move later and stop short of ink, up to the final one, which
+     stays — that is the seam into the story and it has to close. */
+  .surface-landing .hero::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(3, 5, 4, 0.1) 0%,
+        rgba(3, 5, 4, 0.2) 40%,
+        rgba(3, 5, 4, 0.52) 82%,
+        #030504 100%
+      ),
+      linear-gradient(90deg, rgba(3, 5, 4, 0.72) 0%, rgba(3, 5, 4, 0.3) 72%, rgba(3, 5, 4, 0.08) 100%);
   }
 
-  .surface-landing .brand-seedling {
-    height: 1.9rem;
-  }
-
-  .surface-landing .brand-wordmark {
-    height: 1.4rem;
-  }
-
-  .surface-landing .installer code {
-    font-size: 0.66rem;
-  }
-
-  .surface-landing .copy-button {
-    font-size: 0.61rem;
-  }
-
-  .surface-landing .story > section {
-    padding-top: 6rem;
-    padding-bottom: 6rem;
+  /* The floor is the size the narrow rule reaches at its own ceiling, so
+     the promise grows out of a phone rather than jumping at 781px. */
+  .surface-landing h1 {
+    font-size: clamp(3.45rem, 7vw, 5rem);
   }
 }
 
@@ -965,8 +1605,16 @@
 
 /* Without the scroll handoff there is nothing for the extra 30svh to hand
  * off, so the hero becomes one still composition: the art anchored to the
- * bottom right, the copy centred over it. */
-@media (prefers-reduced-motion: reduce) and (min-width: 781px) {
+ * bottom right, the copy centred over it.
+ *
+ * This is the contained composition standing still, so it is bounded the
+ * same way that composition is: wide enough and not upright. The covered
+ * one has no handoff to lose and needs nothing here. The aspect bound is
+ * inclusive on both sides, so a window exactly as tall as it is wide
+ * matches this and the covered composition both; the two rules at the end
+ * are what let it land on one of them whole rather than half of each.
+ */
+@media (prefers-reduced-motion: reduce) and (min-width: 781px) and (min-aspect-ratio: 1/1) {
   .surface-landing .hero {
     display: grid;
     min-height: max(44rem, 100svh);
@@ -988,6 +1636,15 @@
     display: block;
     min-height: 0;
     margin: 0;
+  }
+
+  .surface-landing .hero-art {
+    object-fit: contain;
+    object-position: right bottom;
+  }
+
+  .surface-landing .hero::after {
+    display: none;
   }
 }
 

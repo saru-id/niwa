@@ -1,0 +1,21 @@
+---
+/* One claim, one line of proof, and out.
+ *
+ * The page needs a short beat here. The section above it is two screens and
+ * four paragraphs, the one below is a list of refusals, and two dense
+ * stretches back to back read as one long one. This is the page taking a
+ * breath — and it is not filler, because the claim it makes in passing is
+ * the whole reason a declarative tool is worth running twice.
+ */
+import { Screen } from '../Screen'
+
+// `niwa plan` on a machine that already matches its config. The tool prints
+// one line for it, which is the point being made.
+const CONVERGED = 'plan_converged_piped'
+---
+
+<section class="converged" aria-labelledby="converged-title">
+  <h2 id="converged-title">Run it again tomorrow.</h2>
+  <p>Nothing happens, because nothing needs to.</p>
+  <Screen fixture={CONVERGED} command="niwa plan" provenance={false} />
+</section>

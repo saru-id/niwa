@@ -59,7 +59,7 @@ function sameRect(a: Rect, b: Rect): boolean {
 function sameScene(a: Scene, b: Scene): boolean {
   return (
     a.density === b.density &&
-    a.mobile === b.mobile &&
+    a.covered === b.covered &&
     sameRect(a.canvas, b.canvas) &&
     sameRect(a.frame, b.frame)
   )
@@ -101,7 +101,7 @@ export function start(): void {
   const effects: readonly Effect[] = [ripples, basin, lantern, fireflies, flowers]
 
   const reduced = window.matchMedia(REDUCED_MOTION)
-  const narrow = window.matchMedia(LANDING_QUERY)
+  const covered = window.matchMedia(LANDING_QUERY)
 
   let scene: Scene | undefined
   let seen = false
@@ -124,7 +124,7 @@ export function start(): void {
     const next = computeScene(
       wrap.getBoundingClientRect(),
       { w: image.naturalWidth, h: image.naturalHeight },
-      narrow.matches,
+      covered.matches,
       window.devicePixelRatio,
     )
     if (scene !== undefined && sameScene(scene, next)) return undefined
@@ -145,7 +145,7 @@ export function start(): void {
     if (stopped || scene === undefined) return
 
     const awake = seen && !reduced.matches
-    const ambient = awake && !scene.mobile
+    const ambient = awake && !scene.covered
 
     context.clearRect(0, 0, scene.canvas.width, scene.canvas.height)
 
@@ -356,7 +356,7 @@ export function start(): void {
     visibility.disconnect()
     resizes.disconnect()
     reduced.removeEventListener('change', schedule)
-    narrow.removeEventListener('change', remeasure)
+    covered.removeEventListener('change', remeasure)
     window.removeEventListener('load', onLoad)
     window.removeEventListener('pagehide', onPageHide)
     document.removeEventListener('visibilitychange', onHidden)
@@ -379,7 +379,7 @@ export function start(): void {
   // the gates, so a scene that has just been parked clears itself and a scene
   // that has just been released starts moving.
   reduced.addEventListener('change', schedule)
-  narrow.addEventListener('change', remeasure)
+  covered.addEventListener('change', remeasure)
   hero.addEventListener('pointermove', onMove)
   hero.addEventListener('pointerdown', onDown)
   hero.addEventListener('pointerleave', onLeave)

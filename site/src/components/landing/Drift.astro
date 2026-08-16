@@ -1,0 +1,94 @@
+---
+/* The one thing niwa does that the tools it sits beside do not.
+ *
+ * Every declarative setup tool can take a file and make a machine match it.
+ * What they do about the hour after — when a person reaches past the file
+ * and changes the machine directly — is where they differ, and most of them
+ * answer by treating it as the person's mistake. niwa answers by reading
+ * the machine back and offering the line. That is the argument this page
+ * has to make, and until now it was the second bullet of a list.
+ *
+ * Two screens carry it, because a claim about output should be made in the
+ * output. Both are the tool's own snapshots, and both take their command
+ * line from `src/data/verbs.ts` — the same record the reference pages quote
+ * — so the landing cannot end up showing a command the binary would refuse.
+ */
+import { Screen } from '../Screen'
+import { VERBS } from '../../data/verbs'
+
+/** The screen a verb prints, named by the verb and the fixture it carries. */
+function screenOf(verb: string, fixture: string) {
+  const found = VERBS.find((candidate) => candidate.name === verb)
+  const screen = found?.screens.find((candidate) => candidate.fixture === fixture)
+  if (screen === undefined) {
+    throw new Error(
+      `Building the landing's drift section. \`${verb}\` carries no screen for the ` +
+        `fixture ${fixture} in src/data/verbs.ts, so the command line under it ` +
+        'cannot be quoted. Point this at a screen that record holds. The site did ' +
+        'not build.',
+    )
+  }
+  return screen
+}
+
+const DECLARED = screenOf('explain', 'the_explain_screen_prints_the_model_for_one_resource')
+const STAGED = screenOf('pull', 'the_pull_screen_stages_an_unmanaged_package')
+---
+
+<section class="drift" id="drift" aria-labelledby="drift-title">
+  {
+    /* The band runs the width of the window and the content inside it keeps
+      the measure every other section keeps, which is the whole point: this
+      part of the page is set apart by its ground, not by a frame around it. */
+  }
+  <div class="drift-inner">
+  <div class="drift-lede">
+    <h2 id="drift-title">Then you change it by hand.</h2>
+    <p>
+      Everyone does. A checkbox in System Settings at four in the afternoon,{' '}
+      <code>brew install</code> at midnight, and the file that was supposed to describe this
+      machine quietly stops describing it. Every tool has an answer for that. Most of them
+      come down to: don't.
+    </p>
+  </div>
+
+  {
+    /* Two halves of one motion, and they are set the way the page's other
+      lists are — a rule, a name, and the line under it — so they read as
+      part of this page rather than as two screenshots that turned up
+      together. */
+  }
+  <ol class="drift-beats">
+    <li>
+      <h3>It keeps both answers.</h3>
+      <p>
+        What you declared and what the machine actually says, side by side, with the file
+        and line that declared it.
+      </p>
+      <Screen fixture={DECLARED.fixture} command={DECLARED.command} provenance={false} />
+    </li>
+    <li>
+      <h3>You choose which one wins.</h3>
+      <p>
+        <code>niwa apply</code> makes the machine match the file.{' '}
+        <code>niwa pull</code> is its inverse: it makes the file match the machine, as a
+        line you can read and commit.
+      </p>
+      <Screen fixture={STAGED.fixture} command={STAGED.command} provenance={false} />
+    </li>
+  </ol>
+
+  {
+    /* Where the two screens came from, said once here rather than under each
+      of them. The documentation prints the path under every screen it
+      quotes; this page has four words of room and one claim to make. */
+  }
+  <p class="drift-source">
+    Both screens are the tool's own snapshot tests, quoted verbatim by the build.
+  </p>
+
+  <p class="onward">
+    <a href="/concepts/drift">Drift, and the write-back loop</a>
+  </p>
+  </div>
+</section>

@@ -1,10 +1,18 @@
 /* The lantern's light on the hero art.
  *
- * The lantern always burns. A slow flicker rides over a warm halo, two lit
- * panes, and a spill on the water below it. What a pointer changes is how
- * hard it burns: the light rises as the pointer nears the flame and falls
+ * The lantern always burns. A slow flicker rides over a bloom, a warm halo,
+ * two lit panes, and a spill on the water below it. What a pointer changes is
+ * how hard it burns: the light rises as the pointer nears the flame and falls
  * back when the pointer moves off. Both moves run through one level that
  * eases toward a target, so the light never jumps.
+ *
+ * The four are one light drawn at four scales, widest and dimmest first. The
+ * bloom is the air around the lantern rather than the lantern itself: it is
+ * far too wide and far too weak to read as a lamp, and what it does is lift
+ * the painted stone off the planting behind it, so the lantern stands in the
+ * picture instead of sitting flat on it. The halo is the light on the box,
+ * the panes are the flame through the paper, and the spill is the water
+ * catching it.
  *
  * Every place is a fraction of the scene's frame, which puts the light on the
  * painted lantern in either composition. Every radius is a fraction of the
@@ -71,14 +79,42 @@ export function createLantern(): Effect {
       // the flame never repeats on a beat a reader can count.
       const flicker =
         0.95 + Math.sin(now * 0.0037) * 0.025 + Math.sin(now * 0.0091) * 0.015
-      const response = 0.46 + level * 0.54
+      // The resting share is what the lantern burns at with no reader near
+      // it, which is how it is seen most of the time. The pointer's share is
+      // what is left: enough that coming close still visibly answers, little
+      // enough that the flame is not waiting on a reader to be lit.
+      const response = 0.63 + level * 0.37
       const short = Math.min(frame.width, frame.height)
       const centerX = frame.left + frame.width * FLAME_X
       const centerY = frame.top + frame.height * FLAME_Y
 
       context.save()
 
-      const broadRadius = short * (0.052 + level * 0.014)
+      // The bloom, which is the only one of the four that is not the lamp.
+      // Two and a half times the halo's reach at under a third of its
+      // strength: at that spread it never resolves into a shape, and what
+      // reaches the planting behind the lantern is the last of it.
+      const bloomRadius = short * (0.138 + level * 0.03)
+      const bloom = context.createRadialGradient(
+        centerX,
+        centerY,
+        short * 0.02,
+        centerX,
+        centerY,
+        bloomRadius,
+      )
+      bloom.addColorStop(0, `rgba(255, 178, 96, ${0.088 * response * flicker})`)
+      bloom.addColorStop(0.42, `rgba(243, 137, 72, ${0.04 * response})`)
+      bloom.addColorStop(1, 'rgba(226, 108, 52, 0)')
+      context.fillStyle = bloom
+      context.fillRect(
+        centerX - bloomRadius,
+        centerY - bloomRadius,
+        bloomRadius * 2,
+        bloomRadius * 2,
+      )
+
+      const broadRadius = short * (0.058 + level * 0.014)
       const ambient = context.createRadialGradient(
         centerX,
         centerY,
@@ -87,8 +123,8 @@ export function createLantern(): Effect {
         centerY,
         broadRadius,
       )
-      ambient.addColorStop(0, `rgba(255, 181, 84, ${0.22 * response * flicker})`)
-      ambient.addColorStop(0.32, `rgba(244, 139, 65, ${0.085 * response})`)
+      ambient.addColorStop(0, `rgba(255, 187, 96, ${0.31 * response * flicker})`)
+      ambient.addColorStop(0.32, `rgba(244, 143, 68, ${0.12 * response})`)
       ambient.addColorStop(1, 'rgba(231, 113, 52, 0)')
       context.fillStyle = ambient
       context.fillRect(
@@ -106,10 +142,10 @@ export function createLantern(): Effect {
 
         glow.addColorStop(
           0,
-          `rgba(255, 246, 197, ${0.92 * response * pane.strength * flicker})`,
+          `rgba(255, 249, 214, ${0.99 * response * pane.strength * flicker})`,
         )
-        glow.addColorStop(0.18, `rgba(255, 192, 92, ${0.72 * response * pane.strength})`)
-        glow.addColorStop(0.58, `rgba(242, 126, 52, ${0.22 * response * pane.strength})`)
+        glow.addColorStop(0.18, `rgba(255, 198, 104, ${0.85 * response * pane.strength})`)
+        glow.addColorStop(0.58, `rgba(242, 130, 56, ${0.3 * response * pane.strength})`)
         glow.addColorStop(1, 'rgba(232, 104, 43, 0)')
         context.fillStyle = glow
         context.fillRect(x - radius, y - radius, radius * 2, radius * 2)

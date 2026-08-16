@@ -25,3 +25,13 @@ export const MENU = `${open}<path d="M3 6h18M3 12h18M3 18h18"/></svg>`
 
 /** Close, for the drawer's own corner. */
 export const CLOSE = `${open}<path d="M18 6 6 18M6 6l12 12"/></svg>`
+
+/**
+ * The documentation: a book held open, spine down the middle.
+ *
+ * Two leaves and the fold between them. The leaves are square where they
+ * meet the board and turn only at the spine, which is the one curve in the
+ * shape — a book drawn with a curve on every edge loses its corners by the
+ * time it is sixteen pixels across, and this one is never larger.
+ */
+export const BOOK = `${open}<path d="M12 7.8v11.4"/><path d="M12 7.8A4.3 4.3 0 0 0 7.7 3.5H3v13h4.7A4.3 4.3 0 0 1 12 19.2"/><path d="M12 7.8a4.3 4.3 0 0 1 4.3-4.3H21v13h-4.7A4.3 4.3 0 0 0 12 19.2"/></svg>`

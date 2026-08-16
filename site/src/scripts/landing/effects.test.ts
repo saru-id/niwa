@@ -46,6 +46,10 @@ const BED = BEDS[0]
 const FLAME = { x: 0.625, y: 0.354 }
 const REACH = 0.17
 
+/** The share of its light the lantern burns at with no reader near it. The
+ *  pointer's own share is the rest. */
+const REST = 0.63
+
 interface Light {
   x: number
   y: number
@@ -378,25 +382,37 @@ describe('the lantern', () => {
 
     const halos = marksOf(paint.marks, 'createRadialGradient')
     const boxes = marksOf(paint.marks, 'fillRect')
-    expect(halos).toHaveLength(3)
-    expect(boxes).toHaveLength(3)
+    // Four lights, widest and dimmest first: the bloom, the halo, two panes.
+    expect(halos).toHaveLength(4)
+    expect(boxes).toHaveLength(4)
+
+    const flameX = contained.frame.left + contained.frame.width * FLAME.x
+    const flameY = contained.frame.top + contained.frame.height * FLAME.y
+
+    // The bloom is the air around the lantern, not the lantern: it stands on
+    // the flame like the halo and reaches well over twice as far.
+    expect(halos[0].x).toBeCloseTo(flameX, 9)
+    expect(halos[0].y).toBeCloseTo(flameY, 9)
+    expect(halos[0].radius).toBeCloseTo(SHORT * 0.138, 9)
+    expect(halos[0].second).toBeCloseTo(SHORT * 0.02, 9)
+    expect(halos[0].radius).toBeGreaterThan(halos[1].radius * 2)
 
     // The broad halo sits on the flame and opens from a two pixel core.
-    expect(halos[0].x).toBeCloseTo(contained.frame.left + contained.frame.width * FLAME.x, 9)
-    expect(halos[0].y).toBeCloseTo(contained.frame.top + contained.frame.height * FLAME.y, 9)
-    expect(halos[0].radius).toBeCloseTo(SHORT * 0.052, 9)
-    expect(halos[0].second).toBe(2)
+    expect(halos[1].x).toBeCloseTo(flameX, 9)
+    expect(halos[1].y).toBeCloseTo(flameY, 9)
+    expect(halos[1].radius).toBeCloseTo(SHORT * 0.058, 9)
+    expect(halos[1].second).toBe(2)
 
     // The two panes, the wider one first.
-    expect(halos[1].x).toBeCloseTo(contained.frame.left + contained.frame.width * 0.618, 9)
-    expect(halos[1].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.355, 9)
-    expect(halos[1].radius).toBeCloseTo(SHORT * 0.018, 9)
-    expect(halos[2].x).toBeCloseTo(contained.frame.left + contained.frame.width * 0.641, 9)
-    expect(halos[2].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.356, 9)
-    expect(halos[2].radius).toBeCloseTo(SHORT * 0.012, 9)
+    expect(halos[2].x).toBeCloseTo(contained.frame.left + contained.frame.width * 0.618, 9)
+    expect(halos[2].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.355, 9)
+    expect(halos[2].radius).toBeCloseTo(SHORT * 0.018, 9)
+    expect(halos[3].x).toBeCloseTo(contained.frame.left + contained.frame.width * 0.641, 9)
+    expect(halos[3].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.356, 9)
+    expect(halos[3].radius).toBeCloseTo(SHORT * 0.012, 9)
     // A pane is lit through, so its own light opens from a point.
-    expect(halos[1].second).toBe(0)
     expect(halos[2].second).toBe(0)
+    expect(halos[3].second).toBe(0)
 
     // Every box covers its whole gradient and nothing more.
     for (let index = 0; index < boxes.length; index += 1) {
@@ -407,35 +423,48 @@ describe('the lantern', () => {
     }
 
     // At rest the response is its floor, and every stop reads off it.
-    expect(paint.alphas).toHaveLength(11)
-    expect(paint.alphas[0]).toBeCloseTo(0.22 * 0.46 * flickerAt(0), 9)
-    expect(paint.alphas[1]).toBeCloseTo(0.085 * 0.46, 9)
+    expect(paint.alphas).toHaveLength(14)
+    expect(paint.alphas[0]).toBeCloseTo(0.088 * REST * flickerAt(0), 9)
+    expect(paint.alphas[1]).toBeCloseTo(0.04 * REST, 9)
     expect(paint.alphas[2]).toBe(0)
-    expect(paint.alphas[3]).toBeCloseTo(0.92 * 0.46 * flickerAt(0), 9)
-    expect(paint.alphas[4]).toBeCloseTo(0.72 * 0.46, 9)
-    expect(paint.alphas[5]).toBeCloseTo(0.22 * 0.46, 9)
-    expect(paint.alphas[6]).toBe(0)
+    expect(paint.alphas[3]).toBeCloseTo(0.31 * REST * flickerAt(0), 9)
+    expect(paint.alphas[4]).toBeCloseTo(0.12 * REST, 9)
+    expect(paint.alphas[5]).toBe(0)
+    expect(paint.alphas[6]).toBeCloseTo(0.99 * REST * flickerAt(0), 9)
+    expect(paint.alphas[7]).toBeCloseTo(0.85 * REST, 9)
+    expect(paint.alphas[8]).toBeCloseTo(0.3 * REST, 9)
+    expect(paint.alphas[9]).toBe(0)
     // The second pane burns at rather more than three quarters of the first.
-    expect(paint.alphas[7]).toBeCloseTo(0.92 * 0.46 * 0.78 * flickerAt(0), 9)
-    expect(paint.alphas[8]).toBeCloseTo(0.72 * 0.46 * 0.78, 9)
-    expect(paint.alphas[9]).toBeCloseTo(0.22 * 0.46 * 0.78, 9)
+    expect(paint.alphas[10]).toBeCloseTo(0.99 * REST * 0.78 * flickerAt(0), 9)
+    expect(paint.alphas[11]).toBeCloseTo(0.85 * REST * 0.78, 9)
+    expect(paint.alphas[12]).toBeCloseTo(0.3 * REST * 0.78, 9)
+    expect(paint.alphas[13]).toBe(0)
+
+    // The bloom is the faintest thing the lantern lays down, by a wide
+    // margin: it is the air, and air that reads as a lamp is a second lamp.
+    expect(paint.alphas[0]).toBeLessThan(paint.alphas[3] / 3)
 
     // The colors themselves: a warm core falling to a red that carries no
     // opacity, laid down at the same stops on both panes.
     expect(paint.colors).toEqual([
-      '255, 181, 84',
-      '244, 139, 65',
+      '255, 178, 96',
+      '243, 137, 72',
+      '226, 108, 52',
+      '255, 187, 96',
+      '244, 143, 68',
       '231, 113, 52',
-      '255, 246, 197',
-      '255, 192, 92',
-      '242, 126, 52',
+      '255, 249, 214',
+      '255, 198, 104',
+      '242, 130, 56',
       '232, 104, 43',
-      '255, 246, 197',
-      '255, 192, 92',
-      '242, 126, 52',
+      '255, 249, 214',
+      '255, 198, 104',
+      '242, 130, 56',
       '232, 104, 43',
     ])
-    expect(paint.offsets).toEqual([0, 0.32, 1, 0, 0.18, 0.58, 1, 0, 0.18, 0.58, 1])
+    expect(paint.offsets).toEqual([
+      0, 0.42, 1, 0, 0.32, 1, 0, 0.18, 0.58, 1, 0, 0.18, 0.58, 1,
+    ])
   })
 
   test('flickers on a clock of its own', () => {
@@ -449,8 +478,8 @@ describe('the lantern', () => {
     lantern.draw(early.context, contained, 0)
     lantern.draw(later.context, contained, 1000)
 
-    expect(early.alphas[0]).toBeCloseTo(0.22 * 0.46 * flickerAt(0), 9)
-    expect(later.alphas[0]).toBeCloseTo(0.22 * 0.46 * flickerAt(1000), 9)
+    expect(early.alphas[0]).toBeCloseTo(0.088 * REST * flickerAt(0), 9)
+    expect(later.alphas[0]).toBeCloseTo(0.088 * REST * flickerAt(1000), 9)
     expect(later.alphas[0]).not.toBeCloseTo(early.alphas[0], 5)
     // The stops that carry no flicker hold still while it moves.
     expect(later.alphas[1]).toBeCloseTo(early.alphas[1], 9)
@@ -476,40 +505,43 @@ describe('the lantern', () => {
     expect(lantern.draw(lit.context, contained, 0)).toBe(true)
     // The measured frame closes its own step of the gap before it paints.
     level += (1 - level) * 0.12
-    // The first stop is the halo's core, and a pointer on the flame more than
-    // doubles it.
-    expect(lit.alphas[0]).toBeGreaterThan(dark.alphas[0] * 2)
-    expect(lit.alphas[0]).toBeCloseTo(0.22 * (0.46 + level * 0.54) * flickerAt(0), 9)
+    // The first stop is the bloom's core, and a pointer on the flame lifts it
+    // by half again. It cannot double any more: the lantern now burns most of
+    // its light with nobody there, and the pointer's share is what is left.
+    expect(lit.alphas[0]).toBeGreaterThan(dark.alphas[0] * 1.5)
+    expect(lit.alphas[0]).toBeCloseTo(0.088 * (REST + level * 0.37) * flickerAt(0), 9)
     expect(brightness(lit.alphas)).toBeGreaterThan(brightness(dark.alphas))
 
     // The halo opens as it brightens.
     const halos = marksOf(lit.marks, 'createRadialGradient')
-    expect(halos).toHaveLength(4)
-    expect(halos[0].radius).toBeCloseTo(SHORT * (0.052 + level * 0.014), 9)
+    // The bloom, the halo, the two panes, and the spill the pointer brought.
+    expect(halos).toHaveLength(5)
+    expect(halos[0].radius).toBeCloseTo(SHORT * (0.138 + level * 0.03), 9)
+    expect(halos[1].radius).toBeCloseTo(SHORT * (0.058 + level * 0.014), 9)
 
     // The spill on the water is the pointer's alone: a flattened pool below
     // the flame, turned to the angle the water sits at.
     expect(count(dark.calls, 'ellipse')).toBe(0)
     const spills = marksOf(lit.marks, 'ellipse')
     expect(spills).toHaveLength(1)
-    expect(halos[3].x).toBeCloseTo(contained.frame.left + contained.frame.width * FLAME.x, 9)
-    expect(halos[3].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.405, 9)
-    expect(halos[3].radius).toBeCloseTo(SHORT * 0.078, 9)
-    expect(halos[3].second).toBe(0)
-    expect(spills[0].x).toBeCloseTo(halos[3].x, 9)
-    expect(spills[0].y).toBeCloseTo(halos[3].y, 9)
+    expect(halos[4].x).toBeCloseTo(contained.frame.left + contained.frame.width * FLAME.x, 9)
+    expect(halos[4].y).toBeCloseTo(contained.frame.top + contained.frame.height * 0.405, 9)
+    expect(halos[4].radius).toBeCloseTo(SHORT * 0.078, 9)
+    expect(halos[4].second).toBe(0)
+    expect(spills[0].x).toBeCloseTo(halos[4].x, 9)
+    expect(spills[0].y).toBeCloseTo(halos[4].y, 9)
     expect(spills[0].radius).toBeCloseTo(SHORT * 0.078 * 1.28, 9)
     expect(spills[0].second).toBeCloseTo(SHORT * 0.078 * 0.68, 9)
     expect(spills[0].rotation).toBe(-0.08)
     expect(spills[0].from).toBe(0)
     expect(spills[0].to).toBe(Math.PI * 2)
 
-    expect(lit.alphas).toHaveLength(14)
-    expect(lit.alphas[11]).toBeCloseTo(0.12 * level * flickerAt(0), 9)
-    expect(lit.alphas[12]).toBeCloseTo(0.052 * level, 9)
-    expect(lit.alphas[13]).toBe(0)
-    expect(lit.colors.slice(11)).toEqual(['255, 190, 104', '246, 145, 77', '238, 124, 68'])
-    expect(lit.offsets.slice(11)).toEqual([0, 0.5, 1])
+    expect(lit.alphas).toHaveLength(17)
+    expect(lit.alphas[14]).toBeCloseTo(0.12 * level * flickerAt(0), 9)
+    expect(lit.alphas[15]).toBeCloseTo(0.052 * level, 9)
+    expect(lit.alphas[16]).toBe(0)
+    expect(lit.colors.slice(14)).toEqual(['255, 190, 104', '246, 145, 77', '238, 124, 68'])
+    expect(lit.offsets.slice(14)).toEqual([0, 0.5, 1])
   })
 
   test('answers a pointer by how far it is from the flame', () => {
@@ -525,7 +557,7 @@ describe('the lantern', () => {
     // of its target, which is why this reads to three places and not nine.
     const held = recorder()
     half.draw(held.context, contained, 0)
-    expect(held.alphas[0]).toBeCloseTo(0.22 * (0.46 + 0.5 * 0.54) * flickerAt(0), 3)
+    expect(held.alphas[0]).toBeCloseTo(0.088 * (REST + 0.5 * 0.37) * flickerAt(0), 3)
 
     // At the edge of the reach the answer is none, and the lantern asks for no
     // more frames.
@@ -588,7 +620,7 @@ describe('the lantern', () => {
     const after = recorder()
     // Nothing is held: no pointer, no light above the burn, no spill.
     expect(lantern.draw(after.context, contained, 0)).toBe(false)
-    expect(after.alphas[0]).toBeCloseTo(0.22 * 0.46 * flickerAt(0), 9)
+    expect(after.alphas[0]).toBeCloseTo(0.088 * REST * flickerAt(0), 9)
     expect(count(after.calls, 'ellipse')).toBe(0)
   })
 
@@ -608,7 +640,7 @@ describe('the lantern', () => {
     const paint = recorder()
     lantern.draw(paint.context, covering, 0)
 
-    const halo = marksOf(paint.marks, 'createRadialGradient')[0]
+    const halo = marksOf(paint.marks, 'createRadialGradient')[1]
     expect(halo.x).toBeCloseTo(covering.frame.left + covering.frame.width * FLAME.x, 6)
     expect(halo.y).toBeCloseTo(covering.frame.top + covering.frame.height * FLAME.y, 6)
     // The same fraction of the canvas lands somewhere else entirely, which is
@@ -616,7 +648,7 @@ describe('the lantern', () => {
     expect(Math.abs(halo.x - covering.canvas.width * FLAME.x)).toBeGreaterThan(15)
     // The radii follow the frame's shorter side, not the canvas's.
     expect(halo.radius).toBeCloseTo(
-      Math.min(covering.frame.width, covering.frame.height) * 0.052,
+      Math.min(covering.frame.width, covering.frame.height) * 0.058,
       9,
     )
   })
