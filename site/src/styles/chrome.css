@@ -74,7 +74,7 @@ pagefind-modal:not(:defined) {
 /* ---- Scrollbars --------------------------------------------------------
  * The platform's scrollbar is a grey chrome gutter with a square track, and
  * on a page whose only edge is a hairline it is the loudest thing drawn.
- * The design system ships nothing for this, so the site draws its own.
+ * So the site draws its own.
  *
  * Two spellings of one design, because the two engines expose different
  * hooks and neither covers both. `scrollbar-width` and `scrollbar-color`
@@ -671,6 +671,8 @@ pagefind-modal:not(:defined) {
   border-inline-start: 1px solid var(--border);
 }
 
+/* A label is a whole heading, and this site's headings are sentences: the
+ * links wrap, and no rule here may clip one to an ellipsis. */
 .toc-link {
   position: relative;
   display: block;

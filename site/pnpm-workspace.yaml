@@ -1,12 +1,9 @@
 # pnpm settings for the site. It is not a workspace of several packages;
 # this file is where pnpm 11 keeps per-project configuration.
 
-# Both ship a platform binary and need their install script to place it.
+# esbuild and workerd each ship a platform binary. Only an install script
+# places one.
 allowBuilds:
-  # The design system and its CLI place compiled stylesheets and token
-  # CSS at install time.
-  '@astryxdesign/cli': true
-  '@astryxdesign/core': true
   esbuild: true
   workerd: true
 

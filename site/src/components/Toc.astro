@@ -1,24 +1,8 @@
 ---
 /* The table of contents.
  *
- * This was the design system's `Outline`, rendered as a React island, and
- * it was the last thing on the site that ran in the browser. It is a list
- * of links and a rule for which one is lit; the ninety kilobytes of React
- * that came with it were paying for neither.
- *
- * The island also carried a defect that reached the whole page. The design
- * system's `Theme` provider writes to `<html>` in an effect on mount: it
- * takes the site's own `data-theme` off and puts `data-astryx-theme` on.
- * Both are document-wide switches — one re-resolves every `light-dark()`
- * token, the other roots the design system's `@scope`d reset at the root
- * element — so hydrating a rail of a dozen links restyled 481 elements and
- * re-broke every line of text in the article and the navigation together,
- * fourteen milliseconds after the page was already on screen. A trace of a
- * real load is the only thing that shows it; every measurement of the
- * settled page says nothing moved.
- *
- * So the markup is the site's own, and `scripts/toc.ts` lights the current
- * section. Nothing here mounts a provider, and nothing writes to `<html>`.
+ * `scripts/toc.ts` marks the section the reader is in. Nothing here
+ * hydrates.
  */
 import type { Heading } from '../lib/headings'
 

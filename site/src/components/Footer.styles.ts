@@ -43,10 +43,10 @@ export const styles = stylex.create({
     fontSize: '0.8125rem',
     lineHeight: 1.5385,
   },
-  // A footer link is chrome, and chrome is not underlined running prose. The
-  // site's own rule for a bare anchor is unlayered, so it is answered here
-  // rather than reverted. The rule's colour and its transition are kept: a
-  // link in the foot of the page is still one of the site's links.
+  // A footer link is chrome, not running prose, so this style answers the
+  // site's underline rule for a bare anchor. The rule's colour and its
+  // transition stay: a link in the foot of the page is still one of the
+  // site's links.
   //
   // Thirteen pixel type at this leading draws a box 20 pixels tall; the
   // ratio is that box over the type. The block padding takes each link past

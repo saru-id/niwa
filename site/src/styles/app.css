@@ -1,18 +1,15 @@
 /* The site's tokens and base element styles.
  *
- * Colors are plain custom properties, not StyleX variables, because five
+ * Colors are plain custom properties, not StyleX variables, because four
  * other things have to read these names: the syntax token rules, the file
- * tree across its shadow boundary, the search host, the design system's
- * theme, and hand written CSS. StyleX consumes them as ordinary values,
- * for example `var(--ink)`.
+ * tree across its shadow boundary, the search host, and hand written CSS.
+ * StyleX consumes them as ordinary values, for example `var(--ink)`.
  *
- * The design system's sheets come first and are layered. Everything this
- * file declares below the import is unlayered, and unlayered author styles
- * outrank every layer, so the site wins any collision without raising a
- * selector or reaching for `!important`.
+ * `chrome.css` must stay imported above these rules: everything below the
+ * import wins a tie on source order, so a base rule here can answer a
+ * chrome rule without raising a selector.
  */
 
-@import './astryx.css';
 @import './chrome.css';
 
 /* ---- Motion ------------------------------------------------------------
@@ -182,36 +179,6 @@
 
 :root.theme-light {
   color-scheme: light;
-}
-
-/* The design system reads the same two states, through `color-scheme`.
- *
- * A token of its that holds a `light-dark()` pair resolves from
- * `color-scheme`. Most of its colour tokens are not pairs at all:
- * `theme/niwa.theme.ts` points them at the tokens above, so they follow the
- * class directly.
- *
- * One rule is needed. The `Theme` provider declares `color-scheme` on its
- * own wrapper from a `mode` prop, and on a static page that prop is fixed
- * when the page is built. A declared value beats an inherited one, so the
- * wrapper would pin every component to the mode the build chose. `inherit`
- * hands the decision back to `<html>`, where the reader's control lives.
- */
-[data-astryx-theme] {
-  color-scheme: inherit;
-}
-
-/* The site prints three inks and the design system holds two names for
- * them, so `--color-text-primary` carries running text and a heading takes
- * the strongest ink here. The theme file cannot do it: the system writes
- * its own rule for `color="primary"` after every theme override, at the
- * same weight, and later wins. Unlayered, this rule does not have to
- * outweigh anything. Both spellings of a heading are named, the component
- * and a bare element inside a themed region, and a heading asking for
- * another colour keeps it. */
-[data-astryx-theme]
-  :is(h1, h2, h3, h4, h5, h6):is(:not([data-color]), [data-color='primary']) {
-  color: var(--ink-strong);
 }
 
 /* ---- Syntax tokens -----------------------------------------------------
@@ -444,6 +411,12 @@ pagefind-results mark {
   --text-kicker: 0.6875rem;
 }
 
+/* The chrome's control radius: the value the pages have rendered at every
+ * corner that reads it, held here so the rendering does not move. */
+:root {
+  --radius-inner: 4px;
+}
+
 /* ---- Base --------------------------------------------------------------- */
 
 *,
@@ -505,19 +478,6 @@ a {
     text-decoration-thickness 120ms ease;
 }
 
-/* Inside a navigation landmark, and inside the drawer that carries one, the
- * rule above does not apply: those links are furniture, and the design
- * system draws furniture. `revert-layer` is the whole mechanism. The rule
- * above is unlayered and so outranks every layer; reverting the layer hands
- * these four properties back to the system's own, which is the rest state,
- * the hover, and the page the reader is standing on. */
-:is(nav, dialog) a {
-  color: revert-layer;
-  text-decoration: revert-layer;
-  text-decoration-color: revert-layer;
-  text-decoration-thickness: revert-layer;
-}
-
 a:hover {
   text-decoration-thickness: 2px;
 }
@@ -562,21 +522,6 @@ h2[id],
 h3[id],
 h4[id] {
   scroll-margin-block-start: calc(var(--bar-height) + 1rem);
-}
-
-/* ---- The contents' labels wrap -----------------------------------------
- * The design system sets a nav label on one line and ends it with an
- * ellipsis. That is right for a word or two. This site's headings are
- * sentences, and an ellipsis hides which section the link leads to, which
- * is the one thing a rail is for. No component prop reaches this. The site
- * rail is the site's own and needs no such rule; the contents are the one
- * place the design system still draws navigation.
- */
-
-nav[aria-label='On this page'] :is(a, a *) {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
 }
 
 /* ---- Heading anchors ----------------------------------------------------
