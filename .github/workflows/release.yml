@@ -43,6 +43,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history, so the tag can be checked against main below.
+          fetch-depth: 0
+
+      # A tag can point at any commit. The release builds reviewed history
+      # only, so the tagged commit must sit on main.
+      - name: Check the tag sits on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            printf 'the tagged commit is not on main; tag a commit main carries\n' >&2
+            exit 1
+          fi
 
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
