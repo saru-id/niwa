@@ -174,7 +174,7 @@ const viewport = landing
           <Bar pathname={pathname} />
 
           <div class="shell">
-            <Rail pathname={pathname} />
+            <Rail idPrefix="rail" pathname={pathname} />
             {
               /* Beside the element rather than in a module, because a
                 module is deferred and a restore the reader watches happen
@@ -230,7 +230,7 @@ const viewport = landing
           }
           <noscript>
             <div class="noscript-rail">
-              <Rail pathname={pathname} inDrawer />
+              <Rail idPrefix="noscript" pathname={pathname} inDrawer />
             </div>
           </noscript>
 
