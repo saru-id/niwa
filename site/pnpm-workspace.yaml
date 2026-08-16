@@ -12,3 +12,10 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
+
+# Astro's built chunks import the image encoder with a bare specifier, which
+# the isolated layout does not serve for a transitive package. The hoist
+# places the lockfile's own sharp at node_modules/sharp so that import
+# resolves. It adds no dependency and moves no version.
+publicHoistPattern:
+  - sharp
