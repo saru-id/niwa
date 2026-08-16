@@ -15,6 +15,24 @@ before every commit. Run `make verify` before you call any work
 finished: it adds the drills and the coverage report. Neither gate is
 ever skipped.
 
+## CI
+
+GitHub Actions runs `check` and `site-check` on every pull request and
+every push to main. They run as separate jobs. The site job exists
+because the site's gates read the tool's sources. Locally `check`
+still never builds the site. CI does not run `verify`, the local gate
+before you call any work finished.
+
+CI also lints the workflow files, reviews new dependencies on a pull
+request, and scans the code for security problems. A push to main
+deploys the site when it touches the tool or the site. A version tag
+builds the release artifacts, verifies them, and publishes them with a
+record of how they were built.
+
+Every third-party action is pinned to a full commit SHA, with a comment
+naming the tag. Every tool CI installs is pinned to an exact version.
+A tool CI downloads is checked against a recorded checksum.
+
 ## Code rules
 
 - Less code is better. If a simpler way exists, use it. Delete freely.
@@ -58,10 +76,12 @@ These apply to the README, doc comments, help text, and error messages.
 - A new crate needs an entry in `docs/dependencies.md` first: what it
   does, why we did not write it ourselves, its maintenance state, and
   its license. `cargo deny check` must pass.
+- A GitHub Action or a tool that CI installs needs the same entry
+  first. Pin an action by its full commit SHA and a tool by its exact
+  version. A pin refresh updates the entry in the same commit.
 
 ## Do not
 
-- Do not add CI configuration. That happens at 1.0.0, not before.
 - Do not add telemetry or any network call the user did not ask for.
 - Do not commit process artifacts: plans, notes, and ledgers live
   outside this repository.
