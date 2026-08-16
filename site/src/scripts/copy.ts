@@ -2,15 +2,25 @@
 // carries no payload: the text is the code block it sits in, so the page
 // never ships a second copy of the snippet.
 
-// The label stays changed for 1.5 seconds. That is long enough to read four
-// letters and short enough that a second copy still gets an answer.
+// A page loads this file for its effect and imports nothing from it. The
+// empty export is what makes it a module, so the names below stay its own.
+export {}
+
+// The word stays for 1.5 seconds. That is long enough to read four letters
+// and short enough that a second copy still gets an answer.
 const SETTLE_MS = 1500
 
 /** Say what happened, then go back to the offer. */
-function say(label: Element, word: string): void {
+function say(label: Element, status: Element | null, word: string): void {
   label.textContent = word
+  // The button is named once and keeps that name, so the word a screen
+  // reader hears comes from the region beside it and not from the label.
+  if (status !== null) status.textContent = word
   setTimeout(() => {
     label.textContent = 'Copy'
+    // Emptied, so the next outcome is a change to announce even when it is
+    // the same word as the last one.
+    if (status !== null) status.textContent = ''
   }, SETTLE_MS)
 }
 
@@ -21,25 +31,29 @@ document.addEventListener('click', (event) => {
   const control = target.closest('[data-copy]')
   if (!(control instanceof HTMLElement)) return
 
-  const code = control.closest('[data-code-block]')?.querySelector('code')
+  const block = control.closest('[data-code-block]')
+  if (block === null) return
+
+  const code = block.querySelector('code')
   if (!code) return
 
   const label = control.querySelector('[data-copy-label]') ?? control
+  const status = block.querySelector('[data-copy-status]')
 
   // Off a secure context the clipboard is not there at all, and where it is
   // there the write can still be refused. Both end with nothing on the
   // clipboard, so both say so.
   const written = navigator.clipboard?.writeText(code.textContent ?? '')
   if (written === undefined) {
-    say(label, 'Copy failed')
+    say(label, status, 'Copy failed')
     return
   }
   void written.then(
     () => {
-      say(label, 'Copied')
+      say(label, status, 'Copied')
     },
     () => {
-      say(label, 'Copy failed')
+      say(label, status, 'Copy failed')
     },
   )
 })

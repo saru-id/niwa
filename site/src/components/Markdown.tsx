@@ -135,14 +135,19 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
   return (
     <div data-code-block="" {...stylex.props(styles.block)}>
       <div {...stylex.props(styles.controls)}>
-        {/* The label is its own element so the swap `copy.ts` makes has a
-          live region to announce from. The button's name is still its
-          contents, so the name changes with the label. */}
-        <button data-copy="" type="button" {...stylex.props(styles.copy)}>
-          <span data-copy-label="" role="status">
+        {/* The control is named once and keeps that name, because a name
+          says what a control does and the word on it says what the last
+          press did. The word is hidden from the name and announced from the
+          region below instead. */}
+        <button aria-label="Copy" data-copy="" type="button" {...stylex.props(styles.copy)}>
+          <span aria-hidden="true" data-copy-label="">
             Copy
           </span>
         </button>
+        {/* The outcome, said to a screen reader and to nothing else. It
+          stands outside the button so that announcing it renames nothing,
+          and out of flow, so the row is laid out as if it were not here. */}
+        <span className="sr-only" data-copy-status="" role="status" />
         {/* The badge names the fence verbatim, and it comes last so that it
           holds the right edge. A fence with no language and a fence
           declaring `plaintext` are the same thing downstream, and neither
