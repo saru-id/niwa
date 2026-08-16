@@ -1,12 +1,11 @@
 import * as stylex from '@stylexjs/stylex'
 import { FRAME } from '../styles/layout.stylex'
 
-/* The centred column the footer and the landing share.
+/* The centred column the landing's bands cap and centre on.
  *
- * Both sit outside the chrome's grid: the footer below it, the landing's
- * bands across the whole window. They cap and centre their content on one
- * width, so a wide window reads as a single column from the first band to
- * the last line of the footer.
+ * The bands run across the whole window and sit outside the chrome's grid,
+ * so the cap is theirs to state. The footer states the same column with its
+ * own styles, and both read the width from one module.
  */
 
 export const styles = stylex.create({
