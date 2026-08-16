@@ -131,19 +131,19 @@ const headings = entries.map((entry) => ({
 ---
 
 <Layout title={title} description={deck} headings={headings}>
-  <h1 {...stylex.props(TYPE.title, styles.h1)}>{title}</h1>
-  <p {...stylex.props(TYPE.deck, styles.deck)}>{deck}</p>
+  <h1 {...stylex.props(TYPE.title)}>{title}</h1>
+  <p {...stylex.props(TYPE.deck)}>{deck}</p>
   {
     entries.map((entry) => (
       <Fragment>
-        <h2 id={anchor(entry.name)} {...stylex.props(styles.h2)}>
+        <h2 id={anchor(entry.name)} {...stylex.props(TYPE.chapter, TYPE.section)}>
           {entry.name}
         </h2>
         {/* On one line: a `pre` keeps every byte between its tags. */}
         {entry.signatures.map((signature) => (
-          <pre {...stylex.props(EXHIBIT.frame, styles.signature)} tabindex="0"><code>{signature}</code></pre>
+          <pre {...stylex.props(EXHIBIT.block, EXHIBIT.frame, EXHIBIT.air, styles.signature)} tabindex="0"><code>{signature}</code></pre>
         ))}
-        <p {...stylex.props(styles.p)}>{entry.description}</p>
+        <p {...stylex.props(TYPE.paragraph)}>{entry.description}</p>
       </Fragment>
     ))
   }

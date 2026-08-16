@@ -48,14 +48,16 @@ const next = [
 ---
 
 <Layout title={command} description={verb.job} headings={headings}>
-  <h1 {...stylex.props(TYPE.title, styles.h1)}>{command}</h1>
-  <p {...stylex.props(TYPE.deck, styles.deck)}>{verb.job}</p>
-  <pre {...stylex.props(EXHIBIT.frame, styles.signature)} tabindex="0"><code>{usage(verb)}</code></pre>
+  <h1 {...stylex.props(TYPE.title)}>{command}</h1>
+  <p {...stylex.props(TYPE.deck)}>{verb.job}</p>
+  <pre
+    {...stylex.props(EXHIBIT.block, EXHIBIT.frame, EXHIBIT.air, styles.signature)}
+    tabindex="0"><code>{usage(verb)}</code></pre>
 
   {
     verb.arguments.length > 0 && (
       <Fragment>
-        <h2 id="arguments" {...stylex.props(styles.h2)}>
+        <h2 id="arguments" {...stylex.props(TYPE.chapter, TYPE.section)}>
           Arguments
         </h2>
         <ReferenceTable
@@ -69,7 +71,7 @@ const next = [
   {
     verb.flags.length > 0 && (
       <Fragment>
-        <h2 id="flags" {...stylex.props(styles.h2)}>
+        <h2 id="flags" {...stylex.props(TYPE.chapter, TYPE.section)}>
           Flags
         </h2>
         <ReferenceTable
@@ -91,22 +93,20 @@ const next = [
   {
     dashboard ? (
       <Fragment>
-        <h2 id="global-flags" {...stylex.props(styles.h2)}>
+        <h2 id="global-flags" {...stylex.props(TYPE.chapter, TYPE.section)}>
           Global flags
         </h2>
-        <p {...stylex.props(styles.p)}>Every verb takes these two.</p>
+        <p {...stylex.props(TYPE.paragraph)}>Every verb takes these two.</p>
         <ReferenceTable
           columns={[{ header: 'Flag', identifier: true }, { header: 'Meaning' }]}
           rows={GLOBAL_FLAGS.map((flag) => [flag.name, flag.meaning])}
         />
       </Fragment>
     ) : (
-      <p {...stylex.props(styles.p)}>
-        <code {...stylex.props(styles.code)}>-v</code>,{' '}
-        <code {...stylex.props(styles.code)}>--verbose</code> and{' '}
-        <code {...stylex.props(styles.code)}>--debug</code> are global and this verb takes
-        them too. <a href="/reference/cli/niwa#global-flags">The global flags table</a> lists
-        them.
+      <p {...stylex.props(TYPE.paragraph)}>
+        <code>-v</code>, <code>--verbose</code> and <code>--debug</code> are global and this
+        verb takes them too.{' '}
+        <a href="/reference/cli/niwa#global-flags">The global flags table</a> lists them.
       </p>
     )
   }
@@ -114,7 +114,7 @@ const next = [
   {
     verb.exits.length > 0 && (
       <Fragment>
-        <h2 id="exit-codes" {...stylex.props(styles.h2)}>
+        <h2 id="exit-codes" {...stylex.props(TYPE.chapter, TYPE.section)}>
           Exit codes
         </h2>
         <ReferenceTable
@@ -128,10 +128,10 @@ const next = [
   {
     verb.screens.length > 0 && (
       <Fragment>
-        <h2 id="screens" {...stylex.props(styles.h2)}>
+        <h2 id="screens" {...stylex.props(TYPE.chapter, TYPE.section)}>
           Screens
         </h2>
-        <p {...stylex.props(styles.p)}>
+        <p {...stylex.props(TYPE.paragraph)}>
           {verb.screens.length === 1
             ? 'The screen below is a snapshot the tool wrote, reproduced byte for byte.'
             : 'The screens below are snapshots the tool wrote, reproduced byte for byte.'}

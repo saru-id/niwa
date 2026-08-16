@@ -31,8 +31,8 @@ const twin = `${currentPath(Astro.url.pathname)}.md`
 
 <Layout title={title} description={description} headings={collectHeadings(source)} alternate={twin}>
   <article id="article">
-    <h1 {...stylex.props(TYPE.title, styles.title)}>{title}</h1>
-    <p {...stylex.props(TYPE.deck, styles.deck)}>{description}</p>
+    <h1 {...stylex.props(TYPE.title)}>{title}</h1>
+    <p {...stylex.props(TYPE.deck)}>{description}</p>
     {
       /* No client directive. React renders the body once, during the build,
         and none of it reaches the browser. */

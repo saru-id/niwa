@@ -21,8 +21,6 @@ const styles = stylex.create({
     fontSize: 'var(--text-output)',
     lineHeight: 1.5,
     margin: 0,
-    paddingBlock: '1rem',
-    paddingInline: '1.25rem',
     // Alignment is part of the tool's language, so a line scrolls; it never
     // wraps. The tab stop lets a keyboard reach the scroll.
     whiteSpace: 'pre',
@@ -51,8 +49,8 @@ const roles = stylex.create({
 export function Screen({ fixture, command }: { fixture: string; command?: string }) {
   const screen = readScreen(fixture)
   return (
-    <figure {...stylex.props(EXHIBIT.figure)}>
-      <pre {...stylex.props(EXHIBIT.frame, styles.screen)} tabIndex={0}>
+    <figure {...stylex.props(EXHIBIT.block)}>
+      <pre {...stylex.props(EXHIBIT.frame, EXHIBIT.air, styles.screen)} tabIndex={0}>
         <samp>
           {screen.lines.map((line, index) => (
             <Fragment key={index}>

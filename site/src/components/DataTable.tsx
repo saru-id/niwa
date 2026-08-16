@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex'
+import { measure } from '../lib/table'
 import { isValidElement, type ReactNode } from 'react'
 
 const styles = stylex.create({
@@ -19,9 +20,12 @@ const styles = stylex.create({
     tableLayout: 'fixed',
     width: '100%',
   },
+  // The air a cell holds its text in, the same at every edge. `AIR` below is
+  // this padding at the two inline ends, and every column width is measured
+  // with it counted in.
   cell: {
     paddingBlock: '0.5rem',
-    paddingInline: '0.75rem',
+    paddingInline: '0.5rem',
   },
   // A heading labels its column and is not part of the running text, so it
   // takes the quieter ink.
@@ -65,83 +69,6 @@ const alignments = stylex.create({
 export interface DataColumn {
   readonly header: ReactNode
   readonly align?: TableColumnAlign
-}
-
-/** About the width of one character, for sizing a column from its text. */
-const CHARACTER = 8
-
-/** The narrowest a column may be, however short the text in it: room for a
- * short word at the table's size, so no column collapses on a phone. */
-const FLOOR = 60
-
-/** How many rows a column is measured from. The first few carry the shape
- * of the rest, and a whole reference table would be measured twice. */
-const SAMPLE = 5
-
-/** The share of the table one column takes, and the width it will not go under. */
-interface Measurement {
-  readonly share: number
-  readonly floor: number
-}
-
-/** The widths of the table, as the elements that carry them read them. */
-interface Widths {
-  /** One per column, for its `th`. */
-  readonly columns: { readonly width: string; readonly minWidth: string }[]
-  /** The width under which some column would fall below its own floor. */
-  readonly table: string
-}
-
-/** The longest run in `text` with no space, tab or newline in it. */
-function longestWord(text: string): number {
-  return text.split(/[ \t\n]+/).reduce((longest, word) => Math.max(longest, word.length), 0)
-}
-
-/**
- * The widths of a table, read off the text it holds.
- *
- * A column of flag names should not take the room a column of sentences
- * needs, and nothing here can ask a browser how wide a word draws: the table
- * is built once, on a machine with no fonts loaded and no page to lay out. So
- * the text is counted instead, in characters, from the heading and the first
- * few rows — enough to tell a column of identifiers from a column of prose.
- *
- * Each column asks for one, two or three shares of the table by how long its
- * longest cell is, and floors itself at the width of its longest unbreakable
- * word. The table's own floor is then the smallest width at which every
- * column clears its floor, which is what makes a table of long identifiers
- * scroll sideways instead of squeezing one column to nothing.
- */
-function measure(headings: readonly string[], rows: readonly (readonly string[])[]): Widths {
-  const sample = rows.slice(0, SAMPLE)
-  const measurements: Measurement[] = headings.map((heading, index) => {
-    let longestCell = heading.length
-    // The heading is one word for this purpose: it is never broken.
-    let longest = heading.length
-    for (const row of sample) {
-      const cell = row[index] ?? ''
-      longestCell = Math.max(longestCell, cell.length)
-      longest = Math.max(longest, longestWord(cell))
-    }
-    return {
-      // Six characters is an exit code or a mark, fifteen is a name or a
-      // path, and anything longer is a sentence.
-      share: longestCell <= 6 ? 1 : longestCell <= 15 ? 2 : 3,
-      floor: Math.max(longest * CHARACTER, FLOOR),
-    }
-  })
-
-  const shares = measurements.reduce((total, column) => total + column.share, 0)
-  return {
-    columns: measurements.map((column) => ({
-      width: `${(column.share / shares) * 100}%`,
-      minWidth: `${column.floor}px`,
-    })),
-    table: `${measurements.reduce(
-      (widest, column) => Math.max(widest, (column.floor * shares) / column.share),
-      0,
-    )}px`,
-  }
 }
 
 /** Anything a cell can hold, as the plain text it reads as. */

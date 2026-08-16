@@ -7,8 +7,10 @@ import { createTanStackMarkdownHighlighter } from '@tanstack/highlight/markdown'
 import { Markdown as TanStackMarkdown } from '@tanstack/markdown/react'
 import type { ComponentNode, MarkdownExtension } from '@tanstack/markdown'
 import * as stylex from '@stylexjs/stylex'
+import type { StyleXStyles } from '@stylexjs/stylex'
 import {
   Children,
+  createElement,
   isValidElement,
   type ComponentPropsWithoutRef,
   type ReactElement,
@@ -17,7 +19,8 @@ import {
 
 import { luau } from '../lib/luau'
 import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
-import { EXHIBIT } from '../styles/frames.stylex'
+import { BOX, EXHIBIT } from '../styles/frames.stylex'
+import { TYPE } from '../styles/type.stylex'
 import { DataTable, type DataColumn, type TableColumnAlign } from './DataTable'
 import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
@@ -41,7 +44,6 @@ const styles = stylex.create({
       default: 0,
       ':hover': 1,
     },
-    margin: '1.5rem 0',
     position: 'relative',
   },
   /* The fence's two labels, at its top right.
@@ -60,9 +62,8 @@ const styles = stylex.create({
   controls: {
     alignItems: 'center',
     backgroundColor: 'var(--surface)',
-    // The exhibit frame's corner, from `styles/frames.stylex.ts`; the overlay
-    // sits inside it and must follow it.
-    borderStartEndRadius: '8px',
+    // The overlay sits inside the frame's own corner and must follow it.
+    borderStartEndRadius: BOX.radius,
     display: 'flex',
     gap: '0.75rem',
     paddingBlock: '0.125rem',
@@ -70,10 +71,9 @@ const styles = stylex.create({
     position: 'absolute',
     insetInlineEnd: '1px',
     insetBlockStart: '1px',
-    // Clear of the frame's own corner, and level with the first line of
-    // code rather than floating above it.
+    // Clear of the frame's own corner, and ending where a line of code ends.
     marginBlockStart: '0.625rem',
-    marginInlineEnd: '1.25rem',
+    marginInlineEnd: BOX.padInline,
   },
   badge: {
     color: 'var(--ink-muted)',
@@ -116,7 +116,6 @@ const styles = stylex.create({
     fontSize: 'var(--text-code)',
     lineHeight: 1.6,
     margin: 0,
-    padding: '1rem 1.25rem',
   },
 })
 
@@ -126,14 +125,32 @@ function classes(...names: Array<string | undefined>): string | undefined {
   return joined === '' ? undefined : joined
 }
 
+/* The blocks the renderer builds, wearing the page's own type.
+ *
+ * Markdown carries no classes, so without this a written page is set in the
+ * browser's defaults while a generated page is set in `styles/type.stylex.ts`,
+ * and the two kinds of page announce themselves. The renderer passes an id
+ * and, on a heading, the anchor beside the words; both travel through.
+ */
+function wearing(tag: 'h2' | 'p' | 'ul' | 'ol' | 'li', worn: StyleXStyles) {
+  return function Block({ children, className, ...rest }: ComponentPropsWithoutRef<'div'>) {
+    const style = stylex.props(worn)
+    return createElement(
+      tag,
+      { ...rest, className: classes(className, style.className), style: style.style },
+      children,
+    )
+  }
+}
+
 type PreProps = ComponentPropsWithoutRef<'pre'> & { 'data-lang'?: string }
 
 function CodeBlock({ children, className, ...rest }: PreProps) {
   const lang = rest['data-lang']
-  const frame = stylex.props(EXHIBIT.frame, styles.pre)
+  const frame = stylex.props(EXHIBIT.frame, EXHIBIT.air, styles.pre)
 
   return (
-    <div data-code-block="" {...stylex.props(styles.block)}>
+    <div data-code-block="" {...stylex.props(EXHIBIT.block, styles.block)}>
       <div {...stylex.props(styles.controls)}>
         {/* The control is named once and keeps that name, because a name
           says what a control does and the word on it says what the last
@@ -414,10 +431,15 @@ export function Markdown({
     <TanStackMarkdown
       components={{
         a: Anchor,
+        h2: wearing('h2', [TYPE.chapter, TYPE.section]),
+        li: wearing('li', TYPE.item),
+        ol: wearing('ol', TYPE.list),
+        p: wearing('p', TYPE.paragraph),
         pre: CodeBlock,
         screen: Screen,
         table: MarkdownTable,
         tree: TreeFence,
+        ul: wearing('ul', TYPE.list),
       }}
       extensions={[screenFences(file)]}
       headingAnchors={{ ariaHidden: false, tabIndex: 0 }}

@@ -1,14 +1,12 @@
 import * as stylex from '@stylexjs/stylex'
 
 export const styles = stylex.create({
-  // The listing's own type and air, inside the box `src/styles/frames.stylex.ts`
+  // The listing's own type, inside the box `src/styles/frames.stylex.ts`
   // draws. A listing is paths, so it is set in the face niwa prints paths in.
   frame: {
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-nav)',
     lineHeight: 1.7,
-    paddingBlock: '0.75rem',
-    paddingInline: '1rem',
   },
   // The root the rows hang from, printed as the listing's first line.
   root: {

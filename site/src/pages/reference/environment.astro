@@ -6,7 +6,6 @@ import { ReferenceTable } from '../../components/DataTable'
 import { envOf } from '../../data/env'
 import { pageLink } from '../../data/links'
 import { TYPE } from '../../styles/type.stylex'
-import { styles } from './_styles'
 
 const deck =
   'Everything in the environment that changes what niwa does. Nothing else in it is read.'
@@ -36,16 +35,16 @@ const next = [pageLink('/reference/files'), pageLink('/reference')]
 ---
 
 <Layout title="Environment variables" description={deck} headings={headings}>
-  <h1 {...stylex.props(TYPE.title, styles.h1)}>Environment variables</h1>
-  <p {...stylex.props(TYPE.deck, styles.deck)}>{deck}</p>
+  <h1 {...stylex.props(TYPE.title)}>Environment variables</h1>
+  <p {...stylex.props(TYPE.deck)}>{deck}</p>
 
   {
     tables.map((table) => (
       <Fragment>
-        <h2 id={table.id} {...stylex.props(styles.h2)}>
+        <h2 id={table.id} {...stylex.props(TYPE.chapter, TYPE.section)}>
           {table.title}
         </h2>
-        <p {...stylex.props(styles.p)}>{table.lead}</p>
+        <p {...stylex.props(TYPE.paragraph)}>{table.lead}</p>
         <ReferenceTable
           columns={[{ header: 'Variable', identifier: true }, { header: 'What it does' }]}
           rows={table.rows.map((variable) => [variable.name, variable.role])}
