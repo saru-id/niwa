@@ -31,7 +31,8 @@ record of how they were built.
 
 Every third-party action is pinned to a full commit SHA, with a comment
 naming the tag. Every tool CI installs is pinned to an exact version.
-A tool CI downloads is checked against a recorded checksum.
+A tool a workflow downloads directly is checked against a recorded
+checksum.
 
 ## Code rules
 

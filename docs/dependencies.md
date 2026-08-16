@@ -409,7 +409,7 @@ repository. None of this links into the binary or ships on the site.
   workflows do not use its `cache:` option, because that mode calls pnpm
   before Corepack has installed pnpm.
 - Why not our own: it resolves the official Node build for the runner
-  platform, verifies it, and puts it on PATH.
+  platform and puts it on PATH.
 - Maintenance: GitHub maintains it, current.
 - Pin: v7.0.0, pinned by commit.
 - License: MIT.
@@ -484,6 +484,18 @@ repository. None of this links into the binary or ships on the site.
   run time.
 - License: Apache-2.0 OR MIT.
 
+### Rust toolchain
+
+- Does: compiles the tool. `rustup toolchain install` reads
+  `rust-toolchain.toml` and installs the channel it names, with clippy and
+  rustfmt beside it.
+- Why not our own: it is the compiler.
+- Maintenance: the Rust project, releases every six weeks.
+- Pin: channel 1.97.0, in `rust-toolchain.toml`. rustup fetches it from the
+  Rust project's own distribution and checks each component against the
+  channel manifest it fetched beside it.
+- License: MIT OR Apache-2.0.
+
 ### cargo-deny
 
 - Does: checks every crate in the lockfile against `deny.toml`: licenses,
@@ -548,7 +560,7 @@ repository. None of this links into the binary or ships on the site.
 - Pin: 0.734, exact. The release publishes no checksums, so the pin is
   the digest computed from the asset: `luau-macos.zip`, SHA256
   `b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd`. A
-  version bump recomputes it.
+  version bump recomputes it and re-checks the archive's file list.
 - License: MIT.
 
 ### Node
