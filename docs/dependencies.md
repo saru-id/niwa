@@ -1,9 +1,12 @@
 # Dependencies
 
-Every crate niwa depends on has an entry here before it lands. Each entry
-answers: what it does for niwa, why we did not write it ourselves, its
-maintenance state, its transitive weight, and its license. `cargo deny check`
-enforces the license and source policy in `deny.toml`.
+Every crate niwa depends on has an entry here before it lands, and so does
+every GitHub Action and every tool the gates run. Each entry answers: what
+it does for niwa, why we did not write it ourselves, its maintenance state,
+its transitive weight, and its license. An action or a tool binary has no
+transitive tree inside this repository, so its entry answers how it is
+pinned in place of what it weighs. For the crates in the dependency graph,
+`cargo deny check` enforces the license and source policy in `deny.toml`.
 
 ## Runtime
 
@@ -158,6 +161,19 @@ enforces the license and source policy in `deny.toml`.
 - Maintenance: the proptest-rs team, current, widely used.
 - Weight: dev-only (rand and friends).
 - License: MIT OR Apache-2.0.
+
+### cargo-llvm-cov
+
+- Does: produces the coverage report `make verify` adds. It instruments
+  the test build, runs the cargo tests and the drills against one
+  instrumented binary, and merges the result.
+- Why not our own: coverage needs the compiler's own instrumentation and
+  llvm's profile tooling, driven with matching flags. The tool exists to
+  get those flags right.
+- Maintenance: one author with help, current, tracks new Rust releases.
+- Pin: none enforced; 0.8.7 is the version the coverage run is exercised
+  with. It runs on developer machines only, so CI does not pin it.
+- License: Apache-2.0 OR MIT.
 
 ## Site dependencies
 
@@ -336,3 +352,227 @@ packages are alpha or beta and treat a minor as breaking.
   build time, and an exact pin is what keeps the binary a known quantity
   across machines.
 - License: MIT (both).
+
+## GitHub Actions
+
+The workflows under `.github/workflows/` use these actions and install
+these tools on the runners. Each action is pinned to a full commit SHA,
+with its tag named in a trailing comment. Each tool is pinned to an exact
+version. Every pin is refreshed by hand, and its entry is updated in the
+same commit. These entries carry a pin in place of a weight, because
+neither an action nor a tool binary has a transitive tree inside this
+repository. None of this links into the binary or ships on the site.
+
+### actions/attest-build-provenance
+
+- Does: signs a provenance attestation for each release archive. The
+  attestation records which workflow run built the file and from which
+  commit, and `gh attestation verify` checks it against the downloaded
+  bytes.
+- Why not our own: the signature is issued against the run's OIDC token
+  and recorded in a public transparency log. Writing that exchange
+  ourselves means writing a signing protocol and a log client, and the
+  verifier accepts only this format.
+- Maintenance: GitHub, current, released alongside the attestation API it
+  calls.
+- Pin: v4.2.2, pinned by commit and not by tag. A tag moves, and this
+  action signs in the repository's name.
+- License: MIT.
+
+### actions/checkout
+
+- Does: clones the repository onto the runner, so every job reads the
+  tree it tests. Every use sets `persist-credentials: false`, so the job
+  token does not stay in `.git/config` for a later step to find.
+- Why not our own: the action handles pull request merge refs, fetch
+  depth, and the credential cleanup afterwards. That is git plumbing we
+  would carry ourselves for no gain.
+- Maintenance: GitHub maintains it, current.
+- Pin: v7.0.1, pinned by commit.
+- License: MIT.
+
+### actions/dependency-review-action
+
+- Does: on a pull request, compares the dependency graph of the base and
+  the head, and fails on a dependency with a known vulnerability. The
+  graph here is `Cargo.lock` and the pnpm lockfiles; an action pinned to
+  a commit produces no graph entry to alert on.
+- Why not our own: the graph and the advisory data are GitHub's. The
+  action is the supported way to read the difference between two commits.
+- Maintenance: GitHub maintains it, current.
+- Pin: v5.0.0, pinned by commit.
+- License: MIT.
+
+### actions/setup-node
+
+- Does: installs the exact Node version the site gate runs on. The
+  workflows do not use its `cache:` option, because that mode calls pnpm
+  before Corepack has installed pnpm.
+- Why not our own: it resolves the official Node build for the runner
+  platform, verifies it, and puts it on PATH.
+- Maintenance: GitHub maintains it, current.
+- Pin: v7.0.0, pinned by commit.
+- License: MIT.
+
+### actions/upload-artifact
+
+- Does: keeps the Scorecard SARIF file on the workflow run, so a scan can
+  be read after the fact without running it again.
+- Why not our own: the artifact store is reached through the runner's own
+  credentials and API. Only this action holds them.
+- Maintenance: GitHub, current, one of the actions the platform ships.
+- Pin: v7.0.1, pinned by commit.
+- License: MIT.
+
+### github/codeql-action
+
+- Does: runs the CodeQL analysis on the runner and sends the results to
+  code scanning. `init` prepares the analyzer for one language, `analyze`
+  runs the queries and uploads what they found, and `upload-sarif` posts
+  a SARIF file another tool produced.
+- Why not our own: the analyzer, the query packs, and the SARIF endpoint
+  are all GitHub's. This action is the only supported way to reach them
+  from a workflow.
+- Maintenance: GitHub, released every few weeks, versioned alongside the
+  CodeQL bundle it downloads.
+- Pin: v4.37.7, pinned by commit, the same commit for all three entry
+  points. A tag moves and a commit does not, and this action runs with
+  the workflow token.
+- License: MIT.
+
+### ossf/scorecard-action
+
+- Does: scores this repository against the Scorecard checks — branch
+  protection, pinned dependencies, workflow permissions, release signing
+  — and writes the result as SARIF.
+- Why not our own: the checks are the project's own definition of the
+  score. A second implementation would produce a number that means
+  something else, and the published score is the point.
+- Maintenance: the Open Source Security Foundation, current, released a
+  few times a year.
+- Pin: v2.4.4, pinned by commit.
+- License: Apache-2.0.
+
+### Swatinem/rust-cache
+
+- Does: caches the cargo registry and `target/` between runs. Building
+  the vendored Luau inside mlua is the expensive part of both gates, and
+  the cache is what keeps it off most runs.
+- Why not our own: a correct Rust cache is cache-key design — the
+  toolchain, the lockfile, the enabled features — plus knowing which
+  parts of `target/` must never be restored. The action already encodes
+  those rules.
+- Maintenance: one author, current, widely used in Rust CI.
+- Pin: v2.9.2, pinned by commit.
+- License: LGPL-3.0-only. It runs on the runner only. Nothing it touches
+  links against it.
+
+### taiki-e/install-action
+
+- Does: installs prebuilt binaries for the tools the gates need:
+  cargo-deny for the tool gate, zizmor and shellcheck for the workflow
+  lint. Building them from source on every run costs more than the gates
+  themselves.
+- Why not our own: it carries a checksummed manifest per tool and per
+  platform, and it follows upstream release layouts as they change. A
+  hand-written download step per tool is the same work, repeated, with
+  fewer eyes on it.
+- Maintenance: one author, releases most days, picks up new tool versions
+  within days of their release.
+- Pin: v2.86.1, pinned by commit. Every use also sets `fallback: none`,
+  so an install the manifest does not cover fails instead of resolving at
+  run time.
+- License: Apache-2.0 OR MIT.
+
+### cargo-deny
+
+- Does: checks every crate in the lockfile against `deny.toml`: licenses,
+  sources, advisories, and duplicate versions. `make check` runs it, so
+  the gate fails on a dependency the policy does not allow.
+- Why not our own: the advisory database, the license expression parser,
+  and the source policy are three separate problems. All three are
+  finished.
+- Maintenance: Embark Studios, current, releases every few weeks.
+- Pin: 0.20.2, exact. CI installs that version and nothing else, so a
+  runner's gate does not move under a pull request that did not touch it.
+- License: MIT OR Apache-2.0.
+
+### actionlint
+
+- Does: parses the workflow files and checks them — expression syntax and
+  types, runner labels, action inputs, and the shell in every `run`
+  block. It calls shellcheck on those run blocks when shellcheck is on
+  PATH, which is why the lint job installs both.
+- Why not our own: the checks are a model of the workflow schema and the
+  expression language, and GitHub changes both without notice.
+- Maintenance: rhysd, current, releases every few months.
+- Pin: 1.7.12, exact. The job downloads
+  `actionlint_1.7.12_linux_amd64.tar.gz` and verifies its SHA256,
+  `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8`,
+  which is the digest the release's checksum file publishes.
+- License: MIT.
+
+### zizmor
+
+- Does: audits the workflows for what a schema check cannot see — an
+  unpinned action, credentials left behind by a checkout, permissions
+  wider than a job needs, an expression interpolated into a `run` block.
+  Some audits read the referenced repositories, so the job passes it the
+  workflow's own token.
+- Why not our own: the audit set is a catalogue of known workflow
+  attacks, kept current by the people who find them.
+- Maintenance: current, releases every few weeks.
+- Pin: 1.29.0, exact.
+- License: MIT.
+
+### shellcheck
+
+- Does: checks the shell scripts under `.github/scripts/`, and through
+  actionlint the shell in every workflow `run` block.
+- Why not our own: quoting, word splitting, and exit status have rules
+  that are hard to see by reading. The checks encode years of them.
+- Maintenance: current, long-lived, widely used.
+- Pin: 0.11.0, exact.
+- License: GPL-3.0-or-later. It runs on the runner only. Nothing it
+  checks links against it.
+
+### luau-analyze
+
+- Does: type checks the Luau snippets on the site against the shipped
+  types in `share/types/`. `check-luau-snippets.mjs` spawns it, so it is
+  what makes the site's Luau claim true.
+- Why not our own: it is the Luau type checker itself, built from the
+  same source tree as the virtual machine mlua embeds. A second checker
+  would disagree with the one that runs the code.
+- Maintenance: the Luau team, releases weekly.
+- Pin: 0.734, exact. The release publishes no checksums, so the pin is
+  the digest computed from the asset: `luau-macos.zip`, SHA256
+  `b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd`. A
+  version bump recomputes it.
+- License: MIT.
+
+### Node
+
+- Does: runs the site build and every script in the site's check chain.
+- Why not our own: it is the runtime every package under `site/` is
+  written for.
+- Maintenance: the Node.js project, current, on the long term support
+  line.
+- Pin: 22.23.2, exact. The verb gate reads a TypeScript data module
+  directly, which Node does from 22.18 on. An exact pin names the version
+  the gate ran against instead of floating inside a major line.
+- License: MIT for Node itself; its LICENSE file carries the bundled
+  components' own grants beside it.
+
+### pnpm
+
+- Does: installs and runs the site's packages. Corepack fetches it at the
+  version `site/package.json` names and verifies it against the integrity
+  hash recorded beside the version.
+- Why not our own: it is the package manager the site's lockfile is
+  written for, and the lockfile pins every package by content hash.
+- Maintenance: the pnpm team, current, frequent releases.
+- Pin: 11.21.0, exact, with its sha512 integrity hash in the
+  `packageManager` field. CI asserts the resolved version before the site
+  gate runs.
+- License: MIT.
