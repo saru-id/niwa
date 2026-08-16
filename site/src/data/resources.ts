@@ -28,43 +28,16 @@ export interface Resource extends ApiEntry {
   readonly group: GroupId
 }
 
-/** The page each group renders on, and the line under its title. */
+/** The page each group renders on. The route holds itself to these paths. */
 export const GROUPS: readonly {
   id: GroupId
   path: string
-  title: string
-  deck: string
 }[] = [
-  {
-    id: 'packages',
-    path: '/reference/api/packages',
-    title: 'Packages and tools',
-    deck: 'Seven calls install software: Homebrew, the App Store, npm, mise, and GitHub releases.',
-  },
-  {
-    id: 'files',
-    path: '/reference/api/files',
-    title: 'Files and links',
-    deck: 'Two calls put files where they belong. One copies, one links, and the difference matters.',
-  },
-  {
-    id: 'settings',
-    path: '/reference/api/settings',
-    title: 'System settings',
-    deck: 'Six calls declare what macOS itself does: preference domains, the Dock, the Finder, and three machine-wide settings.',
-  },
-  {
-    id: 'services',
-    path: '/reference/api/services',
-    title: 'Services',
-    deck: 'Three calls run things: a launchd agent, a guarded command, and a body that runs once.',
-  },
-  {
-    id: 'human',
-    path: '/reference/api/human',
-    title: 'Manual steps',
-    deck: 'Two calls describe work only a person can do. Both are checklist items, never prompts.',
-  },
+  { id: 'packages', path: '/reference/api/packages' },
+  { id: 'files', path: '/reference/api/files' },
+  { id: 'settings', path: '/reference/api/settings' },
+  { id: 'services', path: '/reference/api/services' },
+  { id: 'human', path: '/reference/api/human' },
 ]
 
 /**
@@ -233,7 +206,7 @@ export function resourcesOf(group: GroupId): readonly Resource[] {
   return RESOURCES.filter((resource) => resource.group === group)
 }
 
-/** One page's title and deck. Every group has one, so a miss is a typo. */
+/** One group's page. Every group has one, so a miss is a typo. */
 export function groupOf(id: GroupId): (typeof GROUPS)[number] {
   const found = GROUPS.find((group) => group.id === id)
   if (!found) {
