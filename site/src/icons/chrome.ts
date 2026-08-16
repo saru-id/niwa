@@ -1,9 +1,9 @@
 /* The chrome's icons, as markup.
  *
- * `icons/theme.tsx` draws the same geometry for React. The bar and the rail
- * are plain Astro components that emit HTML and hydrate nothing, so they
- * need the markup rather than a component, and these are it: the same
- * 24-unit grid and the same 2-unit stroke, so a reader sees one icon set.
+ * The chrome is plain Astro components that emit HTML and hydrate nothing,
+ * so it needs markup rather than a component. Every icon here is drawn on
+ * the same 24-unit grid with the same 2-unit stroke, so a reader sees one
+ * icon set.
  *
  * `currentColor` and the size the stylesheet gives them mean each one takes
  * its ink and its size from the control it sits in.
@@ -25,6 +25,3 @@ export const MENU = `${open}<path d="M3 6h18M3 12h18M3 18h18"/></svg>`
 
 /** Close, for the drawer's own corner. */
 export const CLOSE = `${open}<path d="M18 6 6 18M6 6l12 12"/></svg>`
-
-/** The page's own source, as a document with a fold. */
-export const FILE = `${open}<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>`

@@ -33,19 +33,12 @@ interface Props {
    * on such a page opens at every width.
    */
   wide?: boolean
-  /**
-   * The page the rail should mark, when that is not the page's own URL. A
-   * source view is a second face of a documentation page, not a place of
-   * its own, so the rail keeps pointing at the page it is the source of.
-   */
-  navPath?: string
   /** The URL of this page's markdown twin. Absent when the page has none. */
   alternate?: string
 }
 
-const { title, description, headings, indexed = true, wide = false, navPath, alternate } =
-  Astro.props
-const pathname = navPath ?? Astro.url.pathname
+const { title, description, headings, indexed = true, wide = false, alternate } = Astro.props
+const pathname = Astro.url.pathname
 const outline = headings !== undefined && headings.length > 0 ? headings : undefined
 const documentTitle = title === undefined ? 'niwa' : `${title} · niwa`
 const canonical = canonicalUrl(Astro.url.pathname)
