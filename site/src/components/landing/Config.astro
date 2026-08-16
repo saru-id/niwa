@@ -1,0 +1,36 @@
+---
+/* The config, and the plan it produces.
+ *
+ * One exhibit in two frames. The tool's own snapshot test writes this config
+ * verbatim and locks the screen below it, and a test in `src/snippets/`
+ * holds the two texts together, so the pair is evidence rather than
+ * illustration.
+ *
+ * The fence goes through the markdown pipeline the documentation uses, so
+ * the frame, the language badge, the highlighting and the copy control are
+ * the site's own and not a second set for this page.
+ */
+import { Markdown } from '../Markdown'
+import { Screen } from '../Screen'
+import source from '../../snippets/landing-config.luau?raw'
+
+// The file a refused fence names. This component holds its own markdown.
+const SELF = 'src/components/landing/Config.astro'
+
+const FENCE = ['```luau', source.trimEnd(), '```'].join('\n')
+
+// The plan the config above produces, from the snapshot that config writes.
+const PLAN = 'plan_mixed_pending_color'
+---
+
+<section class="config" id="config" aria-labelledby="config-title">
+  <div class="config-copy">
+    <h2 id="config-title">No private format.</h2>
+    <p>Just Luau you can read at a glance.</p>
+  </div>
+  <div class="exhibit">
+    {/* No client directive. React runs once, during the build. */}
+    <Markdown source={FENCE} file={SELF} />
+    <Screen fixture={PLAN} command="niwa plan" />
+  </div>
+</section>

@@ -1,0 +1,53 @@
+---
+/* Three doors into the documentation.
+ *
+ * The names are the sidebar's own, read from `src/nav.ts` rather than typed
+ * again here: a reader who follows a card meets the same word at the top of
+ * the rail, and a group that is renamed or removed stops the build instead
+ * of leaving a card that lies.
+ */
+import { NAV } from '../../nav'
+
+/** A card's destination and the line that says what is behind it. */
+const DOORS = [
+  { path: '/start', line: 'Install niwa, write the first config, run the first apply.' },
+  {
+    path: '/concepts',
+    line: 'What a config declares, what a plan is, and where the boundaries sit.',
+  },
+  {
+    path: '/reference',
+    line: 'Every command and every call, checked against the binary on every build.',
+  },
+]
+
+function labelFor(path: string): string {
+  const group = NAV.find((candidate) => candidate.entries.some((page) => page.path === path))
+  if (group === undefined) {
+    throw new Error(
+      `Naming the landing's card for ${path}. No group in src/nav.ts carries that ` +
+        'page, so the card has no name to take. Point the card at a path NAV ' +
+        'carries, or add the page to NAV. The site did not build.',
+    )
+  }
+  return group.label
+}
+
+const cards = DOORS.map((door) => ({ ...door, label: labelFor(door.path) }))
+---
+
+<section class="router" aria-labelledby="router-title">
+  <h2 id="router-title">Read the documentation</h2>
+  <ul class="router-cards">
+    {
+      cards.map((card) => (
+        <li>
+          <a class="router-card" href={card.path}>
+            <h3>{card.label}</h3>
+            <p>{card.line}</p>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>

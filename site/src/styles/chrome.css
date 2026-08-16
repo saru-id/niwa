@@ -133,11 +133,6 @@ pagefind-modal:not(:defined) {
   }
 }
 
-/* A page that draws its own full-width bands has no rail at any width. */
-.shell-wide {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 /* ---- The bar -----------------------------------------------------------
  * Identity at one end, tools at the other, and nothing in between.
  *
@@ -344,7 +339,7 @@ pagefind-modal:not(:defined) {
 }
 
 /* The drawer's button exists only where the rail does not: below the rail's
- * width, and on a page that draws no rail at any width. */
+ * width. */
 .control-menu {
   display: none;
 }
@@ -353,18 +348,6 @@ pagefind-modal:not(:defined) {
   .control-menu {
     display: inline-flex;
   }
-}
-
-.bar-wide .control-menu {
-  display: inline-flex;
-}
-
-.bar-wide .bar-identity {
-  border-inline-end: 0;
-}
-
-.bar-wide {
-  grid-template-columns: auto minmax(0, 1fr);
 }
 
 /* ---- The colour mode's face -------------------------------------------
@@ -589,8 +572,9 @@ pagefind-modal:not(:defined) {
 }
 
 /* The rail a reader with no script is given, below the article. It stands
- * in for the drawer, which is the one part of the chrome a script opens. A
- * page that has a rail of its own only needs it below the rail's width.
+ * in for the drawer, which is the one part of the chrome a script opens.
+ * The page carries a rail of its own above the rail's width, so this one is
+ * wanted below it and nowhere else.
  *
  * 901px is `MEDIA.railUp` in `src/styles/layout.stylex.ts`: the rail's edge
  * read from above. */
@@ -723,18 +707,6 @@ pagefind-modal:not(:defined) {
   max-inline-size: 46rem;
   margin-inline: auto;
   padding-block: 2.5rem 4rem;
-}
-
-/* A page that draws its own full-width bands takes neither the cap nor the
- * air: it was drawn for the width it is given. */
-.page-wide {
-  display: block;
-  padding-inline: 0;
-}
-
-.page-wide .page-article {
-  max-inline-size: none;
-  padding-block: 0;
 }
 
 /* ---- Skip link ---------------------------------------------------------

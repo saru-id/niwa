@@ -13,7 +13,8 @@
     "check:snippets": "node ./scripts/check-luau-snippets.mjs",
     "check:verbs": "node ./scripts/check-verbs.mjs",
     "check:links": "node ./scripts/check-links.mjs",
-    "check": "export ASTRO_TELEMETRY_DISABLED=1; astro sync && astro check && node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json && node ./scripts/check-luau-snippets.mjs && node ./scripts/check-verbs.mjs && vitest run && astro build && node ./scripts/check-links.mjs"
+    "check:encodes": "node ./scripts/check-encodes.mjs",
+    "check": "export ASTRO_TELEMETRY_DISABLED=1; astro sync && astro check && node ./node_modules/typescript-7/bin/tsc --noEmit -p tsconfig.src.json && node ./scripts/check-luau-snippets.mjs && node ./scripts/check-verbs.mjs && vitest run && astro build && node ./scripts/check-links.mjs && node ./scripts/check-encodes.mjs"
   },
   "dependencies": {
     "@astrojs/react": "6.0.2",

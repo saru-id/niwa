@@ -1,0 +1,4 @@
+# The water fixtures are raw pixel samples, not text. Git guesses text for a
+# file with no null byte near its start, and a checkout that rewrites line
+# endings inside pixel data corrupts the samples the water tests measure.
+src/scripts/landing/__fixtures__/*.bin binary

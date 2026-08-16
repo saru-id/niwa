@@ -181,6 +181,70 @@
   color-scheme: light;
 }
 
+/* ---- The landing's field ----------------------------------------------
+ * One page is painted rather than themed. Its art is a transparent garden
+ * composited over near-black, and every colour below is sampled from it or
+ * measured against it. The landing carries both classes, and the compound
+ * selector is what makes these values win: the dark block above and the
+ * `prefers-color-scheme` block above that both sit at two classes, so a
+ * single class here would tie them and leave source order to decide.
+ *
+ * Contrast is stated against the surface `#090d0b`, which is the field the
+ * fence and the plan screen print on. The same ink over the page's own
+ * `#030504` measures higher.
+ */
+
+:root.theme-dark.surface-landing {
+  --ground: #030504;
+  --surface: #090d0b;
+  --border: rgba(242, 239, 231, 0.14);
+  /* The hairline the header draws when it is scrolled, and the emphasis the
+   * rest of the site spends this token on. */
+  --border-strong: rgba(242, 239, 231, 0.3);
+  --ink-strong: #f2efe7; /* 17.8:1 */
+  --ink: #dedfd8; /* 15.2:1 */
+  --ink-muted: #a8aaa1; /* 8.7:1 */
+  --accent: #ee9475;
+  --link: #efb096; /* 11.0:1 */
+
+  /* The plan screen prints through these. All five clear 9:1 on the
+   * surface, because a colour that carries meaning has to be read. */
+  --role-good: #9fc7a5;
+  --role-warn: #d9b78a;
+  --role-bad: #e8a09a;
+  --role-accent: #efb096;
+  --role-muted: var(--ink-muted);
+
+  /* Every class the landing's two grammars emit. Luau emits meta, comment,
+   * string, number, literal, keyword, function, property and operator; the
+   * shell fence adds command and variable. A class neither grammar emits
+   * keeps the site's dark value, which no landing fence ever reaches. */
+  --th-meta: #77877f; /* the sage `--!strict` opens the fence with */
+  --th-comment: #77877f; /* 5.2:1; the darker sage the art wants fails AA */
+  --th-string: #f0a98e; /* 10.0:1 */
+  --th-number: #f0a98e;
+  --th-literal: #f0a98e;
+  --th-keyword: #91bcb5; /* 9.4:1 */
+  --th-function: #91bcb5;
+  --th-property: #91bcb5;
+  --th-operator: #a8aaa1; /* 8.3:1, quiet structural ink */
+  --th-variable: #a8aaa1;
+  --th-command: #91bcb5; /* the install line's curl and sh */
+  --th-token: #dedfd8; /* 14.6:1 */
+
+  /* The dimmest ink the landing owns, and the page background is the only
+   * field it may stand on: over the surface it measures 4.37:1 and fails.
+   * It dresses text that sits on the page itself, and the scrollbar, which
+   * runs on the page itself. */
+  --quiet: #737970;
+  --accent-soft: #efb096;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  /* Re-declared rather than inherited. The site's stack starts at
+   * `ui-monospace`, which resolves to a different face on some platforms,
+   * and every mono glyph on this page sits inside a measured region. */
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+}
+
 /* ---- Syntax tokens -----------------------------------------------------
  * The twenty-one `--th-*` variables per theme, declared in the three theme
  * blocks above, are transcribed by hand from the GitHub themes. They stay

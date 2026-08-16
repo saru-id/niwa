@@ -22,14 +22,12 @@ import Rail from './Rail.astro'
 
 interface Props {
   pathname: string
-  /** The page draws no rail, so the drawer is the way in at every width. */
-  wide?: boolean
 }
 
-const { pathname, wide = false } = Astro.props
+const { pathname } = Astro.props
 ---
 
-<header class:list={['bar', wide && 'bar-wide']} data-bar>
+<header class="bar" data-bar>
   <a class="bar-identity" href="/">
     <span class="bar-dot" aria-hidden="true"></span>
     {/* The name and the version share a baseline, so the small type sits on
