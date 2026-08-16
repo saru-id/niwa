@@ -173,7 +173,6 @@ pagefind-modal:not(:defined) {
 .bar-identity {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   align-self: stretch;
   padding-inline: var(--chrome-gutter);
   border-inline-end: 1px solid var(--border);
@@ -181,23 +180,43 @@ pagefind-modal:not(:defined) {
   color: var(--ink-strong);
 }
 
-.bar-identity:hover .bar-wordmark {
-  color: var(--ink-strong);
+/* ---- The mark ----------------------------------------------------------
+ * The seedling and the wordmark, the pair the landing's header composes, on
+ * the shorter line this bar gives them. The drawer's head wears the same
+ * mark.
+ *
+ * Both drawings are laid out from their height, and the bar is what sets
+ * it: 1.625rem is half the 3.25rem bar, and the wordmark keeps the
+ * proportion it stands at beside the seedling on the landing. Each width is
+ * left to follow from its file, which is what holds a drawing at the ratio
+ * it was drawn in.
+ */
+
+/* The gap is the air the landing keeps between the two drawings, brought
+ * down with them. */
+.bar-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
-/* One filled circle in the accent, at the cap height of the word beside it. */
-.bar-dot {
-  inline-size: 0.4375rem;
-  block-size: 0.4375rem;
-  border-radius: 50%;
-  background-color: var(--accent);
+/* Nothing here gives up width. A drawing squeezed by a short line is a
+ * drawing at a ratio its file does not have. */
+.bar-mark > *,
+.bar-name > * {
   flex: none;
 }
 
-/* The name and the version are one object with one baseline. Centring two
- * different type sizes against each other leaves the small one floating in
- * the middle of the large one's box; sitting them on a shared baseline is
- * what makes the pair read as a name and its number. */
+.bar-seedling {
+  display: block;
+  inline-size: auto;
+  block-size: 1.625rem;
+}
+
+/* The name and whatever stands beside it are one object with one baseline.
+ * The wordmark is a drawing, and a drawing has no baseline of its own: a
+ * flex line takes its bottom edge instead, which sits one pixel under the
+ * letters at this size. The nudge below pays that pixel back. */
 .bar-name {
   display: flex;
   align-items: baseline;
@@ -205,12 +224,33 @@ pagefind-modal:not(:defined) {
 }
 
 .bar-wordmark {
-  font-family: var(--font-mono);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  color: var(--ink-strong);
+  display: none;
+  inline-size: auto;
+  block-size: 1.1875rem;
+  transform: translateY(0.0625rem);
+}
+
+/* Which ink is drawn, decided here rather than in script, so the mark is
+ * right in the first paint. The three cases are the colour mode's own: the
+ * class the blocking script writes, and the reader with no script at all,
+ * whose page carries no class and is coloured by `prefers-color-scheme`. */
+:root.theme-light .bar-wordmark[data-mode='light'],
+:root.theme-dark .bar-wordmark[data-mode='dark'] {
+  display: block;
+}
+
+:root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='light'] {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='light'] {
+    display: none;
+  }
+
+  :root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='dark'] {
+    display: block;
+  }
 }
 
 /* A fact about what these pages describe, said where the name is. */

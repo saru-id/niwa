@@ -1,0 +1,62 @@
+---
+/* The site's mark, sized for the bar.
+ *
+ * The seedling is a raster and the wordmark is drawn, and they are composed
+ * here rather than baked into one file: the leaf veins do not survive
+ * tracing, and the letterforms do not survive a small raster. The landing's
+ * header composes the same pair on a taller line, and the seedling here is
+ * that header's own encode: one mark, one budget, one file to fetch.
+ *
+ * The wordmark is served as an image, where its letterforms rasterize the
+ * same way on every engine. An image cannot take `currentColor`, so it
+ * cannot follow the colour mode. It ships twice instead, once in each
+ * theme's strongest ink, and the stylesheet shows the one the class on
+ * `<html>` has already settled — the answer the colour mode's own control
+ * gives to the same problem.
+ */
+import seedling from '../assets/art/seedling.png'
+import wordmarkInk from '../assets/art/wordmark-ink.svg'
+import wordmark from '../assets/art/wordmark.svg'
+import { navSeedling } from '../lib/hero-art'
+---
+
+<span class="bar-mark">
+  <picture>
+    <source type="image/avif" srcset={navSeedling.src} />
+    <img
+      class="bar-seedling"
+      src={seedling.src}
+      alt=""
+      width={seedling.width}
+      height={seedling.height}
+      draggable="false"
+    />
+  </picture>
+  <span class="bar-name">
+    {
+      /* The drawing is the only place the name is written here, so the
+        drawing is what says it. Exactly one of the two is ever drawn, so
+        the name is said once. */
+    }
+    <img
+      class="bar-wordmark"
+      data-mode="light"
+      src={wordmarkInk.src}
+      alt="niwa"
+      width={wordmarkInk.width}
+      height={wordmarkInk.height}
+      draggable="false"
+    />
+    <img
+      class="bar-wordmark"
+      data-mode="dark"
+      src={wordmark.src}
+      alt="niwa"
+      width={wordmark.width}
+      height={wordmark.height}
+      draggable="false"
+    />
+    {/* Whatever stands on the wordmark's line beside it, or nothing. */}
+    <slot />
+  </span>
+</span>

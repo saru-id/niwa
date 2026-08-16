@@ -1,4 +1,4 @@
-/* The landing's art, encoded for the page.
+/* The site's art, encoded for the pages that draw it.
  *
  * Every quality here is a measured budget: bytes paid against likeness kept.
  * The hero's two are measured directly; the decoratives are held to the
@@ -54,6 +54,7 @@ export const heroOriginal: ArtImage = {
  * 44 KB, out of the hero's way on the first load. */
 export const installerVine = await encode(vine, 50)
 
-/** The seedling in the header. The mark is small and always on screen, so
+/** The seedling in the mark, which the landing's header and the
+ * documentation's bar both draw. The mark is small and always on screen, so
  * quality 60 keeps its leaf veins for 14 KB. */
 export const navSeedling = await encode(seedling, 60)
