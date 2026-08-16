@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Read the documentation
+    url: https://niwa.rs/
+    about: Learn how niwa works and find the command reference.
+  - name: Report a vulnerability privately
+    url: https://github.com/saru-id/niwa/security/advisories/new
+    about: Send a security report without exposing users.

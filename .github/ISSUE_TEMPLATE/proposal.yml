@@ -1,0 +1,49 @@
+name: Propose a change
+description: Describe a problem that needs new or changed behavior.
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the problem. A maintainer will confirm the intended contract before implementation begins.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the open and closed issues for this proposal.
+          required: true
+        - label: This proposal describes one focused problem.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the task that niwa cannot perform or the contract that needs to change.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the observable behavior and how a person would know it works.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: Show the config or command shape you would expect, if applicable.
+      render: luau
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe current workarounds or narrower solutions you considered.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add references, screenshots, or constraints that affect the design.
