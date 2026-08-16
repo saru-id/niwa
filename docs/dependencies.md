@@ -173,7 +173,7 @@ packages are alpha or beta and treat a minor as breaking.
 - Why not our own: a static site generator with content collections and a
   build pipeline is a large finished problem, and the design site already
   proved this one on the same content.
-- Maintenance and weight: released weekly, 51 direct dependencies, build
+- Maintenance and weight: released weekly, 52 direct dependencies, build
   time only.
 - License: MIT.
 
@@ -200,7 +200,7 @@ packages are alpha or beta and treat a minor as breaking.
 
 - Does: lets React components render inside Astro pages.
 - Why not our own: it is the supported bridge between the two renderers,
-  and every component on the site renders at build time through it.
+  and every React component on the site renders at build time through it.
 - Maintenance and weight: released alongside Astro, adds the Vite React
   plugin.
 - License: MIT.
@@ -232,8 +232,8 @@ packages are alpha or beta and treat a minor as breaking.
 ### @tanstack/highlight
 
 - Does: turns a code fence into coloured spans at build time. It ships the
-  shell, TOML and JSON grammars, takes the site's own Luau grammar, and
-  bridges to the markdown renderer.
+  shell, TOML, JSON and plaintext grammars, takes the site's own Luau
+  grammar, and bridges to the markdown renderer.
 - Why not our own: it is synchronous, has no dependencies and no WASM, and
   its grammars are plain scanning functions, which is what let the Luau
   grammar be written by hand at all.
@@ -304,9 +304,9 @@ packages are alpha or beta and treat a minor as breaking.
 
 ### vitest
 
-- Does: runs the Worker's recognition tests.
-- Why not our own: it reads the same Vite config the site builds with, so
-  a test imports a module exactly as the build does.
+- Does: runs every test the site has, under `src/` and under `worker/`.
+- Why not our own: it runs on the same bundler the site builds with, so a
+  test imports a module exactly as the build does.
 - Maintenance and weight: current, dev only, shares the bundler already
   installed.
 - License: MIT.
