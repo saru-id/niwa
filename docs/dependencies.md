@@ -177,6 +177,25 @@ packages are alpha or beta and treat a minor as breaking.
   time only.
 - License: MIT.
 
+### sharp
+
+- Does: encodes the site's images at build time. It is the image service Astro
+  bundles, and every derivative a page requests through `getImage()` comes out
+  of it.
+- Why not our own: an image encoder is a codec suite. sharp binds libvips,
+  which carries the AVIF and PNG encoders the site's image budgets are
+  calibrated against.
+- Maintenance and weight: current, build time only. It is not a direct
+  dependency: the lockfile pins it at 0.35.3 under the `astro@7.2.1`
+  resolution, and that pin is load-bearing. A second sharp, 0.35.2, sits under
+  the wrangler toolchain and takes no part in the build. Moving the build's
+  sharp changes every encoded byte, so a lockfile refresh that moves it
+  re-opens the image budget measurements. A hoist setting in
+  `site/pnpm-workspace.yaml` places the same package at `node_modules/sharp`,
+  because Astro's built chunks import it bare from paths the isolated layout
+  does not serve.
+- License: Apache-2.0.
+
 ### @astrojs/react
 
 - Does: lets React components render inside Astro pages.
