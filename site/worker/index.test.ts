@@ -18,13 +18,27 @@ function env() {
       fetch: (request: Request) => {
         const { pathname } = new URL(request.url)
         if (pathname === '/install.sh') {
-          return Promise.resolve(new Response(SCRIPT, { status: 200 }))
+          // The headers the store puts on the real file: its own cache rule,
+          // its entity tag, and the security set every path carries.
+          return Promise.resolve(
+            new Response(SCRIPT, {
+              status: 200,
+              headers: {
+                'Cache-Control': 'public, max-age=300',
+                'X-Content-Type-Options': 'nosniff',
+                ETag: '"script-v1"',
+              },
+            }),
+          )
         }
         if (pathname === '/') {
           return Promise.resolve(
-            new Response('<!doctype html>', {
+            new Response(request.method === 'HEAD' ? null : '<!doctype html>', {
               status: 200,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' },
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'X-Content-Type-Options': 'nosniff',
+              },
             }),
           )
         }
@@ -37,8 +51,8 @@ function env() {
 const CLI = { 'user-agent': 'curl/8.4.0' }
 const BROWSER = { 'user-agent': 'Mozilla/5.0', accept: 'text/html' }
 
-function get(path: string, headers: Record<string, string>) {
-  return worker.fetch(new Request(`https://niwa.rs${path}`, { headers }), env())
+function get(path: string, headers: Record<string, string>, method = 'GET') {
+  return worker.fetch(new Request(`https://niwa.rs${path}`, { headers, method }), env())
 }
 
 describe('the Worker', () => {
@@ -77,6 +91,83 @@ describe('the Worker', () => {
       )
       expect(await response.text(), path).not.toContain('#!/bin/sh')
     }
+  })
+
+  /* The apex is negotiated, so the apex is never stored. Both answers say
+   * so, and both name the headers the choice read: a cache that stores
+   * anyway still cannot hand one audience the other's body. */
+  test('tells every cache to hold neither apex answer', async () => {
+    for (const asking of [CLI, BROWSER]) {
+      const response = await get('/', asking)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(response.headers.get('vary')).toBe('Accept, User-Agent')
+    }
+  })
+
+  // A fetcher that sends no headers at all is a command line.
+  test('gives the installer to a fetcher with no headers', async () => {
+    const response = await get('/', {})
+    expect(response.headers.get('content-type')).toBe('text/x-shellscript; charset=utf-8')
+  })
+
+  // The wrap replaces the cache rule and nothing else: the store's entity
+  // tag and its security set reach the reader.
+  test('carries the asset headers through the apex wrap', async () => {
+    const script = await get('/', CLI)
+    expect(script.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(script.headers.get('etag')).toBe('"script-v1"')
+    expect(script.headers.get('cache-control')).toBe('no-store')
+
+    const page = await get('/', BROWSER)
+    expect(page.headers.get('x-content-type-options')).toBe('nosniff')
+  })
+
+  // The same choice, the same headers, and no body.
+  test('answers a HEAD of the apex without a body', async () => {
+    for (const asking of [CLI, BROWSER]) {
+      const response = await get('/', asking, 'HEAD')
+      expect(response.status).toBe(200)
+      expect(response.headers.get('cache-control')).toBe('no-store')
+      expect(response.headers.get('vary')).toBe('Accept, User-Agent')
+      expect(await response.text()).toBe('')
+    }
+  })
+
+  // Only a read has two representations to choose between. Anything else is
+  // the asset store's to refuse, and it is never given the installer.
+  test('never negotiates a write', async () => {
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+      const response = await get('/', CLI, method)
+      expect(response.headers.get('content-type'), method).not.toBe(
+        'text/x-shellscript; charset=utf-8',
+      )
+    }
+  })
+
+  // A deploy that lost the installer still answers with apex cache rules:
+  // the failure is negotiated too, and no cache may hold it for the other
+  // audience.
+  test('keeps even a missing installer uncacheable at the apex', async () => {
+    const bare = {
+      ASSETS: {
+        fetch: () => Promise.resolve(new Response('not found', { status: 404 })),
+      },
+    }
+    const response = await worker.fetch(
+      new Request('https://niwa.rs/', { headers: CLI }),
+      bare,
+    )
+    expect(response.status).toBe(404)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(response.headers.get('vary')).toBe('Accept, User-Agent')
+    expect(response.headers.get('content-type')).not.toBe('text/x-shellscript; charset=utf-8')
+  })
+
+  // The redirect reads only the path, so it may be shared for its lifetime.
+  test('lets a release redirect be cached', async () => {
+    const response = await get('/release/niwa-0.1.0-macos-arm64.tar.gz', CLI)
+    expect(response.headers.get('cache-control')).toBe('public, max-age=300')
+    expect(response.headers.get('vary')).toBeNull()
   })
 
   // Same rule one path further out: /install.sh is a plain asset and the
