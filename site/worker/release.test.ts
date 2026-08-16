@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { SITE } from '../src/nav'
 import { RELEASE_REPO, releaseRedirect } from './release'
@@ -61,5 +62,35 @@ describe('the release redirect', () => {
   // installer is sent to the same one. One name, checked here.
   test('points at the repository the site names', () => {
     expect(SITE.repository).toBe(`https://github.com/${RELEASE_REPO}`)
+  })
+})
+
+// The installer's default version is what `curl niwa.rs | sh` fetches when
+// nothing pins one. Every release gate checks the GitHub API, but the bytes
+// travel through the redirect above, so the default has to be a version the
+// redirect serves and the version the crate carries. Either drift 404s the
+// install while every other gate stays green.
+describe('the installer default', () => {
+  const installer = readFileSync(new URL('../../install.sh', import.meta.url), 'utf8')
+  const version = /^VERSION="\$\{NIWA_VERSION:-(.+)\}"$/m.exec(installer)?.[1]
+
+  test('is read from the one default line', () => {
+    expect(version).toBeDefined()
+  })
+
+  test('is the crate version', () => {
+    const manifest = readFileSync(new URL('../../Cargo.toml', import.meta.url), 'utf8')
+    expect(manifest).toContain(`version = "${version}"`)
+  })
+
+  test('names files the redirect serves', () => {
+    for (const name of [
+      `niwa-${version}-macos-arm64.tar.gz`,
+      `niwa-${version}-macos-arm64.tar.gz.sha256`,
+      `niwa-${version}-macos-x86_64.tar.gz`,
+      `niwa-${version}-macos-x86_64.tar.gz.sha256`,
+    ]) {
+      expect(releaseRedirect(`/release/${name}`), name).toBe(`${base}/v${version}/${name}`)
+    }
   })
 })
