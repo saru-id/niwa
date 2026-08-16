@@ -1,6 +1,6 @@
 [package]
 name = "niwa"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.97"
 description = "A configuration tool for macOS. One Luau script declares what a machine should be. niwa makes it true, shows its work, and can undo it."

@@ -39,7 +39,7 @@ misspelling costs nothing.
 2. Installs the Command Line Tools when `xcode-select` finds none. macOS asks,
    the installer waits, and it continues the moment they are in. After an hour
    of waiting it stops and tells you to run it again once they are in.
-3. Fetches `niwa-0.1.0-macos-<arch>.tar.gz` and the `.sha256` beside it from
+3. Fetches `niwa-<version>-macos-<arch>.tar.gz` and the `.sha256` beside it from
    `https://niwa.rs/release`.
 4. Checks the checksum. A mismatch ends the run and installs nothing.
 5. Unpacks one binary to `~/.local/bin/niwa`.

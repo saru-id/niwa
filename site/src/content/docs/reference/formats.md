@@ -19,7 +19,7 @@ TOML, in the config repo, committed. niwa writes the two-line header itself.
 ```toml
 # Written by niwa, committed on purpose: machine two resolves to the
 # same versions this machine did. Edit by running `niwa update <name>`.
-niwa = "0.1.0"
+niwa = "0.1.1"
 
 [github_release."jesseduffield/lazygit"]
 version = "0.44.1"
@@ -105,7 +105,7 @@ machine_id = "9E1C6A2F-4B7D-4E0A-9C3B-D2F8A1E64C05"
 name = "airborne"
 applied = "2026-08-12T09:41:07Z"
 config = "a91f3c2"
-niwa = "0.1.0"
+niwa = "0.1.1"
 resources = 214
 tags = ["work"]
 ```

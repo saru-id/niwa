@@ -62,7 +62,7 @@ instead, each entry with its own identity.
 
 ## No privilege escalation
 
-At 0.1.0 niwa asks for no password and calls no authorization service.
+niwa asks for no password and calls no authorization service.
 Steps that need administrator rights are listed at the top of the run,
 with the source line that declared each one, and they run with the
 rights you have. `apply --no-privileged` skips them whole.

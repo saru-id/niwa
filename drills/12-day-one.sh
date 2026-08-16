@@ -15,8 +15,15 @@ BIN="$SANDBOX/bin"
 mkdir -p "$BIN"
 
 # --- the release artifact, from the binary under test ---------------
+#
+# The version is read out of the installer rather than written here. The
+# two have to agree for any of this to mean anything, and a number copied
+# into both drifts at the first release that changes one of them — which
+# is exactly how this drill failed when 0.1.1 was cut.
 ARCH="$(uname -m)"
-NAME="niwa-0.1.0-macos-$ARCH.tar.gz"
+VERSION="$(sed -n 's/^VERSION="${NIWA_VERSION:-\(.*\)}"$/\1/p' "$(dirname "$0")/../install.sh")"
+[ -n "$VERSION" ] || { echo "drill: cannot read the default version out of install.sh" >&2; exit 1; }
+NAME="niwa-$VERSION-macos-$ARCH.tar.gz"
 RELEASE="$SANDBOX/release"
 mkdir -p "$RELEASE"
 cp "$NIWA_BIN" "$SANDBOX/niwa"
@@ -91,7 +98,7 @@ check 2 "the binary landed in ~/.local/bin" test -x "$HOME/.local/bin/niwa"
 check 2b "the missing tools were triggered, then waited for" \
     test -f "$SANDBOX/clt-state"
 check 3 "the fetch went to the documented base for this arch" \
-    grep -q "niwa.rs/release/niwa-0.1.0-macos-$ARCH.tar.gz" "$SANDBOX/curl.log"
+    grep -q "niwa.rs/release/niwa-$VERSION-macos-$ARCH.tar.gz" "$SANDBOX/curl.log"
 check 4 "PATH is wired in .zshrc" grep -q "added by niwa" "$HOME/.zshrc"
 
 STATUS=0

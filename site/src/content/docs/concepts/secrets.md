@@ -46,7 +46,7 @@ and `from` in that table names one place and searches nowhere else:
 `niwa.secret { name = "github-token", from = "keychain" }`.
 
 A missing secret fails the plan, not the apply, and the error lists the
-places niwa searched. At 0.1.0 two of the three answer: the keychain and
+places niwa searched. Before 1.0.0 two of the three answer: the keychain and
 the repo. No external manager is configured, and the error says where it
 looked rather than implying a third.
 

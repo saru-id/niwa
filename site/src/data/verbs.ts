@@ -420,7 +420,7 @@ export const VERBS: readonly Verb[] = [
     exits: [
       {
         code: 1,
-        when: 'Always at 0.1.0. There is no release channel to fetch from yet, and the verb says so',
+        when: 'Always before 1.0.0. There is no release channel to fetch from yet, and the verb says so',
       },
     ],
     frequency: 'rare',

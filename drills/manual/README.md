@@ -22,7 +22,7 @@ notes. The `drills/[0-9]*.sh` glob never matches this directory.
 3. **mas honesty.** Declare a `niwa.mas.app`. The declaration
    validates and counts; plan and apply answer Unchecked ("not yet
    checkable in this build") whether signed in or not — the provider
-   is stubbed at 0.1.0 and must never pretend otherwise.
+   is stubbed before 1.0.0 and must never pretend otherwise.
 
 4. **Permission checklist.** A `niwa.permission` entry deep-links
    into System Settings. niwa never claims the permission is granted;

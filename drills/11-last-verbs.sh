@@ -152,7 +152,7 @@ check 31 "the document lists resources under their modules" \
     sh -c "grep -q '^## cli' '$SANDBOX/stdout' &&
         grep -q 'brew.formula:jq' '$SANDBOX/stdout'"
 
-# --- migrate and self: honest about 0.1.0 ---------------------------
+# --- migrate and self: honest before 1.0.0 --------------------------
 niwa migrate
 check 32 "migrate answers: nothing is deprecated (exit 0)" \
     sh -c "test $STATUS -eq 0 && grep -q 'nothing to migrate' '$SANDBOX/stdout'"
