@@ -60,9 +60,8 @@ const card = canonicalUrl('/art/niwa-og.jpg')
     {
       /* First in the head and inline, so the class is on <html> before the
         first paint: a stored choice applied after it is a flash. Storage can
-        be refused, and then the system preference decides.
-        `data-theme` carries the same choice for the design system's tokens;
-        the bar's control keeps the two in step from then on. */
+        be refused, and then the system preference decides. The bar's control
+        writes the class from then on. */
     }
     <script is:inline>
       ;(function () {
@@ -76,7 +75,6 @@ const card = canonicalUrl('/art/niwa-og.jpg')
           t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         }
         document.documentElement.classList.add('theme-' + t)
-        document.documentElement.setAttribute('data-theme', t)
       })()
     </script>
     <meta charset="utf-8" />

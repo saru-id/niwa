@@ -8,10 +8,8 @@
  * colour. What it cost was a control that could not be read at a glance:
  * two of its three faces looked the same on a dark platform.
  *
- * So a page always carries `theme-light` or `theme-dark` on `<html>`. The
- * same choice is written a second time as `data-theme`, which is the
- * attribute the design system reads to resolve its `light-dark()` tokens.
- * One stored value, two spellings, and they cannot disagree.
+ * So a page always carries `theme-light` or `theme-dark` on `<html>`. That
+ * class is the whole switch: one stored value, one spelling of it.
  *
  * A reader with no script has no class at all, and `app.css` still answers
  * `prefers-color-scheme` for exactly that case.
@@ -50,5 +48,4 @@ export function show(choice: Choice): void {
   const root = document.documentElement
   root.classList.toggle('theme-light', choice === 'light')
   root.classList.toggle('theme-dark', choice === 'dark')
-  root.setAttribute('data-theme', choice)
 }

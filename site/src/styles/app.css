@@ -186,12 +186,10 @@
 
 /* The design system reads the same two states, through `color-scheme`.
  *
- * Its tokens hold `light-dark()` pairs, and `light-dark()` resolves from
- * `color-scheme`. Its own switch is a `data-theme` attribute on `<html>`,
- * which the blocking script and `scripts/theme.ts` write beside the class,
- * so the two spellings never disagree. Most of its colour tokens are not
- * pairs at all: `theme/niwa.theme.ts` points them at the tokens above, so
- * they follow the class directly.
+ * A token of its that holds a `light-dark()` pair resolves from
+ * `color-scheme`. Most of its colour tokens are not pairs at all:
+ * `theme/niwa.theme.ts` points them at the tokens above, so they follow the
+ * class directly.
  *
  * One rule is needed. The `Theme` provider declares `color-scheme` on its
  * own wrapper from a `mode` prop, and on a static page that prop is fixed
