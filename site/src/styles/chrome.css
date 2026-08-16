@@ -584,6 +584,9 @@ pagefind-modal:not(:defined) {
   padding-inline: var(--chrome-gutter);
 }
 
+/* Every declaration here undoes one the column states, down to the
+ * `display: none` the column takes below the rail's width. The descendant
+ * selector is what outranks it. */
 .noscript-rail .rail {
   position: static;
   display: block;
@@ -594,7 +597,7 @@ pagefind-modal:not(:defined) {
 }
 
 @media (min-width: 901px) {
-  .noscript-rail-narrow {
+  .noscript-rail {
     display: none;
   }
 }
