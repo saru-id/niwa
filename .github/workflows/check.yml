@@ -1,0 +1,159 @@
+name: check
+
+# No path filter. The site gate reads the Rust sources, the manifest, the
+# tests, `share/` and `install.sh`, so a filter narrow enough to be worth
+# having would skip runs that must not be skipped.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+defaults:
+  run:
+    # GitHub runs a step without a shell as `bash -e`, with no pipefail, while
+    # the workflow linters read every run block as `-eo pipefail`. Naming the
+    # shell makes the linted semantics the executed ones.
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: check
+    runs-on: macos-15
+    # Minutes on a warm machine. Forty-five leaves room for a cold runner,
+    # because a tight timeout reads as a flake.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      # This job is the only writer of the shared cache key. The site job
+      # restores it read-only, so one key never has two jobs racing to save it.
+      - name: Save the Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: check
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        with:
+          tool: cargo-deny@0.20.2
+          # The action's default fallback resolves an install at run time from
+          # outside its checksummed manifests. Refusing the fallback keeps the
+          # install pinned or failing, never improvised.
+          fallback: none
+      - name: Run the tool gate
+        run: make check
+
+  site:
+    name: site
+    runs-on: macos-15
+    # Minutes on a warm machine. Forty-five leaves room for a cold runner,
+    # because a tight timeout reads as a flake.
+    timeout-minutes: 45
+    # Serialized behind the tool gate so this job restores the cache that job
+    # wrote. Run in parallel, both jobs cold-build the vendored Luau and race
+    # the same save key.
+    needs: check
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Restore the Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: check
+          save-if: false
+      - name: Build the tool
+        run: cargo build
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.23.2
+      # Corepack runs inside `site/`, because the repository root carries no
+      # package.json and a root invocation resolves nothing.
+      - name: Enable pnpm through Corepack
+        working-directory: site
+        run: |
+          corepack enable
+          version="$(pnpm --version)"
+          if [ "$version" != "11.21.0" ]; then
+            printf 'pnpm resolved to %s, not the pinned 11.21.0\n' "$version" >&2
+            exit 1
+          fi
+      - name: Install luau-analyze
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLo luau-macos.zip https://github.com/luau-lang/luau/releases/download/0.734/luau-macos.zip
+          # The Luau release publishes no checksums, so this digest is the pin.
+          printf '%s  luau-macos.zip\n' "b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd" | shasum -a 256 -c -
+          unzip -q -o luau-macos.zip -d luau
+          # Exit 0 here proves the downloaded binary runs on this runner, so a
+          # zip that cannot run fails in this step, not inside the site gate.
+          ./luau/luau-analyze --version
+          printf '%s/luau\n' "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Run the site gate
+        run: make site-check
+
+  lint-workflows:
+    name: lint-workflows
+    runs-on: ubuntu-24.04
+    # Lint and review finish in a minute or two. Fifteen ends a stuck job.
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install zizmor and shellcheck
+        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        with:
+          tool: zizmor@1.29.0,shellcheck@0.11.0
+          fallback: none
+      - name: Install actionlint
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLo actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          printf '%s  actionlint.tar.gz\n' "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8" | sha256sum -c -
+          mkdir -p actionlint-bin && tar -xzf actionlint.tar.gz -C actionlint-bin actionlint
+          printf '%s/actionlint-bin\n' "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Lint the workflows
+        run: actionlint
+      - name: Audit the workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor .github/workflows/
+      - name: Lint the shell scripts
+        run: shellcheck .github/scripts/*.sh
+
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-24.04
+    # Lint and review finish in a minute or two. Fifteen ends a stuck job.
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Review the dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
