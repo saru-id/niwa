@@ -1,23 +1,20 @@
 import * as stylex from '@stylexjs/stylex'
 
+/* A written page's furniture.
+ *
+ * The title and the deck are set in `src/styles/type.stylex.ts`, which the
+ * generated pages read too. What is here is the ink and the air this page
+ * adds to them.
+ */
 export const styles = stylex.create({
   title: {
     color: 'var(--ink-strong)',
-    fontSize: 'var(--text-h1)',
-    fontWeight: 600,
-    letterSpacing: '-0.015em',
-    lineHeight: 1.15,
     marginBlock: '0.6rem 0',
-    // A title is short enough to balance, and a one-word second line reads
-    // as a mistake.
-    textWrap: 'balance',
   },
-  // The deck says what the page does, in the page's own words. It stays at
-  // body size: the title is the size signal, and muted ink is the rest.
+  // A written page opens onto prose, so the deck is given a clear step of
+  // air before the first paragraph.
   deck: {
-    color: 'var(--ink-muted)',
     marginBlock: '0.75rem 2rem',
-    textWrap: 'pretty',
   },
   foot: {
     marginBlockStart: '2.5rem',

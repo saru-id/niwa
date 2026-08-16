@@ -20,26 +20,14 @@
  */
 
 /* ---- Frame -------------------------------------------------------------
- * Three numbers. The rail's width, the bar's height, and the air the bar
- * and the rail both hold their contents in.
+ * Three numbers run through the rules below: the rail's width, the bar's
+ * height, and the air the bar and the rail both hold their contents in.
+ * They are read here and declared in `app.css`, with every other token.
  *
  * All three are mirrors of `FRAME` in `src/styles/layout.stylex.ts`, which
  * is where they are decided. Plain CSS cannot import that module, so the
- * values are copied here as custom properties and change there first.
+ * values are copied as custom properties and change there first.
  */
-
-:root {
-  --rail-width: 17rem;
-  --bar-height: 3.25rem;
-  --chrome-gutter: 1.25rem;
-
-  /* The rail sets its own reading size. These labels are page titles, and
-   * several of them are sentences; at the body size the rail is a wall of
-   * text, and at the nav size it still runs long. Thirteen pixels is the
-   * size a rail of sentences wants, and it is the size the rest of this
-   * class of software sets its navigation at. */
-  --text-rail: 0.8125rem;
-}
 
 /* ---- The colour swap ---------------------------------------------------
  * A theme change is not a transition. Half the chrome softens its hover
@@ -274,7 +262,7 @@ pagefind-modal:not(:defined) {
   block-size: 1.875rem;
   padding-inline: 0.4375rem;
   border: 0;
-  border-radius: var(--radius-inner, 5px);
+  border-radius: var(--radius-inner);
   background-color: transparent;
   color: var(--ink-muted);
   font: inherit;
@@ -324,7 +312,7 @@ pagefind-modal:not(:defined) {
   block-size: 1.125rem;
   padding-inline: 0.25rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-inner);
   background-color: var(--ground);
   font-family: var(--font-mono);
   font-size: var(--text-kicker);
@@ -510,8 +498,8 @@ pagefind-modal:not(:defined) {
   display: block;
   padding-block: 0.3125rem;
   padding-inline: 0.75rem 0.5rem;
-  border-start-end-radius: var(--radius-inner, 5px);
-  border-end-end-radius: var(--radius-inner, 5px);
+  border-start-end-radius: var(--radius-inner);
+  border-end-end-radius: var(--radius-inner);
   font-size: var(--text-rail);
   line-height: 1.45;
   color: var(--ink-muted);
@@ -678,7 +666,7 @@ pagefind-modal:not(:defined) {
   display: block;
   padding-block: 0.25rem;
   padding-inline: 0.75rem 0.25rem;
-  font-size: var(--text-toc);
+  font-size: var(--text-rail);
   line-height: 1.45;
   color: var(--ink-muted);
   text-decoration: none;
@@ -759,7 +747,7 @@ pagefind-modal:not(:defined) {
   inset-inline-start: 0.5rem;
   z-index: 40;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-inner, 5px);
+  border-radius: var(--radius-inner);
   background-color: var(--surface);
   box-shadow: 0 0 0 1px var(--border);
   color: var(--ink-strong);

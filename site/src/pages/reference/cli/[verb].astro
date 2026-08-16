@@ -6,6 +6,8 @@ import { ReferenceTable } from '../../../components/DataTable'
 import { Screen } from '../../../components/Screen'
 import { pageLink } from '../../../data/links'
 import { GLOBAL_FLAGS, VERBS, neighbour, usage } from '../../../data/verbs'
+import { EXHIBIT } from '../../../styles/frames.stylex'
+import { TYPE } from '../../../styles/type.stylex'
 import { styles } from '../_styles'
 
 // Twenty pages from one template. The props carry the verb itself, so the
@@ -46,9 +48,9 @@ const next = [
 ---
 
 <Layout title={command} description={verb.job} headings={headings}>
-  <h1 {...stylex.props(styles.h1)}>{command}</h1>
-  <p {...stylex.props(styles.deck)}>{verb.job}</p>
-  <pre {...stylex.props(styles.signature)} tabindex="0"><code>{usage(verb)}</code></pre>
+  <h1 {...stylex.props(TYPE.title, styles.h1)}>{command}</h1>
+  <p {...stylex.props(TYPE.deck, styles.deck)}>{verb.job}</p>
+  <pre {...stylex.props(EXHIBIT.frame, styles.signature)} tabindex="0"><code>{usage(verb)}</code></pre>
 
   {
     verb.arguments.length > 0 && (

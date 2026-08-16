@@ -20,6 +20,7 @@
 
 import * as stylex from '@stylexjs/stylex'
 import type { PreparedTree } from '../lib/tree'
+import { EXHIBIT } from '../styles/frames.stylex'
 import { styles } from './Tree.styles'
 
 export function TreeBlock({
@@ -37,8 +38,8 @@ export function TreeBlock({
   const annotated = tree.rows.some((row) => row.note !== undefined)
 
   return (
-    <figure {...stylex.props(styles.figure)} data-tree>
-      <div {...stylex.props(styles.frame)}>
+    <figure {...stylex.props(EXHIBIT.figure)} data-tree>
+      <div {...stylex.props(EXHIBIT.frame, styles.frame)}>
         {/* The root the rows hang from. It is the first line of the listing
           rather than a caption above it, because that is where `tree` puts
           it and because the rows are drawn as its children. */}

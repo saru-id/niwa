@@ -399,21 +399,43 @@ pagefind-results mark {
   --text-h1: 2rem;
   --text-h2: 1.5rem;
   --text-h3: 1.1875rem;
-  --text-h4: 1rem;
   --text-body: 1rem;
   --text-code: 1rem;
   --text-output: 1rem;
   --text-inline-code: 0.925em;
   --text-nav: 0.875rem;
   --text-table: 0.875rem;
-  --text-toc: 0.8125rem;
+  /* The size the site's chrome reads at: the rail, the contents beside the
+   * article, the bar's controls, the skip link, the footer, and a search
+   * result's excerpt. The rail is what settles the number. Its labels are
+   * page titles, and several of them are sentences; at the body size the
+   * rail is a wall of text, and at the nav size it still runs long. Thirteen
+   * pixels is the size a rail of sentences wants, and it is the size the
+   * rest of this class of software sets its navigation at. */
+  --text-rail: 0.8125rem;
   --text-meta: 0.75rem;
   --text-kicker: 0.6875rem;
 }
 
-/* The chrome's control radius: the value the pages have rendered at every
- * corner that reads it, held here so the rendering does not move. */
+/* ---- Frame -------------------------------------------------------------
+ * The measurements the chrome is built from: the rail's width, the bar's
+ * height, the air the bar and the rail both hold their contents in, and the
+ * corner their controls are cut with.
+ *
+ * The first three are mirrors of `FRAME` in `src/styles/layout.stylex.ts`,
+ * which is where they are decided. Plain CSS cannot import that module, so
+ * the values are copied here as custom properties and change there first.
+ * The radius is settled here, because plain CSS is all that reads it.
+ */
+
 :root {
+  --rail-width: 17rem;
+  --bar-height: 3.25rem;
+  --chrome-gutter: 1.25rem;
+
+  /* The corner the chrome cuts its controls with: the bar's controls, the
+   * rail's rows and the skip link. Half the eight pixels an exhibit's frame
+   * takes, so a control reads as the smaller furniture it is. */
   --radius-inner: 4px;
 }
 

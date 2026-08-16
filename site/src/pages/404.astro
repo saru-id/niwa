@@ -3,14 +3,15 @@ import * as stylex from '@stylexjs/stylex'
 import { styles } from '../components/DocsPage.styles'
 import Layout from '../components/Layout.astro'
 import { SITE } from '../nav'
+import { TYPE } from '../styles/type.stylex'
 
 // No search here. A reader who mistyped a URL is one link from the front
 // page and one from the list of every page, and both are on the page already.
 ---
 
 <Layout title="Not found" description="There is no page at this address." indexed={false}>
-  <h1 {...stylex.props(styles.title)}>Not found</h1>
-  <p {...stylex.props(styles.deck)}>There is no page at this address.</p>
+  <h1 {...stylex.props(TYPE.title, styles.title)}>Not found</h1>
+  <p {...stylex.props(TYPE.deck, styles.deck)}>There is no page at this address.</p>
   <p>
     <a href="/">The front page</a> says what niwa is. <a href={SITE.index}>llms.txt</a> lists
     every page on this site.

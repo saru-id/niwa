@@ -4,6 +4,7 @@ import type { CollectionEntry } from 'astro:content'
 import { collectHeadings } from '../lib/headings'
 import { areaOf } from '../lib/page'
 import { currentPath } from '../nav'
+import { TYPE } from '../styles/type.stylex'
 import { styles } from './DocsPage.styles'
 import Layout from './Layout.astro'
 import { Markdown } from './Markdown'
@@ -30,8 +31,8 @@ const twin = `${currentPath(Astro.url.pathname)}.md`
 
 <Layout title={title} description={description} headings={collectHeadings(source)} alternate={twin}>
   <article id="article">
-    <h1 {...stylex.props(styles.title)}>{title}</h1>
-    <p {...stylex.props(styles.deck)}>{description}</p>
+    <h1 {...stylex.props(TYPE.title, styles.title)}>{title}</h1>
+    <p {...stylex.props(TYPE.deck, styles.deck)}>{description}</p>
     {
       /* No client directive. React renders the body once, during the build,
         and none of it reaches the browser. */

@@ -44,7 +44,7 @@ export const styles = stylex.create({
   excerpt: {
     color: 'var(--ink)',
     fontFamily: 'var(--font-sans)',
-    fontSize: 'var(--text-toc)',
+    fontSize: 'var(--text-rail)',
     lineHeight: 1.6,
     marginBlock: 0,
     paddingBlockEnd: '0.75rem',

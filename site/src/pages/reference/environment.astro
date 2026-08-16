@@ -5,6 +5,7 @@ import NextLinks from '../../components/NextLinks.astro'
 import { ReferenceTable } from '../../components/DataTable'
 import { envOf } from '../../data/env'
 import { pageLink } from '../../data/links'
+import { TYPE } from '../../styles/type.stylex'
 import { styles } from './_styles'
 
 const deck =
@@ -35,8 +36,8 @@ const next = [pageLink('/reference/files'), pageLink('/reference')]
 ---
 
 <Layout title="Environment variables" description={deck} headings={headings}>
-  <h1 {...stylex.props(styles.h1)}>Environment variables</h1>
-  <p {...stylex.props(styles.deck)}>{deck}</p>
+  <h1 {...stylex.props(TYPE.title, styles.h1)}>Environment variables</h1>
+  <p {...stylex.props(TYPE.deck, styles.deck)}>{deck}</p>
 
   {
     tables.map((table) => (

@@ -10,20 +10,15 @@
 import * as stylex from '@stylexjs/stylex'
 
 export const styles = stylex.create({
+  // The title and the deck are set in `src/styles/type.stylex.ts`, which the
+  // written pages read too. What is here is the air these pages hold them in.
   h1: {
-    fontSize: 'var(--text-h1)',
-    fontWeight: 700,
-    letterSpacing: '-0.03em',
-    lineHeight: 1.15,
     marginBlock: '0.75rem 0',
     scrollMarginTop: '1.5rem',
-    textWrap: 'balance',
   },
   // The line under the h1. It says what the page is; nothing else does.
   deck: {
-    color: 'var(--ink-muted)',
     marginBlock: '0.75rem 0',
-    textWrap: 'pretty',
   },
   // The chapter rule: a full-width hairline above every h2, with air on
   // both sides. It carries most of the hierarchy on these pages.
@@ -77,16 +72,10 @@ export const styles = stylex.create({
   // because the synopsis is the first thing a reader looks at and half of
   // it behind a horizontal scroll is half a synopsis.
   signature: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderRadius: 8,
-    borderStyle: 'solid',
-    borderWidth: 1,
     color: 'var(--th-token)',
     fontSize: 'var(--text-code)',
     lineHeight: 1.6,
     marginBlock: '1rem',
-    overflowX: 'auto',
     // A long option keeps its own shape; the line breaks at the spaces
     // between groups, never inside `[<TARGET>...]`.
     overflowWrap: 'normal',

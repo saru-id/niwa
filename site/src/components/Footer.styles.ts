@@ -35,12 +35,13 @@ export const styles = stylex.create({
     display: 'flex',
     flexWrap: 'wrap',
   },
-  // The face the rest of the site's chrome is set in, at the same size and
-  // leading as the links, so the line carries one size of type.
+  // The face and the size the rest of the site's chrome is set in. The
+  // footer is chrome, so it takes the rail's size, and the links beside it
+  // take the same one, so the line carries one size of type.
   version: {
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
-    fontSize: '0.8125rem',
+    fontSize: 'var(--text-rail)',
     lineHeight: 1.5385,
   },
   // A footer link is chrome, not running prose, so this style answers the
@@ -54,7 +55,7 @@ export const styles = stylex.create({
   // item is blockified — and the links are the tallest thing on the line,
   // so they set its height.
   link: {
-    fontSize: '0.8125rem',
+    fontSize: 'var(--text-rail)',
     lineHeight: 1.5385,
     paddingBlock: '6px',
     textDecorationLine: 'none',

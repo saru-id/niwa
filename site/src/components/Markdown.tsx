@@ -17,6 +17,7 @@ import {
 
 import { luau } from '../lib/luau'
 import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
+import { EXHIBIT } from '../styles/frames.stylex'
 import { DataTable, type DataColumn, type TableColumnAlign } from './DataTable'
 import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
@@ -59,6 +60,8 @@ const styles = stylex.create({
   controls: {
     alignItems: 'center',
     backgroundColor: 'var(--surface)',
+    // The exhibit frame's corner, from `styles/frames.stylex.ts`; the overlay
+    // sits inside it and must follow it.
     borderStartEndRadius: '8px',
     display: 'flex',
     gap: '0.75rem',
@@ -109,16 +112,10 @@ const styles = stylex.create({
     transitionTimingFunction: 'ease',
   },
   pre: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderRadius: '8px',
     color: 'var(--th-token)',
     fontSize: 'var(--text-code)',
     lineHeight: 1.6,
     margin: 0,
-    overflowX: 'auto',
     padding: '1rem 1.25rem',
   },
 })
@@ -133,7 +130,7 @@ type PreProps = ComponentPropsWithoutRef<'pre'> & { 'data-lang'?: string }
 
 function CodeBlock({ children, className, ...rest }: PreProps) {
   const lang = rest['data-lang']
-  const frame = stylex.props(styles.pre)
+  const frame = stylex.props(EXHIBIT.frame, styles.pre)
 
   return (
     <div data-code-block="" {...stylex.props(styles.block)}>
