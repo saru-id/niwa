@@ -12,7 +12,7 @@ List the commands and manual checks you ran.
 
 - [ ] `make check`
 - [ ] `make verify`
-- [ ] `make site-check` if this changes `site/`
+- [ ] `make site-check` if this changes `site/`, `src/`, `Cargo.toml`, `tests/`, `share/`, or `install.sh`
 - [ ] User-visible output and documentation match the new behavior
 
 ## Artificial intelligence assistance

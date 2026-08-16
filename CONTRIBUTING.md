@@ -29,6 +29,12 @@ Install the two Cargo tools used by the repository gates:
 cargo install cargo-deny cargo-llvm-cov
 ```
 
+The site gate also runs `luau-analyze` and fails when the tool is missing. Install it with Homebrew:
+
+```shell
+brew install luau
+```
+
 Clone and build niwa:
 
 ```shell
@@ -53,11 +59,13 @@ Run the full gate before marking a pull request ready:
 make verify
 ```
 
-Run the site gate when a change touches `site/`:
+The site gate reads more than `site/`. Run it when a change touches `site/`, `src/`, `Cargo.toml`, `tests/`, `share/`, or `install.sh`:
 
 ```shell
 make site-check
 ```
+
+Continuous integration (CI) runs `make check` and `make site-check` on every pull request. A failed gate blocks review. Running the gates locally first finds the failure sooner.
 
 Read [the testing guide](docs/testing.md) before adding a new test tier or changing a test boundary. Tests must never touch the real home directory, preferences, services, or package managers.
 
@@ -67,7 +75,7 @@ Read [the testing guide](docs/testing.md) before adding a new test tier or chang
 - Add tests for behavior changes and regressions
 - Update snapshots when user-visible output changes
 - Update the documentation when the public contract changes
-- Add new dependencies to `docs/dependencies.md` before the manifest
+- Add new dependencies to `docs/dependencies.md` before the manifest, and new GitHub Actions or CI-installed tools before the workflows that use them
 - Use a Conventional Commit subject such as `fix: protect edited files`
 
 All user-visible text must use the existing output layer. Errors must explain the attempted action, the failure, the next step, and the machine's resulting state.
