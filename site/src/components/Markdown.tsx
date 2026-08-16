@@ -1,4 +1,3 @@
-import type { TableColumnAlign } from '@astryxdesign/core/Table'
 import { createHighlighter } from '@tanstack/highlight/core'
 import { json } from '@tanstack/highlight/languages/json'
 import { plaintext } from '@tanstack/highlight/languages/plaintext'
@@ -18,7 +17,7 @@ import {
 
 import { luau } from '../lib/luau'
 import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
-import { DataTable, type DataColumn } from './DataTable'
+import { DataTable, type DataColumn, type TableColumnAlign } from './DataTable'
 import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
 
@@ -174,10 +173,9 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
  * The renderer hands this component a `thead` and a `tbody` of ordinary
  * elements. It is read back into a heading row and a rectangle of cells, and
  * `DataTable` renders it: the hairlines, the cell rhythm, the column widths
- * and the scroll container are the design system's, and nothing here draws a
- * box. Reading it back is what buys the widths — a table laid out from its
- * own contents gives a column of one word the room a column of sentences
- * needs.
+ * and the scroll container are all its own, and nothing here draws a box.
+ * Reading it back is what buys the widths — a table laid out from its own
+ * contents gives a column of one word the room a column of sentences needs.
  */
 type Cell = ReactElement<{ children?: ReactNode; style?: { textAlign?: string } }>
 
@@ -187,7 +185,7 @@ function within(element: Cell | undefined): Cell[] {
   return Children.toArray(element.props.children).filter((child) => isValidElement(child)) as Cell[]
 }
 
-/** Markdown says left, right and center; the design system says start and end. */
+/** Markdown says left, right and center; a column says start and end. */
 const ALIGNMENT: Record<string, TableColumnAlign> = {
   center: 'center',
   left: 'start',

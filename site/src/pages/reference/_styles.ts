@@ -2,8 +2,8 @@
  *
  * The generated pages build their own headings and lists, so they carry the
  * type scale the markdown renderer applies to written pages. Their tables
- * are the design system's, and `components/DataTable.tsx` holds them. One
- * module, because twenty-nine pages wear the same clothes. The leading
+ * live in `components/DataTable.tsx`. One module, because twenty-nine pages
+ * wear the same clothes. The leading
  * underscore keeps Astro from routing this file.
  */
 
