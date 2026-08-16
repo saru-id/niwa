@@ -14,7 +14,7 @@ import { LANDING, NAV, type NavEntry } from '../nav'
 
 // The sentence the landing's meta description carries. The two say the same
 // thing on purpose: this file is the landing for machine readers.
-const DESCRIPTION = 'niwa is a configuration tool for macOS.'
+const DESCRIPTION = 'niwa grows a complete macOS setup from one readable Luau file.'
 
 // One page is one line, so a reader can split the file on newlines and keep
 // every page whole. Nothing here wraps.
