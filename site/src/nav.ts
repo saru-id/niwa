@@ -29,8 +29,7 @@ export interface NavGroup {
 export const SITE = {
   /** The crate version in `Cargo.toml`. A test binds them together. */
   version: '0.1.0',
-  // The repository's public home. No remote exists today; the address is
-  // settled at deploy, and the deploy checklist confirms it.
+  // The repository's public home, the same address the git remote carries.
   repository: 'https://github.com/saru-id/niwa',
   /** The name the header prints beside the mark. A test binds it to the URL. */
   slug: 'saru-id/niwa',
