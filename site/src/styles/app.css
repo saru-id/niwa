@@ -400,7 +400,8 @@ pagefind-results mark {
  * and becomes a full screen sheet with no corners and no entrance. Below it,
  * both of those are right and neither rule applies. The reduced motion query
  * is the component's own, so a reader who asks for less motion still gets no
- * animation at all.
+ * animation at all. Both queries mirror `MEDIA.dialog` in
+ * `src/styles/layout.stylex.ts`, which is where the width is decided.
  */
 @media (min-width: 641px) {
   dialog.pf-modal {
