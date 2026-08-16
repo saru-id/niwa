@@ -28,7 +28,7 @@ areaOf(entry.id, file)
 const twin = `${currentPath(Astro.url.pathname)}.md`
 ---
 
-<Layout title={title} description={description} headings={collectHeadings(source)}>
+<Layout title={title} description={description} headings={collectHeadings(source)} alternate={twin}>
   <article id="article">
     <h1 {...stylex.props(styles.title)}>{title}</h1>
     <p {...stylex.props(styles.deck)}>{description}</p>

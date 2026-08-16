@@ -10,6 +10,7 @@
  * itself, and only when it is taller than the window.
  */
 import type { Heading } from '../lib/headings'
+import { canonicalUrl } from '../lib/urls'
 import '../styles/app.css'
 import Bar from './Bar.astro'
 import { Footer } from './Footer'
@@ -38,11 +39,19 @@ interface Props {
    * its own, so the rail keeps pointing at the page it is the source of.
    */
   navPath?: string
+  /** The URL of this page's markdown twin. Absent when the page has none. */
+  alternate?: string
 }
 
-const { title, description, headings, indexed = true, wide = false, navPath } = Astro.props
+const { title, description, headings, indexed = true, wide = false, navPath, alternate } =
+  Astro.props
 const pathname = navPath ?? Astro.url.pathname
 const outline = headings !== undefined && headings.length > 0 ? headings : undefined
+const documentTitle = title === undefined ? 'niwa' : `${title} · niwa`
+const canonical = canonicalUrl(Astro.url.pathname)
+// One image serves every page: the site has no per-page art. Open Graph
+// takes an absolute URL, so the address carries the origin.
+const card = canonicalUrl('/art/niwa-og.jpg')
 ---
 
 <!doctype html>
@@ -74,8 +83,22 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
     <link rel="icon" type="image/png" sizes="32x32" href="/art/favicon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/art/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === undefined ? 'niwa' : `${title} · niwa`}</title>
+    <title>{documentTitle}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {alternate !== undefined && <link rel="alternate" type="text/markdown" href={alternate} />}
+    <meta property="og:title" content={documentTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={card} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The niwa wordmark beside a painted garden with a koi pond."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     {
       /* Browser chrome follows the platform preference; the media attribute
         reads no other signal. The two values are the ground token. */
