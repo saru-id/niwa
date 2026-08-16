@@ -57,6 +57,12 @@ function installer(): void {
   const command = document.querySelector<HTMLElement>('[data-command]')
   if (button === null || command === null) return
 
+  // The button's name never moves: the changing word is a span a screen
+  // reader does not see, and the outcome lands in the status region beside
+  // the control, which is how it is announced without taking focus.
+  const label = document.querySelector<HTMLElement>('[data-install-label]') ?? button
+  const status = document.querySelector<HTMLElement>('[data-install-status]')
+
   // The restore is owned rather than left running, so the label never has two
   // futures at once: a second press starts its own full window, and a press
   // that ends in Select is not put back to Copy by an earlier one.
@@ -64,10 +70,14 @@ function installer(): void {
 
   const say = (word: string): void => {
     window.clearTimeout(settling)
-    button.textContent = word
+    label.textContent = word
+    if (status !== null) status.textContent = word
     settling = window.setTimeout(() => {
       settling = 0
-      button.textContent = 'Copy'
+      label.textContent = 'Copy'
+      // Emptied, so the next outcome is a change to announce even when it
+      // is the same word as the last one.
+      if (status !== null) status.textContent = ''
     }, SETTLE_MS)
   }
 
@@ -81,7 +91,8 @@ function installer(): void {
   const select = (): void => {
     window.clearTimeout(settling)
     settling = 0
-    button.textContent = 'Select'
+    label.textContent = 'Select'
+    if (status !== null) status.textContent = 'Copy failed'
     const selection = window.getSelection()
     if (selection === null) return
     const range = document.createRange()

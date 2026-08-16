@@ -44,6 +44,10 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   const bar = new FakeElement()
   const button = new FakeElement()
   button.textContent = 'Copy'
+  const label = new FakeElement()
+  label.textContent = 'Copy'
+  const status = new FakeElement()
+  status.textContent = ''
 
   // What the reader sees is a line with a prompt in it. The command is the
   // span inside that line, and the prompt is its sibling.
@@ -57,6 +61,8 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   const elements = new Map<string, FakeElement>([
     ['.site-header', bar],
     ['[data-install-copy]', button],
+    ['[data-install-label]', label],
+    ['[data-install-status]', status],
     ['[data-command]', command],
   ])
 
@@ -113,6 +119,8 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   return {
     bar,
     button,
+    label,
+    status,
     command,
     line,
     range,
@@ -208,12 +216,14 @@ describe('the installer copy control', () => {
     start()
     env.button.dispatch('click')
     await settle()
-    expect(env.button.textContent).toBe('Copied')
+    expect(env.label.textContent).toBe('Copied')
+    expect(env.status.textContent).toBe('Copied')
 
     vi.advanceTimersByTime(1599)
-    expect(env.button.textContent).toBe('Copied')
+    expect(env.label.textContent).toBe('Copied')
     vi.advanceTimersByTime(1)
-    expect(env.button.textContent).toBe('Copy')
+    expect(env.label.textContent).toBe('Copy')
+    expect(env.status.textContent).toBe('')
   })
 
   test('selects the command alone when the clipboard refuses', async () => {
@@ -226,7 +236,8 @@ describe('the installer copy control', () => {
     env.button.dispatch('click')
     await settle()
 
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
+    expect(env.status.textContent).toBe('Copy failed')
     expect(env.range.node).toBe(env.command)
     expect(env.range.node).not.toBe(env.line)
     expect(env.selected).toEqual([env.range])
@@ -239,7 +250,7 @@ describe('the installer copy control', () => {
     start()
     env.button.dispatch('click')
 
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
     expect(env.range.node).toBe(env.command)
   })
 
@@ -248,7 +259,7 @@ describe('the installer copy control', () => {
     start()
     env.button.dispatch('click')
 
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
     expect(env.range.node).toBe(env.command)
   })
 
@@ -259,16 +270,16 @@ describe('the installer copy control', () => {
     env.button.dispatch('click')
     await settle()
     vi.advanceTimersByTime(1000)
-    expect(env.button.textContent).toBe('Copied')
+    expect(env.label.textContent).toBe('Copied')
 
     env.button.dispatch('click')
     await settle()
     // The first press's restore is gone with it, so the second word stands
     // for its own 1600ms and not the 600ms left of the first.
     vi.advanceTimersByTime(1599)
-    expect(env.button.textContent).toBe('Copied')
+    expect(env.label.textContent).toBe('Copied')
     vi.advanceTimersByTime(1)
-    expect(env.button.textContent).toBe('Copy')
+    expect(env.label.textContent).toBe('Copy')
   })
 
   test('leaves Select standing after a press that had copied', async () => {
@@ -282,20 +293,20 @@ describe('the installer copy control', () => {
 
     env.button.dispatch('click')
     await settle()
-    expect(env.button.textContent).toBe('Copied')
+    expect(env.label.textContent).toBe('Copied')
 
     refuse = true
     vi.advanceTimersByTime(800)
     env.button.dispatch('click')
     await settle()
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
 
     // The restore the first press left behind must not put Copy back over
     // an offer the reader still has to act on.
     vi.advanceTimersByTime(800)
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
     vi.advanceTimersByTime(1600)
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
   })
 
   test('leaves Select standing, because the selection stands too', async () => {
@@ -309,6 +320,6 @@ describe('the installer copy control', () => {
     await settle()
 
     vi.advanceTimersByTime(5000)
-    expect(env.button.textContent).toBe('Select')
+    expect(env.label.textContent).toBe('Select')
   })
 })

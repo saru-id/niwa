@@ -55,8 +55,8 @@ describe('the repository', () => {
 })
 
 describe('the version in the footer', () => {
-  // The footer names the version once. This is the only place the site
-  // states it, so it is bound to the crate that ships.
+  // The chrome reads the version from one constant, so binding the
+  // constant to the crate binds every place that names it.
   it('is the crate version', () => {
     const manifest = readFileSync(new URL('../../Cargo.toml', import.meta.url), 'utf8')
     expect(manifest).toContain(`version = "${SITE.version}"`)

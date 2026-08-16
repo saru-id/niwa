@@ -25,7 +25,7 @@ export interface NavGroup {
   readonly entries: readonly NavEntry[]
 }
 
-/** The version the footer names once, and the two links beside it. */
+/** The version the chrome names, and the links the footer sets beside it. */
 export const SITE = {
   /** The crate version in `Cargo.toml`. A test binds them together. */
   version: '0.1.0',

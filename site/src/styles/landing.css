@@ -11,8 +11,10 @@
  * to outrank `app.css` on specificity rather than on order, and a rule
  * scoped this way cannot reach a documentation page even if it did.
  *
- * The colours are tokens, and the landing's values for them are declared in
- * `app.css` beside the site's own. Nothing below states a colour.
+ * The named colours are tokens, and the landing's values for them are
+ * declared in `app.css` beside the site's own. The literals below are the
+ * measured art-edge values no token carries: each is stated once, where it
+ * is used.
  */
 
 /* ---- The page ----------------------------------------------------------

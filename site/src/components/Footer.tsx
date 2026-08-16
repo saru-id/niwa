@@ -23,7 +23,7 @@ export function Footer() {
   return (
     <footer {...stylex.props(styles.footer)}>
       <div {...stylex.props(styles.column, styles.line)}>
-        {/* The only place the site names its version. */}
+        {/* The version, bound to the crate's by a test. */}
         <span {...stylex.props(styles.version)}>niwa {SITE.version}</span>
         <div {...stylex.props(styles.links)}>
           {LINKS.map((link) => (

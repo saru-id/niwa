@@ -27,7 +27,9 @@ const WIDE = '(min-width: 781px)'
   <div class="hero-art-wrap" aria-hidden="true">
     <picture>
       <source media={NARROW} type="image/avif" srcset={heroMobile.src} />
-      <source media={WIDE} type="image/avif" srcset={heroDesktop.src} />
+      {/* Unqualified, so a viewport between the two integer boundaries
+          still takes an encode instead of the source raster. */}
+      <source type="image/avif" srcset={heroDesktop.src} />
       <img
         class="hero-art"
         src={heroOriginal.src}
@@ -93,8 +95,11 @@ const WIDE = '(min-width: 781px)'
             span states the command twice, once for the eye and once for the
             clipboard, from one constant that cannot disagree with itself. */
         }
-        <code><span class="prompt">$</span><span class="command" data-command={INSTALL_COMMAND}>{INSTALL_COMMAND}</span></code>
-        <button class="copy-button" type="button" data-install-copy>Copy</button>
+        <code><span class="prompt" aria-hidden="true">$</span><span class="command" data-command={INSTALL_COMMAND}>{INSTALL_COMMAND}</span></code>
+        <button class="copy-button" type="button" aria-label="Copy" data-install-copy
+          ><span aria-hidden="true" data-install-label>Copy</span></button
+        >
+        <span class="sr-only" data-install-status role="status"></span>
       </div>
 
       <a class="docs-link" href="/start">

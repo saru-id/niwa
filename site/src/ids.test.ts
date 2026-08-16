@@ -21,14 +21,22 @@ const SITE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const ASTRO = path.join(SITE, 'node_modules/astro/bin/astro.mjs')
 
 const output = mkdtempSync(path.join(tmpdir(), 'niwa-ids-'))
-execFileSync(process.execPath, [ASTRO, 'build', '--outDir', output], {
-  cwd: SITE,
-  // A build that works says nothing on this stream, so silence here is the
-  // build's own report and a failure arrives whole.
-  stdio: ['ignore', 'ignore', 'inherit'],
-  env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
-})
 afterAll(() => rmSync(output, { recursive: true, force: true }))
+try {
+  execFileSync(process.execPath, [ASTRO, 'build', '--outDir', output], {
+    cwd: SITE,
+    // A build that works says nothing on this stream, so silence here is the
+    // build's own report and a failure arrives whole.
+    stdio: ['ignore', 'ignore', 'inherit'],
+    env: { ...process.env, ASTRO_TELEMETRY_DISABLED: '1' },
+    // The site builds in seconds. A minute means the build is wedged, and a
+    // wedged build must fail the gate rather than hold it open.
+    timeout: 60_000,
+  })
+} catch (failure) {
+  rmSync(output, { recursive: true, force: true })
+  throw failure
+}
 
 /** Every page the build wrote, named by the address it is served at. */
 function builtPages(directory = output): readonly string[] {

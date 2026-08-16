@@ -158,6 +158,22 @@ describe('the fence copy control', () => {
     expect(env.status.textContent).toBe('Copied')
   })
 
+  test('gives a press inside the window its own full window', async () => {
+    const env = await page({ writeText: async () => {} })
+    env.click()
+    await settle()
+    vi.advanceTimersByTime(1000)
+    env.click()
+    await settle()
+
+    // The first press's restore would land here; the second press owns it.
+    vi.advanceTimersByTime(500)
+    expect(env.label.textContent).toBe('Copied')
+    vi.advanceTimersByTime(1000)
+    expect(env.label.textContent).toBe('Copy')
+    expect(env.status.textContent).toBe('')
+  })
+
   test('says Copy failed when the write is refused', async () => {
     const env = await page({
       writeText: async () => {

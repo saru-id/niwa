@@ -406,6 +406,41 @@ describe('the start', () => {
     expect(stubs.life).toEqual([])
   })
 
+  test('asks the art to decode again on the next look at the hero', async () => {
+    const env = environment()
+    env.decodesWith(Promise.reject(new Error('no pixels')))
+    start()
+    env.see(true)
+    env.window.dispatch('load')
+    vi.advanceTimersByTime(2000)
+    await env.runIdle()
+    expect(stubs.life).toEqual([])
+
+    // A refusal stands the start down instead of wedging it, so a hero that
+    // gains a decodable source builds on the next look.
+    env.decodesWith(Promise.resolve())
+    env.see(false)
+    env.see(true)
+    await env.runIdle()
+    expect(stubs.life).toContain('init:ripples')
+  })
+
+  test('stands down when the reader scrolls on during the idle wait', async () => {
+    const env = environment()
+    start()
+    env.see(true)
+    env.window.dispatch('load')
+    vi.advanceTimersByTime(2000)
+    // The hero leaves after the idle start is queued but before it runs.
+    env.see(false)
+    await env.runIdle()
+    expect(stubs.life).toEqual([])
+
+    env.see(true)
+    await env.runIdle()
+    expect(stubs.life).toContain('init:ripples')
+  })
+
   test('spreads the build over separate idle pieces', async () => {
     const env = environment()
     start()

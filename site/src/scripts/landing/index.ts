@@ -231,12 +231,21 @@ export function start(): void {
     starting = true
     idle(() => {
       if (stopped) return
+      // The wait was idle time, and the reader may have scrolled on or asked
+      // for stillness during it. The start stands down and the observers own
+      // the next attempt.
+      if (!seen || !allowed) {
+        starting = false
+        return
+      }
       // The decoded pixels are what the first sample reads, and a decode runs
-      // long enough to be seen inside a frame. It happens here, once, and
-      // never on the way to a draw.
+      // long enough to be seen inside a frame. It happens here, never on the
+      // way to a draw.
       void image.decode().then(build, () => {
-        // Art that will not decode has no pixels to sample, and asking again
-        // would not produce any.
+        // Art that will not decode has no pixels to sample. The refusal is
+        // not final: the picture swaps its source across the breakpoint, so
+        // the next look at the hero asks again with whatever it shows then.
+        starting = false
       })
     })
   }

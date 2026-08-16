@@ -10,18 +10,28 @@ export {}
 // and short enough that a second copy still gets an answer.
 const SETTLE_MS = 1500
 
+// Each control owns its one pending restore. A second press inside the
+// window would otherwise inherit the first press's timer and lose half its
+// own; clearing before scheduling gives every outcome a full window.
+const settling = new WeakMap<Element, ReturnType<typeof setTimeout>>()
+
 /** Say what happened, then go back to the offer. */
 function say(label: Element, status: Element | null, word: string): void {
+  clearTimeout(settling.get(label))
   label.textContent = word
   // The button is named once and keeps that name, so the word a screen
   // reader hears comes from the region beside it and not from the label.
   if (status !== null) status.textContent = word
-  setTimeout(() => {
-    label.textContent = 'Copy'
-    // Emptied, so the next outcome is a change to announce even when it is
-    // the same word as the last one.
-    if (status !== null) status.textContent = ''
-  }, SETTLE_MS)
+  settling.set(
+    label,
+    setTimeout(() => {
+      settling.delete(label)
+      label.textContent = 'Copy'
+      // Emptied, so the next outcome is a change to announce even when it is
+      // the same word as the last one.
+      if (status !== null) status.textContent = ''
+    }, SETTLE_MS),
+  )
 }
 
 document.addEventListener('click', (event) => {
