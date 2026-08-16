@@ -1,0 +1,130 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  # A dispatch is a rehearsal. It builds, packages, and verifies, and it
+  # publishes nothing.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # The default run shell is `bash -e` with no pipefail, while the workflow
+    # linters read run blocks as `-eo pipefail`. Naming the shell makes the
+    # linted semantics the executed ones.
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A release build is never cancelled by a successor.
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release
+    # A tag push always runs: creating a tag already needs write access. A
+    # dispatch rehearsal runs from main only.
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    # Minutes on a warm machine. Forty-five leaves room for a cold runner,
+    # because a tight timeout reads as a flake.
+    timeout-minutes: 45
+    permissions:
+      contents: write # creates the release
+      id-token: write # the OIDC token that signs the provenance
+      attestations: write # stores the attestation
+    # This job caches nothing: a cache a pull request can poison must have no
+    # path into a release build.
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Read the version
+        id: version
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          if [ -z "$version" ]; then
+            printf 'Cargo.toml no longer carries a top-level version line\n' >&2
+            exit 1
+          fi
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check every file carries the version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if ! grep -F "VERSION=\"\${NIWA_VERSION:-$VERSION}\"" install.sh; then
+            printf 'install.sh does not carry version %s; bump it\n' "$VERSION" >&2
+            exit 1
+          fi
+          if ! grep -F "version: '$VERSION'" site/src/nav.ts; then
+            printf 'site/src/nav.ts does not carry version %s; bump it\n' "$VERSION" >&2
+            exit 1
+          fi
+          if ! grep -F "\"version\": \"$VERSION\"" site/package.json; then
+            printf 'site/package.json does not carry version %s; bump it\n' "$VERSION" >&2
+            exit 1
+          fi
+          # The count is of occurrences, not of lines. A zero match exits grep
+          # non-zero, so the count is taken as 0 and the message below prints.
+          # The comparison is arithmetic because `wc -l` pads its output.
+          count="$(grep -o -F "niwa = \"$VERSION\"" site/src/content/docs/reference/formats.md | wc -l)" || count=0
+          count="$((count))"
+          if [ "$count" -ne 2 ]; then
+            printf 'site/src/content/docs/reference/formats.md carries %s occurrences of version %s, not 2; bump it\n' "$count" "$VERSION" >&2
+            exit 1
+          fi
+          # The whole line is matched. Another line of that file carries a
+          # macOS version, and a version that is a prefix of a longer one
+          # would otherwise match too.
+          if ! grep -Fx "      placeholder: niwa $VERSION" .github/ISSUE_TEMPLATE/bug.yml; then
+            printf '.github/ISSUE_TEMPLATE/bug.yml does not carry version %s; bump it\n' "$VERSION" >&2
+            exit 1
+          fi
+
+      - name: Check the tag names the version
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            printf 'the tag %s does not name version %s\n' "$GITHUB_REF_NAME" "$VERSION" >&2
+            exit 1
+          fi
+
+      - name: Add the release targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build and package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: sh .github/scripts/release-package.sh "$VERSION" "$RUNNER_TEMP/dist"
+
+      - name: Attest the provenance
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/dist/niwa-${{ steps.version.outputs.version }}-macos-arm64.tar.gz
+            ${{ runner.temp }}/dist/niwa-${{ steps.version.outputs.version }}-macos-x86_64.tar.gz
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dist="$RUNNER_TEMP/dist"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            "$dist/niwa-$VERSION-macos-arm64.tar.gz" \
+            "$dist/niwa-$VERSION-macos-arm64.tar.gz.sha256" \
+            "$dist/niwa-$VERSION-macos-x86_64.tar.gz" \
+            "$dist/niwa-$VERSION-macos-x86_64.tar.gz.sha256"
