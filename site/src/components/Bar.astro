@@ -18,26 +18,21 @@
 import githubMark from '../icons/github.svg?raw'
 import { CLOSE, MENU, MOON, SEARCH, SUN } from '../icons/chrome'
 import { SITE } from '../nav'
+import BarMark from './BarMark.astro'
 import Rail from './Rail.astro'
 
 interface Props {
   pathname: string
-  /** The page draws no rail, so the drawer is the way in at every width. */
-  wide?: boolean
 }
 
-const { pathname, wide = false } = Astro.props
+const { pathname } = Astro.props
 ---
 
-<header class:list={['bar', wide && 'bar-wide']} data-bar>
+<header class="bar" data-bar>
   <a class="bar-identity" href="/">
-    <span class="bar-dot" aria-hidden="true"></span>
-    {/* The name and the version share a baseline, so the small type sits on
-      the line the word sits on rather than in the middle of its box. */}
-    <span class="bar-name">
-      <span class="bar-wordmark">niwa</span>
+    <BarMark>
       <span class="bar-version">{SITE.version}</span>
-    </span>
+    </BarMark>
   </a>
 
   <div class="bar-tools">
@@ -72,7 +67,12 @@ const { pathname, wide = false } = Astro.props
       <span class="sr-only" data-theme-label>Colour mode</span>
     </button>
 
-    <a class="control control-repo" href={SITE.repository}>
+    {
+      /* The icon is `aria-hidden`, and the slug beside it goes at the width
+        the controls drop their words at. Neither can name this link, so the
+        label does, and it says the same thing at every width. */
+    }
+    <a class="control control-repo" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
       <Fragment set:html={githubMark} />
       <span class="repo-slug">{SITE.slug}</span>
     </a>
@@ -95,8 +95,7 @@ const { pathname, wide = false } = Astro.props
 }
 <dialog class="drawer" data-drawer aria-label="Navigation">
   <div class="drawer-head">
-    <span class="bar-dot" aria-hidden="true"></span>
-    <span class="bar-wordmark">niwa</span>
+    <BarMark />
     <button
       type="button"
       class="control drawer-close"
@@ -106,5 +105,5 @@ const { pathname, wide = false } = Astro.props
       <Fragment set:html={CLOSE} />
     </button>
   </div>
-  <Rail pathname={pathname} inDrawer />
+  <Rail idPrefix="drawer" pathname={pathname} inDrawer />
 </dialog>

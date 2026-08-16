@@ -20,22 +20,38 @@ import { styles } from './Search.styles'
  * scale and its own key badges, and none of that is the header's.
  */
 
-const cls = (style: stylex.StyleXStyles): string => stylex.attrs(style).class ?? ''
+/* The class a style compiles to, for the templates below.
+ *
+ * A template is a string, so an empty class is invisible: the row renders,
+ * the dialog opens, and only the look is gone. The build stops instead.
+ */
+const cls = (key: keyof typeof styles): string => {
+  const name = stylex.attrs(styles[key]).class
+  if (!name) {
+    throw new Error(
+      `Styling the search dialog. The style ${key} in Search.styles.ts ` +
+        'compiles to no class, so that part of the dialog would ship ' +
+        'unstyled. Give the style a property, or remove it and the element ' +
+        'that uses it. The site did not build.',
+    )
+  }
+  return name
+}
 
 // One source of truth for the directory, read back by the script.
 const bundlePath = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/pagefind/`
 
 // Both templates start at their element, because Pagefind observes the first
 // node a template returns and a leading newline would make that a text node.
-const result = `<li class="${cls(styles.result)}">
-  <a class="${cls(styles.link)}" href="{{ meta.url | default(url) | safeUrl }}">
+const result = `<li class="${cls('result')}">
+  <a class="${cls('link')}" href="{{ meta.url | default(url) | safeUrl }}">
     <span>{{ meta.title }}</span>
-    <span class="${cls(styles.path)}">{{ meta.url | default(url) }}</span>
+    <span class="${cls('path')}">{{ meta.url | default(url) }}</span>
   </a>
-  <p class="${cls(styles.excerpt)}">{{+ excerpt +}}</p>
+  <p class="${cls('excerpt')}">{{+ excerpt +}}</p>
 </li>`
 
-const placeholder = `<li class="${cls(styles.placeholder)}" aria-hidden="true"></li>`
+const placeholder = `<li class="${cls('placeholder')}" aria-hidden="true"></li>`
 ---
 
 <pagefind-config bundle-path={bundlePath}></pagefind-config>

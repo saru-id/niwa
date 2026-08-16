@@ -1,30 +1,21 @@
 import * as stylex from '@stylexjs/stylex'
 
+/* The label over the links out of a page.
+ *
+ * The rule above it, the list under it and the clause after each link are
+ * the page's own, from `src/styles/type.stylex.ts`. Only the label is here,
+ * and it is set the way the site sets every label that names a group of
+ * links: the rail's groups and the contents beside the article wear this
+ * same one.
+ */
 export const styles = stylex.create({
-  block: {
-    borderBlockStartColor: 'var(--border)',
-    borderBlockStartStyle: 'solid',
-    borderBlockStartWidth: '1px',
-    marginBlockStart: '3rem',
-    paddingBlockStart: '1.5rem',
-  },
   label: {
     color: 'var(--ink-muted)',
     fontFamily: 'var(--font-mono)',
-    fontSize: 'var(--text-meta)',
+    fontSize: 'var(--text-kicker)',
     fontWeight: 500,
-    marginBlock: '0 0.75rem',
-  },
-  list: {
-    listStyle: 'none',
-    marginBlock: 0,
-    paddingInline: 0,
-  },
-  item: {
-    marginBlock: '0.4rem',
-  },
-  // The clause says why to follow the link, so it sits one step back from it.
-  why: {
-    color: 'var(--ink-muted)',
+    letterSpacing: '0.09em',
+    marginBlock: '0 0.5rem',
+    textTransform: 'uppercase',
   },
 })

@@ -7,10 +7,30 @@ interface Env {
 
 const SCRIPT_PATH = '/install.sh'
 const SCRIPT_TYPE = 'text/x-shellscript; charset=utf-8'
-// Five minutes. Long enough that a burst of installs is served from cache,
-// short enough that a corrected installer reaches the next reader the same
-// hour.
-const SCRIPT_CACHE = 'public, max-age=300'
+// Five minutes. Long enough that a burst of installs reuses the stored
+// answer, short enough that a re-tagged release reaches the next reader the
+// same hour. The redirect reads nothing but the path, so any cache may hold
+// it.
+const REDIRECT_CACHE = 'public, max-age=300'
+
+/* The apex chooses between two bodies by who is asking, so no cache may hold
+ * either answer: a stored page handed to an installer pipe breaks the
+ * install, and a stored script handed to a browser is worse. The variant key
+ * names the two headers the choice reads, for any cache that stores despite
+ * the instruction: partitioned by what it read, it still cannot cross the
+ * two audiences. */
+const APEX_CACHE = 'no-store'
+const APEX_VARY = 'Accept, User-Agent'
+
+/** The response as the apex sends it: the asset's own headers stand, and the
+ * two cache headers above replace whatever the store would have cached it
+ * as. */
+function apex(body: BodyInit | null, from: Response): Response {
+  const response = new Response(body, from)
+  response.headers.set('Cache-Control', APEX_CACHE)
+  response.headers.set('Vary', APEX_VARY)
+  return response
+}
 
 // Two paths reach this Worker, and wrangler.toml names both.
 //
@@ -27,7 +47,7 @@ export default {
     if (release !== undefined) {
       return new Response(null, {
         status: 302,
-        headers: { Location: release, 'Cache-Control': SCRIPT_CACHE },
+        headers: { Location: release, 'Cache-Control': REDIRECT_CACHE },
       })
     }
 
@@ -40,21 +60,37 @@ export default {
      * architecture that was never built — fell through to the recognition,
      * saw curl, and answered a download request with the installer under a
      * 200. A request for a tarball must never be given a shell script.
+     *
+     * The method test is the same rule for verbs: only a read has two
+     * representations to choose between. Anything else goes to the asset
+     * store, whose refusal is the honest answer.
      */
+    const read = request.method === 'GET' || request.method === 'HEAD'
     const headers = request.headers
-    if (pathname !== '/' || !isCommandLineFetch(headers.get('user-agent'), headers.get('accept'))) {
+    if (pathname !== '/' || !read) {
       return env.ASSETS.fetch(request)
     }
 
+    if (!isCommandLineFetch(headers.get('user-agent'), headers.get('accept'))) {
+      const page = await env.ASSETS.fetch(request)
+      return apex(page.body, page)
+    }
+
+    // The script is fetched as a read of its own, so the store's headers for
+    // it — the entity tag and the security set — carry over to the apex
+    // answer. Only the type is pinned here: the apex promises a shell
+    // script, and that promise must not rest on a header file elsewhere.
     const script = new URL(SCRIPT_PATH, request.url)
     const asset = await env.ASSETS.fetch(new Request(script, { method: 'GET' }))
     if (!asset.ok) {
-      return asset
+      // A store with no installer is a broken deploy, but the failure is
+      // still an apex answer: it is negotiated, so it is never stored.
+      return apex(asset.body, asset)
     }
 
-    return new Response(asset.body, {
-      status: asset.status,
-      headers: { 'Content-Type': SCRIPT_TYPE, 'Cache-Control': SCRIPT_CACHE },
-    })
+    // A HEAD answer carries the same headers and no body.
+    const response = apex(request.method === 'HEAD' ? null : asset.body, asset)
+    response.headers.set('Content-Type', SCRIPT_TYPE)
+    return response
   },
 }

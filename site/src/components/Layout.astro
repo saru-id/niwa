@@ -1,15 +1,23 @@
 ---
-/* The page.
+/* The page, in one of the two surfaces the site has.
  *
- * Bar across the top, rail down the side, article in the middle, contents
- * on the right above 1280. All of it is HTML, and all of it stays HTML: no
- * part of the chrome hydrates, and a documentation page mounts no React at
- * all. The three small scripts it does load only make controls work.
+ * The documentation surface is a bar across the top, a rail down the side,
+ * the article in the middle, and the contents on the right above 1280. All
+ * of it is HTML, and all of it stays HTML: no part of the chrome hydrates,
+ * and a documentation page mounts no React at all. The three small scripts
+ * it loads only make controls work.
  *
  * The page is the one scroller for the article. The rail scrolls only
  * itself, and only when it is taller than the window.
+ *
+ * The landing surface carries none of that. It is dark in every browser and
+ * says so in the markup, so there is no stored choice to read and no script
+ * to read it with. Its slot lands straight in the body: the landing draws
+ * its own header and its own main, and a wrapper here would add a second
+ * width and a second set of margins over the ones it already states.
  */
 import type { Heading } from '../lib/headings'
+import { canonicalUrl } from '../lib/urls'
 import '../styles/app.css'
 import Bar from './Bar.astro'
 import { Footer } from './Footer'
@@ -20,41 +28,66 @@ import Toc from './Toc.astro'
 interface Props {
   /** Absent on the landing, where the site's name is the whole title. */
   title?: string
+  /** The whole document title, for a page the `<title> · niwa` shape is
+   * backwards for. The landing is the one page that leads with the name. */
+  pageTitle?: string
   description: string
   /** Absent when the page has no headings. The contents then do not exist. */
   headings?: readonly Heading[]
   /** Search indexes every page unless the page says otherwise. Opting out
    * is for pages that answer nobody's search, like the 404. */
   indexed?: boolean
+  /** The URL of this page's markdown twin. Absent when the page has none. */
+  alternate?: string
   /**
-   * The page draws its own full-width bands, so it takes no rail and no
-   * reading cap. Its way into the documentation is the bar's drawer, which
-   * on such a page opens at every width.
+   * Which of the two surfaces this page is. The landing takes none of the
+   * chrome and marks its own `<main>`, so `indexed` governs the
+   * documentation alone.
    */
-  wide?: boolean
-  /**
-   * The page the rail should mark, when that is not the page's own URL. A
-   * source view is a second face of a documentation page, not a place of
-   * its own, so the rail keeps pointing at the page it is the source of.
-   */
-  navPath?: string
+  surface?: 'docs' | 'landing'
 }
 
-const { title, description, headings, indexed = true, wide = false, navPath } = Astro.props
-const pathname = navPath ?? Astro.url.pathname
+const {
+  title,
+  pageTitle,
+  description,
+  headings,
+  indexed = true,
+  alternate,
+  surface = 'docs',
+} = Astro.props
+const landing = surface === 'landing'
+const pathname = Astro.url.pathname
 const outline = headings !== undefined && headings.length > 0 ? headings : undefined
+const documentTitle = pageTitle ?? (title === undefined ? 'niwa' : `${title} · niwa`)
+const canonical = canonicalUrl(Astro.url.pathname)
+// One image serves every page: the site has no per-page art. Open Graph
+// takes an absolute URL, so the address carries the origin.
+const card = canonicalUrl('/art/niwa-og.jpg')
+// The landing is one composition over one near-black field, so its theme is
+// a fact about the page rather than a choice a reader makes. Stating it here
+// is what makes the class true in the first paint without a script.
+const root = landing ? { class: 'theme-dark surface-landing', 'data-theme': 'dark' } : {}
+// `viewport-fit=cover` is what gives the safe-area insets a value. The
+// landing's header and its last section hold their air from those insets,
+// and a screen with none reports zero, so only the page that reads them
+// asks for it.
+const viewport = landing
+  ? 'width=device-width, initial-scale=1, viewport-fit=cover'
+  : 'width=device-width, initial-scale=1'
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" {...root}>
   <head>
     {
       /* First in the head and inline, so the class is on <html> before the
         first paint: a stored choice applied after it is a flash. Storage can
-        be refused, and then the system preference decides.
-        `data-theme` carries the same choice for the design system's tokens;
-        the bar's control keeps the two in step from then on. */
+        be refused, and then the system preference decides. The bar's control
+        writes the class from then on. The landing carries its class in the
+        markup and reads no choice, so there is nothing here for it. */
     }
+    {!landing && (
     <script is:inline>
       ;(function () {
         var t = null
@@ -67,20 +100,55 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
           t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         }
         document.documentElement.classList.add('theme-' + t)
-        document.documentElement.setAttribute('data-theme', t)
       })()
     </script>
+    )}
     <meta charset="utf-8" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === undefined ? 'niwa' : `${title} · niwa`}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/art/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/art/apple-touch-icon.png" />
+    <meta name="viewport" content={viewport} />
+    <title>{documentTitle}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {alternate !== undefined && <link rel="alternate" type="text/markdown" href={alternate} />}
+    <meta property="og:title" content={documentTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={card} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The niwa wordmark beside a painted garden with a koi pond."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     {
       /* Browser chrome follows the platform preference; the media attribute
-        reads no other signal. The two values are the ground token. */
+        reads no other signal. The two values are the ground token. The
+        landing has one ground and one value, and it is the page a reader
+        installs, so it is also the page that names itself to the platform. */
     }
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    {
+      landing ? (
+        <>
+          <meta name="theme-color" content="#030504" />
+          <meta name="color-scheme" content="dark" />
+          <meta name="application-name" content="niwa" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="apple-mobile-web-app-title" content="niwa" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <meta name="format-detection" content="telephone=no" />
+          <link rel="manifest" href="/niwa.webmanifest" />
+        </>
+      ) : (
+        <>
+          <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+          <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+        </>
+      )
+    }
     {
       /* The dev server's StyleX stylesheet. StyleX serves its collected
         rules from this route, and reaches a page through a Vite hook that
@@ -88,17 +156,25 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
         needs nothing: there the rules are appended to Astro's stylesheet. */
     }
     {import.meta.env.DEV && <link rel="stylesheet" href="/virtual:stylex.css" />}
+    {
+      /* Whatever a page needs in the head that belongs to the page and not
+        to the site. The landing preloads its own art through here, which
+        keeps the split between its two encodes where the art is chosen. */
+    }
+    <slot name="head" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <Bar pathname={pathname} wide={wide} />
+    {
+      landing ? (
+        <slot />
+      ) : (
+        <>
+          <Bar pathname={pathname} />
 
-    <div class:list={['shell', wide && 'shell-wide']}>
-      {
-        !wide && (
-          <>
-            <Rail pathname={pathname} />
+          <div class="shell">
+            <Rail idPrefix="rail" pathname={pathname} />
             {
               /* Beside the element rather than in a module, because a
                 module is deferred and a restore the reader watches happen
@@ -124,53 +200,52 @@ const outline = headings !== undefined && headings.length > 0 ? headings : undef
                 }
               })()
             </script>
-          </>
-        )
-      }
 
-      <div class:list={['page', wide && 'page-wide']}>
-        {
-          /* `id="main"`, not `id="article"`: the documentation template
-            renders an `<article id="article">` inside this element, and two
-            elements cannot share an id. The skip link aims here, which is
-            the outer of the two and right for every page. */
-        }
-        <main class="page-article" id="main" data-pagefind-body={indexed ? '' : undefined}>
-          <slot />
-        </main>
-        {
-          outline !== undefined && (
-            <aside class="toc">
-              <Toc headings={outline} />
-            </aside>
-          )
-        }
-      </div>
-    </div>
+            <div class="page">
+              {
+                /* `id="main"`, not `id="article"`: the documentation template
+                  renders an `<article id="article">` inside this element, and
+                  two elements cannot share an id. The skip link aims here,
+                  which is the outer of the two and right for every page. */
+              }
+              <main class="page-article" id="main" data-pagefind-body={indexed ? '' : undefined}>
+                <slot />
+              </main>
+              {
+                outline !== undefined && (
+                  <aside class="toc">
+                    <Toc headings={outline} />
+                  </aside>
+                )
+              }
+            </div>
+          </div>
 
-    {
-      /* The drawer is the only part of the chrome that needs a script, so
-        it is the only part a reader without one loses. They are given the
-        same rail once more, below the article. With a script this element
-        is text and not markup, so there is never a second navigation
-        landmark on the page. */
+          {
+            /* The drawer is the only part of the chrome that needs a script,
+              so it is the only part a reader without one loses. They are
+              given the same rail once more, below the article. With a script
+              this element is text and not markup, so there is never a second
+              navigation landmark on the page. */
+          }
+          <noscript>
+            <div class="noscript-rail">
+              <Rail idPrefix="noscript" pathname={pathname} inDrawer />
+            </div>
+          </noscript>
+
+          <Footer />
+          <Search />
+
+          {
+            /* Both belong to the chrome above them: one makes the colour
+              mode and the drawer work, the other follows the contents
+              beside the article. A page that draws neither loads neither. */
+          }
+          <script src="../scripts/chrome.ts"></script>
+          <script src="../scripts/toc.ts"></script>
+        </>
+      )
     }
-    <noscript>
-      <div class:list={['noscript-rail', !wide && 'noscript-rail-narrow']}>
-        <Rail pathname={pathname} inDrawer />
-      </div>
-    </noscript>
-
-    <Footer />
-    <Search />
-    {
-      /* Both are named unconditionally. Astro hoists and bundles a `<script>`
-        it can see at compile time, and one written inside a conditional
-        expression is not that: it is dropped from the build silently. Each
-        script looks for its own element and returns when the page has none,
-        which is the same outcome for a few hundred bytes. */
-    }
-    <script src="../scripts/chrome.ts"></script>
-    <script src="../scripts/toc.ts"></script>
   </body>
 </html>

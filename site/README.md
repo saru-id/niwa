@@ -3,13 +3,17 @@
 The landing page and the documentation for niwa, at niwa.rs. Astro builds
 it to static HTML. A small Cloudflare Worker sits in front of the apex so
 that `curl -fsSL niwa.rs | sh` receives the installer and a browser
-receives the page. Every other path is a static asset.
+receives the page. It also redirects `/release/…` to where the release
+files live. Every other path is a static asset.
 
 ## Building it
 
 Run `make site-check` from the repository root. It installs from the
 lockfile, then runs the whole gate: `astro check`, the native typecheck,
-the Worker tests, and a build. Run `make site-dev` for the dev server.
+the Luau snippets against the shipped types, the command reference
+against the tool's own help, the tests, and a build. Two steps read what
+the build wrote: the internal links, and the weight of every encoded
+image. Run `make site-dev` for the dev server.
 
 Inside this directory the same commands are `pnpm run check` and
 `pnpm run dev`. Use pnpm. Every dependency is pinned to an exact version,

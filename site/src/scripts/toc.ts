@@ -16,7 +16,10 @@ const links = nav === null ? [] : [...nav.querySelectorAll<HTMLAnchorElement>('.
 
 if (links.length > 0) {
   // The bar the headings pass under, plus a little, so a heading counts as
-  // reached slightly before it touches the bar rather than after.
+  // reached slightly before it touches the bar rather than after. 52 mirrors
+  // FRAME.bar in src/styles/layout.stylex.ts at the default sixteen-pixel
+  // rem: importing the module here would inline all of it into every page
+  // for one number.
   const BAR = 52 + 24
 
   const targets = links

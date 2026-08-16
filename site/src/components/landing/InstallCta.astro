@@ -1,0 +1,24 @@
+---
+/* The command again, at the end.
+ *
+ * A reader who came down the whole page arrives ready to run it, and asking
+ * them to scroll back for it would be the page's one avoidable friction. The
+ * fence is the documentation's, so it copies the way every other fence on
+ * the site copies.
+ */
+import { Markdown } from '../Markdown'
+import { INSTALL_COMMAND } from './command'
+
+// The file a refused fence names. This component holds its own markdown.
+const SELF = 'src/components/landing/InstallCta.astro'
+
+const FENCE = ['```shell', INSTALL_COMMAND, '```'].join('\n')
+---
+
+<section class="install" id="install" aria-labelledby="install-title">
+  <h2 id="install-title">Grow your setup.</h2>
+  <div class="install-fence">
+    {/* No client directive. React runs once, during the build. */}
+    <Markdown source={FENCE} file={SELF} />
+  </div>
+</section>

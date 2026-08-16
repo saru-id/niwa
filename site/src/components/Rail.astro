@@ -11,29 +11,66 @@
  * it restores the position across a page load, and it brings the current
  * page into view when there is nothing stored.
  *
+ * The page renders this file three times, and each copy reaches a reader
+ * the other two cannot. Above the rail's width it is the column beside the
+ * article. Below that width a script opens it as a drawer, and the drawer
+ * is a native dialog: the browser supplies the focus trap, the Escape key
+ * and the scrim only for content inside the element, so the dialog holds a
+ * copy of its own. A reader with no script cannot open a dialog, so
+ * `<noscript>` carries a third copy under the article. The stylesheet shows
+ * one of the three at a time, and the browser hides a closed dialog, so the
+ * page offers one navigation landmark at every width, script or no script.
+ *
+ * Serving the narrow reader who has no script from the column instead is
+ * the one reduction that looks available. The column stands before the
+ * article in the grid, so un-hiding it below the rail's width would put
+ * every page in the site between the bar and the first word of the page
+ * that reader opened. Moving the column after the article fixes the narrow
+ * width and breaks the wide one, where the column is a sidebar the eye
+ * meets first and reading order would meet last. Keeping the third copy is
+ * what leaves the order right at both widths, and it costs little to send:
+ * the three are nearly the same bytes, and compression reads a repeat once.
+ *
+ * The rail's width is `MEDIA.rail` in `src/styles/layout.stylex.ts`.
+ *
  * Nothing here hydrates. It is a list of links, and a list of links is
  * finished the moment the HTML arrives.
  */
 import { NAV, currentPath } from '../nav'
 
 interface Props {
+  /**
+   * The name that opens every id this copy emits. Two copies on a page must
+   * never share one, so each caller passes the name of its own copy.
+   */
+  idPrefix: string
   pathname: string
   /** Inside the drawer the rail is the whole width it is given. */
   inDrawer?: boolean
 }
 
-const { pathname, inDrawer = false } = Astro.props
+const { idPrefix, pathname, inDrawer = false } = Astro.props
 const here = currentPath(pathname)
+
+/*
+ * An id names one element on a page, and the page renders this file three
+ * times. The prefix keeps the three sets of ids apart, so each copy's lists
+ * are labelled by the heading above them and not by the first copy's heading.
+ */
+const groups = NAV.map((group) => ({
+  ...group,
+  labelId: `${idPrefix}-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+}))
 ---
 
 <nav class="rail" aria-label="Documentation" data-rail data-rail-drawer={inDrawer ? '' : undefined}>
   {
-    NAV.map((group) => (
+    groups.map((group) => (
       <div class="rail-group">
         {/* The directory's name. Nothing folds, so nothing here is a
           control, and it carries no marker suggesting one. */}
-        <h2 class="rail-label">{group.label}</h2>
-        <ul class="rail-items">
+        <h2 class="rail-label" id={group.labelId}>{group.label}</h2>
+        <ul class="rail-items" aria-labelledby={group.labelId}>
           {group.entries.map((entry) => (
             <li>
               <a

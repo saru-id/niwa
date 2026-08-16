@@ -1,18 +1,15 @@
 /* The site's tokens and base element styles.
  *
- * Colors are plain custom properties, not StyleX variables, because five
+ * Colors are plain custom properties, not StyleX variables, because four
  * other things have to read these names: the syntax token rules, the file
- * tree across its shadow boundary, the search host, the design system's
- * theme, and hand written CSS. StyleX consumes them as ordinary values,
- * for example `var(--ink)`.
+ * tree across its shadow boundary, the search host, and hand written CSS.
+ * StyleX consumes them as ordinary values, for example `var(--ink)`.
  *
- * The design system's sheets come first and are layered. Everything this
- * file declares below the import is unlayered, and unlayered author styles
- * outrank every layer, so the site wins any collision without raising a
- * selector or reaching for `!important`.
+ * `chrome.css` must stay imported above these rules: everything below the
+ * import wins a tie on source order, so a base rule here can answer a
+ * chrome rule without raising a selector.
  */
 
-@import './astryx.css';
 @import './chrome.css';
 
 /* ---- Motion ------------------------------------------------------------
@@ -184,36 +181,68 @@
   color-scheme: light;
 }
 
-/* The design system reads the same two states, through `color-scheme`.
+/* ---- The landing's field ----------------------------------------------
+ * One page is painted rather than themed. Its art is a transparent garden
+ * composited over near-black, and every colour below is sampled from it or
+ * measured against it. The landing carries both classes, and the compound
+ * selector is what makes these values win: the dark block above and the
+ * `prefers-color-scheme` block above that both sit at two classes, so a
+ * single class here would tie them and leave source order to decide.
  *
- * Its tokens hold `light-dark()` pairs, and `light-dark()` resolves from
- * `color-scheme`. Its own switch is a `data-theme` attribute on `<html>`,
- * which the blocking script and `scripts/theme.ts` write beside the class,
- * so the two spellings never disagree. Most of its colour tokens are not
- * pairs at all: `theme/niwa.theme.ts` points them at the tokens above, so
- * they follow the class directly.
- *
- * One rule is needed. The `Theme` provider declares `color-scheme` on its
- * own wrapper from a `mode` prop, and on a static page that prop is fixed
- * when the page is built. A declared value beats an inherited one, so the
- * wrapper would pin every component to the mode the build chose. `inherit`
- * hands the decision back to `<html>`, where the reader's control lives.
+ * Contrast is stated against the surface `#090d0b`, which is the field the
+ * fence and the plan screen print on. The same ink over the page's own
+ * `#030504` measures higher.
  */
-[data-astryx-theme] {
-  color-scheme: inherit;
-}
 
-/* The site prints three inks and the design system holds two names for
- * them, so `--color-text-primary` carries running text and a heading takes
- * the strongest ink here. The theme file cannot do it: the system writes
- * its own rule for `color="primary"` after every theme override, at the
- * same weight, and later wins. Unlayered, this rule does not have to
- * outweigh anything. Both spellings of a heading are named, the component
- * and a bare element inside a themed region, and a heading asking for
- * another colour keeps it. */
-[data-astryx-theme]
-  :is(h1, h2, h3, h4, h5, h6):is(:not([data-color]), [data-color='primary']) {
-  color: var(--ink-strong);
+:root.theme-dark.surface-landing {
+  --ground: #030504;
+  --surface: #090d0b;
+  --border: rgba(242, 239, 231, 0.14);
+  /* The hairline the header draws when it is scrolled, and the emphasis the
+   * rest of the site spends this token on. */
+  --border-strong: rgba(242, 239, 231, 0.3);
+  --ink-strong: #f2efe7; /* 17.8:1 */
+  --ink: #dedfd8; /* 15.2:1 */
+  --ink-muted: #a8aaa1; /* 8.7:1 */
+  --accent: #ee9475;
+  --link: #efb096; /* 11.0:1 */
+
+  /* The plan screen prints through these. All five clear 9:1 on the
+   * surface, because a colour that carries meaning has to be read. */
+  --role-good: #9fc7a5;
+  --role-warn: #d9b78a;
+  --role-bad: #e8a09a;
+  --role-accent: #efb096;
+  --role-muted: var(--ink-muted);
+
+  /* Every class the landing's two grammars emit. Luau emits meta, comment,
+   * string, number, literal, keyword, function, property and operator; the
+   * shell fence adds command and variable. A class neither grammar emits
+   * keeps the site's dark value, which no landing fence ever reaches. */
+  --th-meta: #77877f; /* the sage `--!strict` opens the fence with */
+  --th-comment: #77877f; /* 5.2:1; the darker sage the art wants fails AA */
+  --th-string: #f0a98e; /* 10.0:1 */
+  --th-number: #f0a98e;
+  --th-literal: #f0a98e;
+  --th-keyword: #91bcb5; /* 9.4:1 */
+  --th-function: #91bcb5;
+  --th-property: #91bcb5;
+  --th-operator: #a8aaa1; /* 8.3:1, quiet structural ink */
+  --th-variable: #a8aaa1;
+  --th-command: #91bcb5; /* the install line's curl and sh */
+  --th-token: #dedfd8; /* 14.6:1 */
+
+  /* The dimmest ink the landing owns, and the page background is the only
+   * field it may stand on: over the surface it measures 4.37:1 and fails.
+   * It dresses text that sits on the page itself, and the scrollbar, which
+   * runs on the page itself. */
+  --quiet: #737970;
+  --accent-soft: #efb096;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  /* Re-declared rather than inherited. The site's stack starts at
+   * `ui-monospace`, which resolves to a different face on some platforms,
+   * and every mono glyph on this page sits inside a measured region. */
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 }
 
 /* ---- Syntax tokens -----------------------------------------------------
@@ -400,7 +429,8 @@ pagefind-results mark {
  * and becomes a full screen sheet with no corners and no entrance. Below it,
  * both of those are right and neither rule applies. The reduced motion query
  * is the component's own, so a reader who asks for less motion still gets no
- * animation at all.
+ * animation at all. Both queries mirror `MEDIA.dialog` in
+ * `src/styles/layout.stylex.ts`, which is where the width is decided.
  */
 @media (min-width: 641px) {
   dialog.pf-modal {
@@ -433,16 +463,44 @@ pagefind-results mark {
   --text-h1: 2rem;
   --text-h2: 1.5rem;
   --text-h3: 1.1875rem;
-  --text-h4: 1rem;
   --text-body: 1rem;
   --text-code: 1rem;
   --text-output: 1rem;
   --text-inline-code: 0.925em;
   --text-nav: 0.875rem;
   --text-table: 0.875rem;
-  --text-toc: 0.8125rem;
+  /* The size the site's chrome reads at: the rail, the contents beside the
+   * article, the bar's controls, the skip link, the footer, and a search
+   * result's excerpt. The rail is what settles the number. Its labels are
+   * page titles, and several of them are sentences; at the body size the
+   * rail is a wall of text, and at the nav size it still runs long. Thirteen
+   * pixels is the size a rail of sentences wants, and it is the size the
+   * rest of this class of software sets its navigation at. */
+  --text-rail: 0.8125rem;
   --text-meta: 0.75rem;
   --text-kicker: 0.6875rem;
+}
+
+/* ---- Frame -------------------------------------------------------------
+ * The measurements the chrome is built from: the rail's width, the bar's
+ * height, the air the bar and the rail both hold their contents in, and the
+ * corner their controls are cut with.
+ *
+ * The first three are mirrors of `FRAME` in `src/styles/layout.stylex.ts`,
+ * which is where they are decided. Plain CSS cannot import that module, so
+ * the values are copied here as custom properties and change there first.
+ * The radius is settled here, because plain CSS is all that reads it.
+ */
+
+:root {
+  --rail-width: 17rem;
+  --bar-height: 3.25rem;
+  --chrome-gutter: 1.25rem;
+
+  /* The corner the chrome cuts its controls with: the bar's controls, the
+   * rail's rows and the skip link. Half the eight pixels an exhibit's frame
+   * takes, so a control reads as the smaller furniture it is. */
+  --radius-inner: 4px;
 }
 
 /* ---- Base --------------------------------------------------------------- */
@@ -506,19 +564,6 @@ a {
     text-decoration-thickness 120ms ease;
 }
 
-/* Inside a navigation landmark, and inside the drawer that carries one, the
- * rule above does not apply: those links are furniture, and the design
- * system draws furniture. `revert-layer` is the whole mechanism. The rule
- * above is unlayered and so outranks every layer; reverting the layer hands
- * these four properties back to the system's own, which is the rest state,
- * the hover, and the page the reader is standing on. */
-:is(nav, dialog) a {
-  color: revert-layer;
-  text-decoration: revert-layer;
-  text-decoration-color: revert-layer;
-  text-decoration-thickness: revert-layer;
-}
-
 a:hover {
   text-decoration-thickness: 2px;
 }
@@ -563,21 +608,6 @@ h2[id],
 h3[id],
 h4[id] {
   scroll-margin-block-start: calc(var(--bar-height) + 1rem);
-}
-
-/* ---- The contents' labels wrap -----------------------------------------
- * The design system sets a nav label on one line and ends it with an
- * ellipsis. That is right for a word or two. This site's headings are
- * sentences, and an ellipsis hides which section the link leads to, which
- * is the one thing a rail is for. No component prop reaches this. The site
- * rail is the site's own and needs no such rule; the contents are the one
- * place the design system still draws navigation.
- */
-
-nav[aria-label='On this page'] :is(a, a *) {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
 }
 
 /* ---- Heading anchors ----------------------------------------------------

@@ -1,0 +1,112 @@
+---
+/* The first viewport: the garden, the promise, and the command.
+ *
+ * The section has exactly two children and nothing may come between them.
+ * The art wrap sticks to the top of the window for its own height, and the
+ * copy is pulled back over it by that same height, so the copy scrolls away
+ * while the garden holds. Anything wrapped around either one breaks the
+ * handoff.
+ *
+ * The picture is written out rather than generated, because the two encodes
+ * are split on the landing's own breakpoint and no component knows about
+ * that boundary. The fallback carries the frame the scene normalizes its
+ * coordinates against.
+ */
+import vine from '../../assets/art/vine.png'
+import { heroDesktop, heroMobile, heroOriginal, installerVine } from '../../lib/hero-art'
+import { INSTALL_COMMAND } from './command'
+
+// The pair mirrors LANDING_QUERY in scripts/landing/geometry.ts, which owns
+// the 780 boundary; 781 is its complement, so exactly one source matches any
+// viewport.
+const NARROW = '(max-width: 780px)'
+const WIDE = '(min-width: 781px)'
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-art-wrap" aria-hidden="true">
+    <picture>
+      <source media={NARROW} type="image/avif" srcset={heroMobile.src} />
+      {/* Unqualified, so a viewport between the two integer boundaries
+          still takes an encode instead of the source raster. */}
+      <source type="image/avif" srcset={heroDesktop.src} />
+      <img
+        class="hero-art"
+        src={heroOriginal.src}
+        alt=""
+        width={heroOriginal.width}
+        height={heroOriginal.height}
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+        draggable="false"
+      />
+    </picture>
+    <canvas class="pond-ripples"></canvas>
+  </div>
+
+  <div class="hero-inner">
+    <div class="hero-copy">
+      {/* The lines are blocks, so the space after each one never paints.
+          It is for every reader of the text alone, which otherwise runs the
+          lines into one word at each seam. */}
+      <h1 id="hero-title">
+        <span class="headline-line">Your Mac,</span>{' '}
+        <span class="headline-line"><em>grown</em> from</span>{' '}
+        <span class="headline-line">one file.</span>
+      </h1>
+      <p class="hero-subcopy">Declarative macOS setup, written in Luau.</p>
+
+      <div class="installer" aria-label="Install niwa">
+        {
+          /* The vine twice: the second copy is masked to the hanging third
+            and brightened, so the leaves that overhang the pond keep their
+            warm detail instead of reading as one dark shape on the water. */
+        }
+        <picture>
+          <source type="image/avif" srcset={installerVine.src} />
+          <img
+            class="installer-vine"
+            src={vine.src}
+            alt=""
+            width={vine.width}
+            height={vine.height}
+            aria-hidden="true"
+            fetchpriority="low"
+            draggable="false"
+          />
+        </picture>
+        <picture>
+          <source type="image/avif" srcset={installerVine.src} />
+          <img
+            class="installer-vine installer-vine-highlight"
+            src={vine.src}
+            alt=""
+            width={vine.width}
+            height={vine.height}
+            aria-hidden="true"
+            fetchpriority="low"
+            draggable="false"
+          />
+        </picture>
+        {
+          /* The prompt is the command's sibling, never its content: a reader
+            who ends up selecting the span selects something that pastes. The
+            span states the command twice, once for the eye and once for the
+            clipboard, from one constant that cannot disagree with itself. */
+        }
+        <code><span class="prompt" aria-hidden="true">$</span><span class="command" data-command={INSTALL_COMMAND}>{INSTALL_COMMAND}</span></code>
+        <button class="copy-button" type="button" aria-label="Copy" data-install-copy
+          ><span aria-hidden="true" data-install-label>Copy</span></button
+        >
+        <span class="sr-only" data-install-status role="status"></span>
+      </div>
+
+      <a class="docs-link" href="/start">
+        <span>What is niwa?</span>
+        <strong>Read the docs</strong>
+        <span class="docs-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </div>
+</section>

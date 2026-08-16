@@ -4,6 +4,7 @@ import Layout from '../../components/Layout.astro'
 import NextLinks from '../../components/NextLinks.astro'
 import { pageLink } from '../../data/links'
 import { FREQUENCIES, verbsOf } from '../../data/verbs'
+import { TYPE } from '../../styles/type.stylex'
 import { styles } from './_styles'
 
 const deck =
@@ -35,31 +36,28 @@ const next = [
 ---
 
 <Layout title="Reference" description={deck} headings={headings}>
-  <h1 {...stylex.props(styles.h1)}>Reference</h1>
-  <p {...stylex.props(styles.deck)}>{deck}</p>
-  <p {...stylex.props(styles.p)}>
-    Every verb exits <code {...stylex.props(styles.code)}>0</code> on success and
-    <code {...stylex.props(styles.code)}>1</code> on an error. Where a verb says more than
-    that, its page carries an exit codes table. Two flags are global and every verb takes
-    them: <code {...stylex.props(styles.code)}>-v</code>, <code
-      {...stylex.props(styles.code)}>--verbose</code
-    > and <code {...stylex.props(styles.code)}>--debug</code>.
+  <h1 {...stylex.props(TYPE.title)}>Reference</h1>
+  <p {...stylex.props(TYPE.deck)}>{deck}</p>
+  <p {...stylex.props(TYPE.paragraph)}>
+    Every verb exits <code>0</code> on success and <code>1</code> on an error. Where a verb
+    says more than that, its page carries an exit codes table. Two flags are global and every
+    verb takes them: <code>-v</code>, <code>--verbose</code> and <code>--debug</code>.
   </p>
 
   {
     FREQUENCIES.map((frequency) => (
       <Fragment>
-        <h2 id={frequency.id} {...stylex.props(styles.h2)}>
+        <h2 id={frequency.id} {...stylex.props(TYPE.chapter, TYPE.section)}>
           {frequency.label}
         </h2>
-        <p {...stylex.props(styles.p)}>{frequency.when}</p>
-        <ul {...stylex.props(styles.list)}>
+        <p {...stylex.props(TYPE.paragraph)}>{frequency.when}</p>
+        <ul {...stylex.props(TYPE.entries)}>
           {verbsOf(frequency.id).map((verb) => (
-            <li {...stylex.props(styles.item)}>
+            <li {...stylex.props(TYPE.item)}>
               <a href={verb.path} {...stylex.props(styles.name)}>
                 {verb.name === 'niwa' ? 'niwa' : `niwa ${verb.name}`}
               </a>{' '}
-              <span {...stylex.props(styles.said)}>— {verb.job}</span>
+              <span {...stylex.props(TYPE.said)}>— {verb.job}</span>
             </li>
           ))}
         </ul>
@@ -67,13 +65,13 @@ const next = [
     ))
   }
 
-  <h2 id="the-rest" {...stylex.props(styles.h2)}>The rest of the reference</h2>
-  <ul {...stylex.props(styles.list)}>
+  <h2 id="the-rest" {...stylex.props(TYPE.chapter, TYPE.section)}>The rest of the reference</h2>
+  <ul {...stylex.props(TYPE.entries)}>
     {
       rest.map((link) => (
-        <li {...stylex.props(styles.item)}>
+        <li {...stylex.props(TYPE.item)}>
           <a href={link.href}>{link.label}</a>{' '}
-          <span {...stylex.props(styles.said)}>— {link.why}</span>
+          <span {...stylex.props(TYPE.said)}>— {link.why}</span>
         </li>
       ))
     }

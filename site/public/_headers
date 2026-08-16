@@ -4,3 +4,16 @@
 /install.sh
   Content-Type: text/x-shellscript; charset=utf-8
   Cache-Control: public, max-age=300
+
+# Every page is static documentation. It reads no camera, microphone or
+# location, so the permission list is empty. A link to another site carries
+# the origin and no path.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Every file name under this path carries a content hash, so changed bytes
+# are a new URL. A year of caching can never serve a stale file.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

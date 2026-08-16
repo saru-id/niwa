@@ -173,15 +173,34 @@ packages are alpha or beta and treat a minor as breaking.
 - Why not our own: a static site generator with content collections and a
   build pipeline is a large finished problem, and the design site already
   proved this one on the same content.
-- Maintenance and weight: released weekly, 51 direct dependencies, build
+- Maintenance and weight: released weekly, 52 direct dependencies, build
   time only.
 - License: MIT.
+
+### sharp
+
+- Does: encodes the site's images at build time. It is the image service Astro
+  bundles, and every derivative a page requests through `getImage()` comes out
+  of it.
+- Why not our own: an image encoder is a codec suite. sharp binds libvips,
+  which carries the AVIF and PNG encoders the site's image budgets are
+  calibrated against.
+- Maintenance and weight: current, build time only. It is not a direct
+  dependency: the lockfile pins it at 0.35.3 under the `astro@7.2.1`
+  resolution, and that pin is load-bearing. A second sharp, 0.35.2, sits under
+  the wrangler toolchain and takes no part in the build. Moving the build's
+  sharp changes every encoded byte, so a lockfile refresh that moves it
+  re-opens the image budget measurements. A hoist setting in
+  `site/pnpm-workspace.yaml` places the same package at `node_modules/sharp`,
+  because Astro's built chunks import it bare from paths the isolated layout
+  does not serve.
+- License: Apache-2.0.
 
 ### @astrojs/react
 
 - Does: lets React components render inside Astro pages.
 - Why not our own: it is the supported bridge between the two renderers,
-  and every component on the site renders at build time through it.
+  and every React component on the site renders at build time through it.
 - Maintenance and weight: released alongside Astro, adds the Vite React
   plugin.
 - License: MIT.
@@ -213,8 +232,8 @@ packages are alpha or beta and treat a minor as breaking.
 ### @tanstack/highlight
 
 - Does: turns a code fence into coloured spans at build time. It ships the
-  shell, TOML and JSON grammars, takes the site's own Luau grammar, and
-  bridges to the markdown renderer.
+  shell, TOML, JSON and plaintext grammars, takes the site's own Luau
+  grammar, and bridges to the markdown renderer.
 - Why not our own: it is synchronous, has no dependencies and no WASM, and
   its grammars are plain scanning functions, which is what let the Luau
   grammar be written by hand at all.
@@ -285,9 +304,9 @@ packages are alpha or beta and treat a minor as breaking.
 
 ### vitest
 
-- Does: runs the Worker's recognition tests.
-- Why not our own: it reads the same Vite config the site builds with, so
-  a test imports a module exactly as the build does.
+- Does: runs every test the site has, under `src/` and under `worker/`.
+- Why not our own: it runs on the same bundler the site builds with, so a
+  test imports a module exactly as the build does.
 - Maintenance and weight: current, dev only, shares the bundler already
   installed.
 - License: MIT.
@@ -313,37 +332,7 @@ packages are alpha or beta and treat a minor as breaking.
 - Maintenance and weight: both current; the indexer is a platform binary
   that runs at build time only, the interface is a small script loaded on
   demand.
+- Pin: exact. pagefind is a platform binary that astro-pagefind invokes at
+  build time, and an exact pin is what keeps the binary a known quantity
+  across machines.
 - License: MIT (both).
-
-
-
-### @astryxdesign/core
-
-- Does: the design system the site's interface is built from. It ships
-  155 React components, one pre-compiled stylesheet for all of them, and
-  the theme compiler the site's own theme is written against. The
-  components render to HTML during the build; the theme compiles to a
-  static stylesheet.
-- Why not our own: the site needs tables, headings, dividers and, later,
-  the controls that carry state. Every one of those has keyboard
-  behavior, an accessible name and two colour modes to get right, and
-  the theme compiler is what lets the site's measured OKLCH tokens drive
-  all of it from one place.
-- Maintenance and weight: 0.3.0, released weekly, pinned exactly for
-  that reason. One runtime dependency. The stylesheet is 138 KB and is
-  not split by component, so every page carries all of it.
-- License: MIT.
-
-### @astryxdesign/cli
-
-- Does: compiles `src/theme/niwa.theme.ts` into the stylesheet and the
-  built theme object the site loads, and answers questions about the
-  component API while the site is being written. `pnpm run check:theme`
-  runs it in check mode, so a theme edited without a rebuild fails the
-  gate.
-- Why not our own: it is the compiler for the package above and the only
-  supported way to reach the static output an SSR build needs.
-- Maintenance and weight: 0.3.0, released with the core package and
-  pinned to the same version, which its themes require. Four
-  dependencies, build time only.
-- License: MIT.

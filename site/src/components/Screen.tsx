@@ -10,29 +10,19 @@
 import * as stylex from '@stylexjs/stylex'
 import { Fragment } from 'react'
 import { readScreen } from '../lib/terminal'
+import { EXHIBIT } from '../styles/frames.stylex'
 
 const styles = stylex.create({
-  figure: {
-    marginBlock: '1.5rem',
-    marginInline: 0,
-  },
-  // The frame the site's code blocks wear. No background inside the screen
-  // and no borders inside it: the tool draws its own rules with characters.
+  // Inside the exhibit's box the screen draws nothing of its own: no second
+  // background and no rules, because the tool draws its rules with
+  // characters.
   screen: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderRadius: 8,
-    borderStyle: 'solid',
-    borderWidth: 1,
     color: 'var(--ink)',
     fontSize: 'var(--text-output)',
     lineHeight: 1.5,
     margin: 0,
     // Alignment is part of the tool's language, so a line scrolls; it never
     // wraps. The tab stop lets a keyboard reach the scroll.
-    overflowX: 'auto',
-    paddingBlock: '1rem',
-    paddingInline: '1.25rem',
     whiteSpace: 'pre',
   },
   caption: {
@@ -59,8 +49,8 @@ const roles = stylex.create({
 export function Screen({ fixture, command }: { fixture: string; command?: string }) {
   const screen = readScreen(fixture)
   return (
-    <figure {...stylex.props(styles.figure)}>
-      <pre {...stylex.props(styles.screen)} tabIndex={0}>
+    <figure {...stylex.props(EXHIBIT.block)}>
+      <pre {...stylex.props(EXHIBIT.frame, EXHIBIT.air, styles.screen)} tabIndex={0}>
         <samp>
           {screen.lines.map((line, index) => (
             <Fragment key={index}>

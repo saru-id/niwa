@@ -20,22 +20,14 @@
  */
 
 /* ---- Frame -------------------------------------------------------------
- * Three numbers. The rail's width, the bar's height, and the air the bar
- * and the rail both hold their contents in.
+ * Three numbers run through the rules below: the rail's width, the bar's
+ * height, and the air the bar and the rail both hold their contents in.
+ * They are read here and declared in `app.css`, with every other token.
+ *
+ * All three are mirrors of `FRAME` in `src/styles/layout.stylex.ts`, which
+ * is where they are decided. Plain CSS cannot import that module, so the
+ * values are copied as custom properties and change there first.
  */
-
-:root {
-  --rail-width: 17rem;
-  --bar-height: 3.25rem;
-  --chrome-gutter: 1.25rem;
-
-  /* The rail sets its own reading size. These labels are page titles, and
-   * several of them are sentences; at the body size the rail is a wall of
-   * text, and at the nav size it still runs long. Thirteen pixels is the
-   * size a rail of sentences wants, and it is the size the rest of this
-   * class of software sets its navigation at. */
-  --text-rail: 0.8125rem;
-}
 
 /* ---- The colour swap ---------------------------------------------------
  * A theme change is not a transition. Half the chrome softens its hover
@@ -70,7 +62,7 @@ pagefind-modal:not(:defined) {
 /* ---- Scrollbars --------------------------------------------------------
  * The platform's scrollbar is a grey chrome gutter with a square track, and
  * on a page whose only edge is a hairline it is the loudest thing drawn.
- * The design system ships nothing for this, so the site draws its own.
+ * So the site draws its own.
  *
  * Two spellings of one design, because the two engines expose different
  * hooks and neither covers both. `scrollbar-width` and `scrollbar-color`
@@ -123,6 +115,9 @@ pagefind-modal:not(:defined) {
  * The rail is a column in the flow rather than a fixed panel, so the page
  * remains the one scroller for the article. The rail scrolls only itself,
  * and only when it is taller than the window.
+ *
+ * 900px is `MEDIA.rail` in `src/styles/layout.stylex.ts`, the width the rail
+ * gives way at. Every `max-width: 900px` query below it is that same edge.
  */
 
 .shell {
@@ -136,11 +131,6 @@ pagefind-modal:not(:defined) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* A page that draws its own full-width bands has no rail at any width. */
-.shell-wide {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 /* ---- The bar -----------------------------------------------------------
@@ -183,7 +173,6 @@ pagefind-modal:not(:defined) {
 .bar-identity {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   align-self: stretch;
   padding-inline: var(--chrome-gutter);
   border-inline-end: 1px solid var(--border);
@@ -191,23 +180,43 @@ pagefind-modal:not(:defined) {
   color: var(--ink-strong);
 }
 
-.bar-identity:hover .bar-wordmark {
-  color: var(--ink-strong);
+/* ---- The mark ----------------------------------------------------------
+ * The seedling and the wordmark, the pair the landing's header composes, on
+ * the shorter line this bar gives them. The drawer's head wears the same
+ * mark.
+ *
+ * Both drawings are laid out from their height, and the bar is what sets
+ * it: 1.625rem is half the 3.25rem bar, and the wordmark keeps the
+ * proportion it stands at beside the seedling on the landing. Each width is
+ * left to follow from its file, which is what holds a drawing at the ratio
+ * it was drawn in.
+ */
+
+/* The gap is the air the landing keeps between the two drawings, brought
+ * down with them. */
+.bar-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
-/* One filled circle in the accent, at the cap height of the word beside it. */
-.bar-dot {
-  inline-size: 0.4375rem;
-  block-size: 0.4375rem;
-  border-radius: 50%;
-  background-color: var(--accent);
+/* Nothing here gives up width. A drawing squeezed by a short line is a
+ * drawing at a ratio its file does not have. */
+.bar-mark > *,
+.bar-name > * {
   flex: none;
 }
 
-/* The name and the version are one object with one baseline. Centring two
- * different type sizes against each other leaves the small one floating in
- * the middle of the large one's box; sitting them on a shared baseline is
- * what makes the pair read as a name and its number. */
+.bar-seedling {
+  display: block;
+  inline-size: auto;
+  block-size: 1.625rem;
+}
+
+/* The name and whatever stands beside it are one object with one baseline.
+ * The wordmark is a drawing, and a drawing has no baseline of its own: a
+ * flex line takes its bottom edge instead, which sits one pixel under the
+ * letters at this size. The nudge below pays that pixel back. */
 .bar-name {
   display: flex;
   align-items: baseline;
@@ -215,12 +224,33 @@ pagefind-modal:not(:defined) {
 }
 
 .bar-wordmark {
-  font-family: var(--font-mono);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  color: var(--ink-strong);
+  display: none;
+  inline-size: auto;
+  block-size: 1.1875rem;
+  transform: translateY(0.0625rem);
+}
+
+/* Which ink is drawn, decided here rather than in script, so the mark is
+ * right in the first paint. The three cases are the colour mode's own: the
+ * class the blocking script writes, and the reader with no script at all,
+ * whose page carries no class and is coloured by `prefers-color-scheme`. */
+:root.theme-light .bar-wordmark[data-mode='light'],
+:root.theme-dark .bar-wordmark[data-mode='dark'] {
+  display: block;
+}
+
+:root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='light'] {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='light'] {
+    display: none;
+  }
+
+  :root:not(.theme-light):not(.theme-dark) .bar-wordmark[data-mode='dark'] {
+    display: block;
+  }
 }
 
 /* A fact about what these pages describe, said where the name is. */
@@ -254,6 +284,9 @@ pagefind-modal:not(:defined) {
  * Three of them, and they are the site's whole control vocabulary: a way
  * into search, the colour mode, and the repository. They share one shape so
  * that the cluster reads as one object.
+ *
+ * 1080px is `MEDIA.tools` in `src/styles/layout.stylex.ts`, the width the
+ * controls drop their words at.
  */
 
 .control {
@@ -264,7 +297,7 @@ pagefind-modal:not(:defined) {
   block-size: 1.875rem;
   padding-inline: 0.4375rem;
   border: 0;
-  border-radius: var(--radius-inner, 5px);
+  border-radius: var(--radius-inner);
   background-color: transparent;
   color: var(--ink-muted);
   font: inherit;
@@ -314,7 +347,7 @@ pagefind-modal:not(:defined) {
   block-size: 1.125rem;
   padding-inline: 0.25rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-inner);
   background-color: var(--ground);
   font-family: var(--font-mono);
   font-size: var(--text-kicker);
@@ -346,7 +379,7 @@ pagefind-modal:not(:defined) {
 }
 
 /* The drawer's button exists only where the rail does not: below the rail's
- * width, and on a page that draws no rail at any width. */
+ * width. */
 .control-menu {
   display: none;
 }
@@ -355,18 +388,6 @@ pagefind-modal:not(:defined) {
   .control-menu {
     display: inline-flex;
   }
-}
-
-.bar-wide .control-menu {
-  display: inline-flex;
-}
-
-.bar-wide .bar-identity {
-  border-inline-end: 0;
-}
-
-.bar-wide {
-  grid-template-columns: auto minmax(0, 1fr);
 }
 
 /* ---- The colour mode's face -------------------------------------------
@@ -500,8 +521,8 @@ pagefind-modal:not(:defined) {
   display: block;
   padding-block: 0.3125rem;
   padding-inline: 0.75rem 0.5rem;
-  border-start-end-radius: var(--radius-inner, 5px);
-  border-end-end-radius: var(--radius-inner, 5px);
+  border-start-end-radius: var(--radius-inner);
+  border-end-end-radius: var(--radius-inner);
   font-size: var(--text-rail);
   line-height: 1.45;
   color: var(--ink-muted);
@@ -591,14 +612,21 @@ pagefind-modal:not(:defined) {
 }
 
 /* The rail a reader with no script is given, below the article. It stands
- * in for the drawer, which is the one part of the chrome a script opens. A
- * page that has a rail of its own only needs it below the rail's width. */
+ * in for the drawer, which is the one part of the chrome a script opens.
+ * The page carries a rail of its own above the rail's width, so this one is
+ * wanted below it and nowhere else.
+ *
+ * 901px is `MEDIA.railUp` in `src/styles/layout.stylex.ts`: the rail's edge
+ * read from above. */
 .noscript-rail {
   border-block-start: 1px solid var(--border);
   padding-block: 1.5rem;
   padding-inline: var(--chrome-gutter);
 }
 
+/* Every declaration here undoes one the column states, down to the
+ * `display: none` the column takes below the rail's width. The descendant
+ * selector is what outranks it. */
 .noscript-rail .rail {
   position: static;
   display: block;
@@ -609,13 +637,16 @@ pagefind-modal:not(:defined) {
 }
 
 @media (min-width: 901px) {
-  .noscript-rail-narrow {
+  .noscript-rail {
     display: none;
   }
 }
 
 /* ---- The table of contents --------------------------------------------
  * The last thing to appear and the first thing to go.
+ *
+ * 1280px is `MEDIA.toc` in `src/styles/layout.stylex.ts`, the width the
+ * contents column appears at, and 15rem is `FRAME.toc`, the column itself.
  */
 
 .toc {
@@ -655,12 +686,14 @@ pagefind-modal:not(:defined) {
   border-inline-start: 1px solid var(--border);
 }
 
+/* A label is a whole heading, and this site's headings are sentences: the
+ * links wrap, and no rule here may clip one to an ellipsis. */
 .toc-link {
   position: relative;
   display: block;
   padding-block: 0.25rem;
   padding-inline: 0.75rem 0.25rem;
-  font-size: var(--text-toc);
+  font-size: var(--text-rail);
   line-height: 1.45;
   color: var(--ink-muted);
   text-decoration: none;
@@ -693,6 +726,9 @@ pagefind-modal:not(:defined) {
 /* ---- The reading column ------------------------------------------------
  * The article, the table of contents, and the air around both, centred in
  * whatever the rail leaves.
+ *
+ * 46rem is `FRAME.article` in `src/styles/layout.stylex.ts`, the width a
+ * line of the article is capped at.
  */
 
 .page {
@@ -716,18 +752,6 @@ pagefind-modal:not(:defined) {
   padding-block: 2.5rem 4rem;
 }
 
-/* A page that draws its own full-width bands takes neither the cap nor the
- * air: it was drawn for the width it is given. */
-.page-wide {
-  display: block;
-  padding-inline: 0;
-}
-
-.page-wide .page-article {
-  max-inline-size: none;
-  padding-block: 0;
-}
-
 /* ---- Skip link ---------------------------------------------------------
  * The first thing the keyboard reaches, and it is not visible until then.
  */
@@ -738,7 +762,7 @@ pagefind-modal:not(:defined) {
   inset-inline-start: 0.5rem;
   z-index: 40;
   padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-inner, 5px);
+  border-radius: var(--radius-inner);
   background-color: var(--surface);
   box-shadow: 0 0 0 1px var(--border);
   color: var(--ink-strong);

@@ -1,0 +1,65 @@
+---
+/* The landing's header.
+ *
+ * Fixed glass over the garden, and the only navigation this page draws: the
+ * mark, the places further down the page, the way into the documentation,
+ * and the repository. Below the landing's breakpoint the words go and the
+ * mark and the repository stay, which is what fits across a phone without
+ * crowding.
+ *
+ * The seedling is a raster and the wordmark is drawn, and they are composed
+ * here rather than baked into one file: the leaf veins do not survive
+ * tracing, and the letterforms do not survive a small raster.
+ */
+import seedling from '../../assets/art/seedling.png'
+import wordmark from '../../assets/art/wordmark.svg'
+import githubMark from '../../icons/github.svg?raw'
+import { navSeedling } from '../../lib/hero-art'
+import { SITE } from '../../nav'
+---
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="header-left">
+      <a class="mini-mark" href="#top" aria-label="niwa home">
+        <picture>
+          <source type="image/avif" srcset={navSeedling.src} />
+          <img
+            class="brand-seedling"
+            src={seedling.src}
+            alt=""
+            width={seedling.width}
+            height={seedling.height}
+            fetchpriority="low"
+            draggable="false"
+          />
+        </picture>
+        {
+          /* The drawing carries the name, and the link above already says
+            it in words. The span is where that is stated, because the
+            drawing is a shared asset and says nothing about where it hangs. */
+        }
+        <img
+          class="brand-wordmark"
+          src={wordmark.src}
+          alt=""
+          width="849"
+          height="286"
+          draggable="false"
+        />
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#why">Why niwa</a>
+        <a href="#config">Config</a>
+        <a href="/start">Docs</a>
+      </nav>
+    </div>
+    <nav class="site-nav site-nav-actions" aria-label="Project navigation">
+      <a class="repo-link" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
+        <Fragment set:html={githubMark} />
+        <span>{SITE.slug}</span>
+      </a>
+      <a href="#install">Install</a>
+    </nav>
+  </div>
+</header>

@@ -1,14 +1,18 @@
 # pnpm settings for the site. It is not a workspace of several packages;
 # this file is where pnpm 11 keeps per-project configuration.
 
-# Both ship a platform binary and need their install script to place it.
+# esbuild and workerd each ship a platform binary. Only an install script
+# places one.
 allowBuilds:
-  # The design system and its CLI place compiled stylesheets and token
-  # CSS at install time.
-  '@astryxdesign/cli': true
-  '@astryxdesign/core': true
   esbuild: true
   workerd: true
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
+
+# Astro's built chunks import the image encoder with a bare specifier, which
+# the isolated layout does not serve for a transitive package. The hoist
+# places the lockfile's own sharp at node_modules/sharp so that import
+# resolves. It adds no dependency and moves no version.
+publicHoistPattern:
+  - sharp

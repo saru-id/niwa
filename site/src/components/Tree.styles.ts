@@ -1,24 +1,12 @@
 import * as stylex from '@stylexjs/stylex'
 
 export const styles = stylex.create({
-  figure: {
-    marginBlock: '1.5rem',
-    marginInline: 0,
-  },
-  // The same frame every other exhibit on the site wears: the surface, one
-  // hairline, the site's one corner.
+  // The listing's own type, inside the box `src/styles/frames.stylex.ts`
+  // draws. A listing is paths, so it is set in the face niwa prints paths in.
   frame: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderRadius: '8px',
-    borderStyle: 'solid',
-    borderWidth: 1,
     fontFamily: 'var(--font-mono)',
     fontSize: 'var(--text-nav)',
     lineHeight: 1.7,
-    overflowX: 'auto',
-    paddingBlock: '0.75rem',
-    paddingInline: '1rem',
   },
   // The root the rows hang from, printed as the listing's first line.
   root: {

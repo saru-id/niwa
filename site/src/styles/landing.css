@@ -1,0 +1,1013 @@
+/* The landing.
+ *
+ * One page, one composition: a painted garden over near-black, the promise
+ * in the calm left field, and the install line under it. Everything below
+ * the fold is the same page told in words, and it scrolls over the art
+ * rather than after it.
+ *
+ * Every rule is scoped under `.surface-landing`, which the layout writes on
+ * `<html>` for this page and no other. That is not decoration. Astro does
+ * not promise this sheet is served after the site's own, so a rule here has
+ * to outrank `app.css` on specificity rather than on order, and a rule
+ * scoped this way cannot reach a documentation page even if it did.
+ *
+ * The named colours are tokens, and the landing's values for them are
+ * declared in `app.css` beside the site's own. The literals below are the
+ * measured art-edge values no token carries: each is stated once, where it
+ * is used.
+ */
+
+/* ---- The page ----------------------------------------------------------
+ * The site's `scrollbar-gutter: stable` stays: it costs the composition
+ * nothing and it keeps an anchor jump from re-wrapping the page. The
+ * horizontal clip is what lets the art hang past the right edge without a
+ * scrollbar under it.
+ */
+
+:root.surface-landing {
+  overflow-x: clip;
+  scroll-padding-top: 5.25rem;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+:root.surface-landing body {
+  min-height: 100dvh;
+  overflow-x: clip;
+  overscroll-behavior: none;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+}
+
+/* The scrollbar runs on the page's own background, which is the one field
+ * `--quiet` is legible on. The site's rule sets this on every element, so
+ * this one has to as well: inheritance alone would never reach past it. */
+:root.surface-landing,
+.surface-landing * {
+  scrollbar-color: var(--quiet) var(--ground);
+}
+
+:root.surface-landing::-webkit-scrollbar-track,
+.surface-landing ::-webkit-scrollbar-track {
+  background-color: var(--ground);
+}
+
+:root.surface-landing::-webkit-scrollbar-thumb,
+.surface-landing ::-webkit-scrollbar-thumb {
+  background-color: var(--quiet);
+}
+
+.surface-landing ::selection {
+  background: var(--accent);
+  color: var(--ground);
+}
+
+/* The art is the page's subject, not a file to drag out of it. Safari reads
+ * the unprefixed selection property from 17 on, and the composition is
+ * older than that. */
+.surface-landing img {
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* A picture draws no box of its own here: the sources it holds are a choice
+ * of file, and the image inside it keeps the placement it would have had as
+ * a lone `<img>`.
+ *
+ * The second rule is what makes the first one safe. Without the picture's
+ * own box the sources become children of whatever holds it, and a flex
+ * container then lays each one out as an empty item with a gap beside it.
+ * A source is metadata and has no box anywhere. */
+.surface-landing picture {
+  display: contents;
+}
+
+.surface-landing source {
+  display: none;
+}
+
+.surface-landing a,
+.surface-landing button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.surface-landing h1,
+.surface-landing h2,
+.surface-landing h3,
+.surface-landing p {
+  margin-top: 0;
+}
+
+/* ---- The header --------------------------------------------------------
+ * Fixed glass at the top of the page. It is transparent over the first
+ * viewport and thickens once the page has moved; `is-scrolled` is how the
+ * page says which of the two it is.
+ */
+
+.surface-landing .site-header {
+  position: fixed;
+  z-index: 30;
+  top: 0;
+  right: 0;
+  left: 0;
+  padding: max(1rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right)) 0.9rem
+    max(1.5rem, env(safe-area-inset-left));
+  border-bottom: 1px solid transparent;
+  background: rgba(3, 5, 4, 0.32);
+  -webkit-backdrop-filter: saturate(1.45) blur(18px);
+  backdrop-filter: saturate(1.45) blur(18px);
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.surface-landing .site-header.is-scrolled {
+  border-bottom-color: var(--border);
+  background: rgba(3, 5, 4, 0.8);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+}
+
+.surface-landing .site-header-inner {
+  display: flex;
+  width: min(100%, 82rem);
+  min-height: 2.1rem;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.surface-landing .header-left {
+  display: flex;
+  min-height: 2.1rem;
+  align-items: center;
+  gap: 2.75rem;
+}
+
+/* The mark is a link outside any nav, so the site's underline reaches it.
+ * Two images are not a phrase to underline. */
+.surface-landing .mini-mark {
+  display: inline-flex;
+  min-height: 2.1rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.18rem;
+  color: inherit;
+  opacity: 0.96;
+  text-decoration: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.surface-landing .mini-mark:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+/* The seedling is a raster, because its leaf veins do not survive tracing;
+ * the wordmark beside it is drawn, and served as an image so the letterforms
+ * rasterize on the image path, where their edges land the same on every
+ * engine. Both are laid out from their height. */
+.surface-landing .brand-seedling,
+.surface-landing .brand-wordmark {
+  display: block;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.surface-landing .brand-seedling {
+  height: 2.05rem;
+}
+
+/* The wordmark sits a hair below the seedling's geometric centre, which is
+ * what puts its baseline and its coral dot on the seedling's visual mass. */
+.surface-landing .brand-wordmark {
+  height: 1.5rem;
+  transform: translateY(0.08rem);
+}
+
+.surface-landing .site-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  transform: translateY(0.125rem);
+}
+
+.surface-landing .site-nav-actions {
+  margin-left: auto;
+  text-shadow: 0 1px 10px rgba(3, 5, 4, 0.88);
+}
+
+.surface-landing .site-nav a {
+  display: inline-flex;
+  min-height: 2.1rem;
+  align-items: center;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.surface-landing .site-nav a:hover {
+  color: var(--ink-strong);
+}
+
+.surface-landing .site-nav .repo-link {
+  padding: 0;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-strong);
+}
+
+/* The mark is the site's own drawing. Its file asks for `currentColor` at
+ * one em, which here would take the ink of the words beside it and a size
+ * from the type: both are stated instead. The white at 88% is what the
+ * composition was measured with. */
+.surface-landing .repo-link svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  fill: #ffffff;
+  opacity: 0.88;
+}
+
+.surface-landing .site-nav .repo-link:hover {
+  border-color: var(--accent);
+  color: var(--accent-soft);
+}
+
+.surface-landing .site-nav a:focus-visible,
+.surface-landing .copy-button:focus-visible,
+.surface-landing .docs-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* ---- The hero ----------------------------------------------------------
+ * Two children and nothing between them: the art, which sticks to the top
+ * of the window, and the copy, which is pulled back over it by exactly the
+ * height the art holds. The copy scrolls away first and the garden stays
+ * pinned until the story below reaches the fold.
+ *
+ * `isolation: isolate` is what keeps the art's negative z-index inside the
+ * hero instead of behind the page's own background.
+ */
+
+.surface-landing .hero {
+  position: relative;
+  min-height: max(52rem, 130svh);
+  overflow: visible;
+  isolation: isolate;
+}
+
+.surface-landing .hero-art-wrap {
+  position: sticky;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  width: 88%;
+  height: 100svh;
+  margin-left: auto;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center;
+  animation: art-arrive 1500ms 80ms both cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.surface-landing .hero-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: right bottom;
+}
+
+/* The ripple canvas is placed and sized by the scene, which measures the
+ * art's rendered rectangle. Nothing here gives it a box. */
+.surface-landing .pond-ripples {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.surface-landing .hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100% - 3rem, 82rem);
+  min-height: 100svh;
+  margin: -100svh auto 0;
+  align-items: center;
+}
+
+/* Every block in the stack states the leading its own text wants, so the
+ * strut between them is the face's and not the documentation's. The reading
+ * measure would grow the line the docs link stands on, and the stack is
+ * centred: half of that growth moves every line above it. */
+.surface-landing .hero-copy {
+  width: min(32rem, 43vw);
+  padding-top: 2.5rem;
+  line-height: normal;
+}
+
+.surface-landing h1 {
+  margin-bottom: 0;
+  font-size: clamp(3.2rem, 5.2vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.048em;
+  line-height: 0.94;
+  animation: copy-arrive 780ms 120ms both cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The promise breaks where it was written to break, not where the column
+ * happens to end. */
+.surface-landing .headline-line {
+  display: block;
+}
+
+.surface-landing h1 em {
+  color: var(--accent-soft);
+  font-weight: 400;
+}
+
+.surface-landing .hero-subcopy {
+  max-width: 25rem;
+  margin: 1.45rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.96rem;
+  letter-spacing: 0.005em;
+  line-height: 1.55;
+  animation: copy-arrive 750ms 190ms both cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- The installer -----------------------------------------------------
+ * Two rules and a blur, because the command lands where the pond is
+ * detailed and a line of code has to be readable over it.
+ */
+
+.surface-landing .installer {
+  position: relative;
+  display: flex;
+  width: min(34rem, 100%);
+  min-height: 4.35rem;
+  margin-top: 1.55rem;
+  padding: 1.05rem 1rem 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: rgba(3, 5, 4, 0.74);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: copy-arrive 720ms 260ms both cubic-bezier(0.22, 1, 0.36, 1);
+  isolation: isolate;
+}
+
+/* A vine crosses the top rule and falls down the right edge. It is drawn
+ * twice: the second copy is masked to the hanging third and brightened, so
+ * the leaves that overhang the pond keep their warm detail instead of
+ * reading as one dark shape against the water. */
+.surface-landing .installer-vine {
+  position: absolute;
+  z-index: 2;
+  top: -1.55rem;
+  right: -2.15rem;
+  display: block;
+  width: min(27rem, 88vw);
+  height: auto;
+  opacity: 0.84;
+  filter: brightness(1.08) saturate(0.94) drop-shadow(1px 2px 1px rgba(1, 6, 4, 0.96))
+    drop-shadow(4px 8px 10px rgba(0, 0, 0, 0.56));
+  pointer-events: none;
+  transform-origin: 88% 20%;
+  transition:
+    opacity 300ms ease,
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.surface-landing .installer:hover .installer-vine {
+  opacity: 0.96;
+  transform: rotate(0.35deg) translateY(-0.08rem);
+}
+
+.surface-landing .installer-vine-highlight {
+  opacity: 0.5;
+  filter: brightness(1.5) saturate(0.76) sepia(0.12) drop-shadow(1px 3px 2px rgba(1, 6, 4, 0.94));
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 64%,
+    rgba(0, 0, 0, 0.28) 72%,
+    #000 84%
+  );
+  mask-image: linear-gradient(90deg, transparent 64%, rgba(0, 0, 0, 0.28) 72%, #000 84%);
+}
+
+.surface-landing .installer:hover .installer-vine-highlight {
+  opacity: 0.62;
+}
+
+.surface-landing .installer code,
+.surface-landing .installer .copy-button {
+  position: relative;
+  z-index: 3;
+}
+
+.surface-landing .installer code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: clamp(0.69rem, 1.05vw, 0.8rem);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.surface-landing .prompt {
+  margin-right: 0.6rem;
+  color: var(--accent);
+}
+
+.surface-landing .copy-button {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  padding: 0.42rem 0.5rem 0.42rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: var(--accent-soft);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.surface-landing .copy-button:hover {
+  color: var(--ink-strong);
+  transform: translateY(-1px);
+}
+
+.surface-landing .copy-button:active {
+  transform: translateY(1px);
+}
+
+/* The quiet way out of the first viewport, kept subordinate to the command
+ * above it. It is a link outside any nav, so it says so itself. */
+.surface-landing .docs-link {
+  display: inline-flex;
+  margin-top: 1rem;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  text-decoration: none;
+  animation: copy-arrive 680ms 340ms both cubic-bezier(0.22, 1, 0.36, 1);
+  transition: color 180ms ease;
+}
+
+.surface-landing .docs-link strong {
+  color: var(--ink);
+  font-weight: 500;
+  transition: color 180ms ease;
+}
+
+.surface-landing .docs-arrow {
+  color: var(--accent-soft);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.surface-landing .docs-link:hover,
+.surface-landing .docs-link:hover strong {
+  color: var(--ink-strong);
+}
+
+.surface-landing .docs-link:hover .docs-arrow {
+  transform: translateX(0.2rem);
+}
+
+/* ---- The story ---------------------------------------------------------
+ * Everything below the hero rides over the pinned art on its own opaque
+ * ground, which is what ends the garden's hold on the window.
+ */
+
+.surface-landing .story {
+  position: relative;
+  z-index: 2;
+  background: var(--ground);
+}
+
+.surface-landing .story > section {
+  width: min(100% - 3rem, 76rem);
+  margin: 0 auto;
+  scroll-margin-top: 5.25rem;
+}
+
+/* Two columns: the claim on the left, what backs it on the right. */
+.surface-landing .why,
+.surface-landing .config {
+  display: grid;
+  gap: clamp(4rem, 9vw, 9rem);
+  padding: clamp(7rem, 13vw, 11rem) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.surface-landing .why {
+  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.2fr);
+}
+
+/* The exhibit's column is the wider of the two by more than the section
+ * above it: the config's longest line is sixty-nine characters, and a fence
+ * that has to scroll to show one of them is a fence a reader distrusts. */
+.surface-landing .config {
+  grid-template-columns: minmax(12rem, 0.62fr) minmax(0, 1.38fr);
+}
+
+.surface-landing .story h2 {
+  margin-bottom: 0;
+  font-weight: 400;
+  letter-spacing: -0.048em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.surface-landing .why h2 {
+  max-width: 10ch;
+  font-size: clamp(3.25rem, 6vw, 6rem);
+}
+
+.surface-landing .why-body {
+  align-self: end;
+}
+
+.surface-landing .why-body p {
+  max-width: 34rem;
+  margin-bottom: 0;
+  color: var(--ink-muted);
+  font-size: clamp(1.08rem, 1.8vw, 1.35rem);
+  letter-spacing: -0.015em;
+  line-height: 1.65;
+}
+
+.surface-landing .config-copy {
+  align-self: center;
+}
+
+.surface-landing .config h2 {
+  max-width: 8ch;
+  font-size: clamp(3rem, 5vw, 5.1rem);
+}
+
+.surface-landing .config-copy p {
+  max-width: 24rem;
+  margin: 1.5rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+/* The config and the plan it produces are one exhibit, so they stand in one
+ * column with nothing between them but the air the frames already carry. */
+.surface-landing .exhibit {
+  min-width: 0;
+}
+
+/* ---- The daily loop and the boundary -----------------------------------
+ * One measure for both, because they are one argument: here is what you do
+ * with it, and here is what it will not do for you.
+ */
+
+.surface-landing .loop,
+.surface-landing .boundary {
+  padding: clamp(7rem, 13vw, 11rem) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.surface-landing .loop h2,
+.surface-landing .boundary h2,
+.surface-landing .router h2 {
+  max-width: 12ch;
+  margin-bottom: 3.25rem;
+  font-size: clamp(2.75rem, 4.5vw, 4rem);
+}
+
+.surface-landing .motions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surface-landing .motions li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.surface-landing .motions li > span {
+  padding-top: 0.18rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+}
+
+.surface-landing .motions h3 {
+  margin-bottom: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.35;
+}
+
+.surface-landing .motions p,
+.surface-landing .boundary p {
+  max-width: 34rem;
+  margin-bottom: 0;
+  color: var(--quiet);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.surface-landing .boundary p {
+  margin-bottom: 1rem;
+}
+
+.surface-landing .onward {
+  margin-top: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.surface-landing .boundary .onward {
+  margin-top: 2rem;
+}
+
+/* ---- The way into the documentation ------------------------------------
+ * Three doors, named by the three groups the sidebar is built from.
+ */
+
+.surface-landing .router {
+  padding: clamp(7rem, 13vw, 11rem) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.surface-landing .router-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surface-landing .router-card {
+  display: block;
+  padding: 1.75rem 2rem 1.75rem 0;
+  border-top: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 220ms ease;
+}
+
+.surface-landing .router-card:hover {
+  border-top-color: var(--accent);
+}
+
+.surface-landing .router-card h3 {
+  margin-bottom: 0.6rem;
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  transition: color 180ms ease;
+}
+
+.surface-landing .router-card:hover h3 {
+  color: var(--accent-soft);
+}
+
+.surface-landing .router-card p {
+  max-width: 18rem;
+  margin-bottom: 0;
+  color: var(--quiet);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ---- The last word -----------------------------------------------------
+ * The command again, at the bottom, where a reader who read the whole page
+ * arrives ready to run it.
+ */
+
+.surface-landing .install {
+  display: flex;
+  min-height: 34rem;
+  padding: clamp(7rem, 12vw, 10rem) 0 max(clamp(7rem, 12vw, 10rem), env(safe-area-inset-bottom));
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4rem;
+}
+
+.surface-landing .install h2 {
+  max-width: 9ch;
+  font-size: clamp(3.75rem, 8vw, 8rem);
+}
+
+/* The fence holds the installer's own measure, so the command reads at the
+ * same width at the end of the page as it does at the top. */
+.surface-landing .install-fence {
+  width: min(34rem, 100%);
+}
+
+@keyframes copy-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes art-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- The narrow composition --------------------------------------------
+ * 780px is `LANDING_QUERY` in `src/scripts/landing/geometry.ts`, where the
+ * boundary is decided. The scene changes composition on the same pixel the
+ * layout does, and a script cannot read a stylesheet for one number.
+ *
+ * Here the garden stops being a poster beside the copy and becomes the
+ * field behind it: a full-height crop centred on the pond, with an ink
+ * gradient over it so the promise stays readable without a card.
+ */
+
+@media (max-width: 780px) {
+  .surface-landing .hero-inner,
+  .surface-landing .story > section {
+    width: min(100% - 2rem, 76rem);
+  }
+
+  .surface-landing .site-header {
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .surface-landing .site-header-inner {
+    gap: 1rem;
+  }
+
+  .surface-landing .header-left .site-nav {
+    display: none;
+  }
+
+  .surface-landing .site-nav-actions {
+    margin-left: auto;
+  }
+
+  .surface-landing .site-nav-actions a:not(.repo-link),
+  .surface-landing .repo-link span {
+    display: none;
+  }
+
+  .surface-landing .site-nav .repo-link {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .surface-landing .repo-link svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .surface-landing .hero {
+    display: block;
+    min-height: 100svh;
+    overflow: hidden;
+  }
+
+  .surface-landing .hero::after {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(3, 5, 4, 0.12) 0%,
+        rgba(3, 5, 4, 0.22) 34%,
+        rgba(3, 5, 4, 0.7) 76%,
+        #030504 100%
+      ),
+      linear-gradient(90deg, rgba(3, 5, 4, 0.78) 0%, rgba(3, 5, 4, 0.34) 76%, rgba(3, 5, 4, 0.12) 100%);
+    content: '';
+    pointer-events: none;
+  }
+
+  .surface-landing .hero-art-wrap {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    aspect-ratio: auto;
+    transform: none;
+    transform-origin: center;
+  }
+
+  .surface-landing .hero-art {
+    object-fit: cover;
+    object-position: 65% center;
+  }
+
+  .surface-landing .pond-ripples {
+    display: block;
+  }
+
+  .surface-landing .hero-inner {
+    display: flex;
+    min-height: 100svh;
+    margin: 0 auto;
+    padding: clamp(5.5rem, 12vh, 6.5rem) 0 2.5rem;
+    align-items: center;
+  }
+
+  .surface-landing .hero-copy {
+    width: 100%;
+    padding-top: 0;
+  }
+
+  .surface-landing h1 {
+    font-size: clamp(2.9rem, 12.5vw, 3.45rem);
+    text-shadow:
+      0 2px 3px rgba(0, 0, 0, 0.96),
+      0 12px 32px rgba(0, 0, 0, 0.88);
+  }
+
+  .surface-landing .hero-subcopy,
+  .surface-landing .docs-link {
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.96);
+  }
+
+  .surface-landing .installer {
+    margin-top: 1.5rem;
+  }
+
+  .surface-landing .installer-vine {
+    top: -1.35rem;
+    right: -1rem;
+    width: min(21rem, 92vw);
+    opacity: 0.82;
+  }
+
+  .surface-landing .installer-vine-highlight {
+    opacity: 0.48;
+  }
+
+  .surface-landing .why,
+  .surface-landing .config {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+  }
+
+  .surface-landing .why h2,
+  .surface-landing .config h2 {
+    max-width: 10ch;
+  }
+
+  .surface-landing .router-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .surface-landing .router-card {
+    padding-right: 0;
+  }
+
+  .surface-landing .install {
+    min-height: 30rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 440px) {
+  .surface-landing .site-header {
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+  }
+
+  .surface-landing .brand-seedling {
+    height: 1.9rem;
+  }
+
+  .surface-landing .brand-wordmark {
+    height: 1.4rem;
+  }
+
+  .surface-landing .installer code {
+    font-size: 0.66rem;
+  }
+
+  .surface-landing .copy-button {
+    font-size: 0.61rem;
+  }
+
+  .surface-landing .story > section {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+/* ---- Reduced motion ----------------------------------------------------
+ * The site already stops every transition. The landing adds the entrances
+ * and the canvas, which are its own.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .surface-landing *,
+  .surface-landing *::before,
+  .surface-landing *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .surface-landing .hero-art-wrap {
+    transform: none !important;
+  }
+
+  .surface-landing .pond-ripples {
+    display: none;
+  }
+}
+
+/* Without the scroll handoff there is nothing for the extra 30svh to hand
+ * off, so the hero becomes one still composition: the art anchored to the
+ * bottom right, the copy centred over it. */
+@media (prefers-reduced-motion: reduce) and (min-width: 781px) {
+  .surface-landing .hero {
+    display: grid;
+    min-height: max(44rem, 100svh);
+    overflow: hidden;
+    place-items: center;
+  }
+
+  .surface-landing .hero-art-wrap {
+    position: absolute;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: 88%;
+    height: 88%;
+    margin: 0;
+  }
+
+  .surface-landing .hero-inner {
+    display: block;
+    min-height: 0;
+    margin: 0;
+  }
+}
+
+/* Installed to the home screen there is no browser chrome above the header,
+ * so it holds its own air instead. */
+@media (display-mode: standalone) {
+  .surface-landing .site-header {
+    padding-top: max(1.15rem, env(safe-area-inset-top));
+  }
+}
+
+/* The glass, stated in the token where the engine can mix it. The literal
+ * above is what an engine that cannot mix is served instead: a shade more
+ * transparent, and the same glass to read through. */
+@supports (background: color-mix(in srgb, black 50%, transparent)) {
+  .surface-landing .site-header {
+    background: color-mix(in srgb, var(--ground) 38%, transparent);
+  }
+
+  .surface-landing .site-header.is-scrolled {
+    background: color-mix(in srgb, var(--ground) 84%, transparent);
+  }
+}

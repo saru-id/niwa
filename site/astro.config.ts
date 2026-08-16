@@ -26,6 +26,21 @@ export default defineConfig({
     // adds, so it is declared here rather than through the integration, which
     // has no place to pass a Babel plugin. `treeshakeCompensation` keeps the
     // bundler from dropping modules that only export style definitions.
-    plugins: [stylex.vite({ treeshakeCompensation: true })],
+    plugins: [
+      stylex.vite({
+        treeshakeCompensation: true,
+        /* Which stylesheet the collected rules are appended to.
+         *
+         * The build writes two: the one the shell's own CSS lands in, which
+         * every page links, and the landing's, which only the landing links
+         * on top of it. Every rule StyleX collects goes into one of them, and
+         * left to choose the plugin takes whichever the bundle happens to
+         * list first. Naming the sheet is what keeps a documentation page
+         * from linking the one its rules are not in. The landing's is named
+         * for its route; the sheet every page has is the other one.
+         */
+        cssInjectionTarget: (file) => !/(^|\/)index\.[^/]*\.css$/.test(file),
+      }),
+    ],
   },
 })

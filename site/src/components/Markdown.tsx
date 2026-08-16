@@ -1,4 +1,3 @@
-import type { TableColumnAlign } from '@astryxdesign/core/Table'
 import { createHighlighter } from '@tanstack/highlight/core'
 import { json } from '@tanstack/highlight/languages/json'
 import { plaintext } from '@tanstack/highlight/languages/plaintext'
@@ -8,8 +7,10 @@ import { createTanStackMarkdownHighlighter } from '@tanstack/highlight/markdown'
 import { Markdown as TanStackMarkdown } from '@tanstack/markdown/react'
 import type { ComponentNode, MarkdownExtension } from '@tanstack/markdown'
 import * as stylex from '@stylexjs/stylex'
+import type { StyleXStyles } from '@stylexjs/stylex'
 import {
   Children,
+  createElement,
   isValidElement,
   type ComponentPropsWithoutRef,
   type ReactElement,
@@ -18,7 +19,9 @@ import {
 
 import { luau } from '../lib/luau'
 import { prepareTree, readTree, type TreeEntry } from '../lib/tree'
-import { DataTable, type DataColumn } from './DataTable'
+import { BOX, EXHIBIT } from '../styles/frames.stylex'
+import { TYPE } from '../styles/type.stylex'
+import { DataTable, type DataColumn, type TableColumnAlign } from './DataTable'
 import { TreeBlock } from './TreeBlock'
 import { Screen } from './Screen'
 
@@ -41,7 +44,6 @@ const styles = stylex.create({
       default: 0,
       ':hover': 1,
     },
-    margin: '1.5rem 0',
     position: 'relative',
   },
   /* The fence's two labels, at its top right.
@@ -60,7 +62,8 @@ const styles = stylex.create({
   controls: {
     alignItems: 'center',
     backgroundColor: 'var(--surface)',
-    borderStartEndRadius: '8px',
+    // The overlay sits inside the frame's own corner and must follow it.
+    borderStartEndRadius: BOX.radius,
     display: 'flex',
     gap: '0.75rem',
     paddingBlock: '0.125rem',
@@ -68,10 +71,9 @@ const styles = stylex.create({
     position: 'absolute',
     insetInlineEnd: '1px',
     insetBlockStart: '1px',
-    // Clear of the frame's own corner, and level with the first line of
-    // code rather than floating above it.
+    // Clear of the frame's own corner, and ending where a line of code ends.
     marginBlockStart: '0.625rem',
-    marginInlineEnd: '1.25rem',
+    marginInlineEnd: BOX.padInline,
   },
   badge: {
     color: 'var(--ink-muted)',
@@ -110,17 +112,10 @@ const styles = stylex.create({
     transitionTimingFunction: 'ease',
   },
   pre: {
-    backgroundColor: 'var(--surface)',
-    borderColor: 'var(--border)',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderRadius: '8px',
     color: 'var(--th-token)',
     fontSize: 'var(--text-code)',
     lineHeight: 1.6,
     margin: 0,
-    overflowX: 'auto',
-    padding: '1rem 1.25rem',
   },
 })
 
@@ -130,23 +125,46 @@ function classes(...names: Array<string | undefined>): string | undefined {
   return joined === '' ? undefined : joined
 }
 
+/* The blocks the renderer builds, wearing the page's own type.
+ *
+ * Markdown carries no classes, so without this a written page is set in the
+ * browser's defaults while a generated page is set in `styles/type.stylex.ts`,
+ * and the two kinds of page announce themselves. The renderer passes an id
+ * and, on a heading, the anchor beside the words; both travel through.
+ */
+function wearing(tag: 'h2' | 'p' | 'ul' | 'ol' | 'li', worn: StyleXStyles) {
+  return function Block({ children, className, ...rest }: ComponentPropsWithoutRef<'div'>) {
+    const style = stylex.props(worn)
+    return createElement(
+      tag,
+      { ...rest, className: classes(className, style.className), style: style.style },
+      children,
+    )
+  }
+}
+
 type PreProps = ComponentPropsWithoutRef<'pre'> & { 'data-lang'?: string }
 
 function CodeBlock({ children, className, ...rest }: PreProps) {
   const lang = rest['data-lang']
-  const frame = stylex.props(styles.pre)
+  const frame = stylex.props(EXHIBIT.frame, EXHIBIT.air, styles.pre)
 
   return (
-    <div data-code-block="" {...stylex.props(styles.block)}>
+    <div data-code-block="" {...stylex.props(EXHIBIT.block, styles.block)}>
       <div {...stylex.props(styles.controls)}>
-        {/* The label is its own element so the swap `copy.ts` makes has a
-          live region to announce from. The button's name is still its
-          contents, so the name changes with the label. */}
-        <button data-copy="" type="button" {...stylex.props(styles.copy)}>
-          <span data-copy-label="" role="status">
+        {/* The control is named once and keeps that name, because a name
+          says what a control does and the word on it says what the last
+          press did. The word is hidden from the name and announced from the
+          region below instead. */}
+        <button aria-label="Copy" data-copy="" type="button" {...stylex.props(styles.copy)}>
+          <span aria-hidden="true" data-copy-label="">
             Copy
           </span>
         </button>
+        {/* The outcome, said to a screen reader and to nothing else. It
+          stands outside the button so that announcing it renames nothing,
+          and out of flow, so the row is laid out as if it were not here. */}
+        <span className="sr-only" data-copy-status="" role="status" />
         {/* The badge names the fence verbatim, and it comes last so that it
           holds the right edge. A fence with no language and a fence
           declaring `plaintext` are the same thing downstream, and neither
@@ -174,10 +192,9 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
  * The renderer hands this component a `thead` and a `tbody` of ordinary
  * elements. It is read back into a heading row and a rectangle of cells, and
  * `DataTable` renders it: the hairlines, the cell rhythm, the column widths
- * and the scroll container are the design system's, and nothing here draws a
- * box. Reading it back is what buys the widths — a table laid out from its
- * own contents gives a column of one word the room a column of sentences
- * needs.
+ * and the scroll container are all its own, and nothing here draws a box.
+ * Reading it back is what buys the widths — a table laid out from its own
+ * contents gives a column of one word the room a column of sentences needs.
  */
 type Cell = ReactElement<{ children?: ReactNode; style?: { textAlign?: string } }>
 
@@ -187,7 +204,7 @@ function within(element: Cell | undefined): Cell[] {
   return Children.toArray(element.props.children).filter((child) => isValidElement(child)) as Cell[]
 }
 
-/** Markdown says left, right and center; the design system says start and end. */
+/** Markdown says left, right and center; a column says start and end. */
 const ALIGNMENT: Record<string, TableColumnAlign> = {
   center: 'center',
   left: 'start',
@@ -414,10 +431,15 @@ export function Markdown({
     <TanStackMarkdown
       components={{
         a: Anchor,
+        h2: wearing('h2', [TYPE.chapter, TYPE.section]),
+        li: wearing('li', TYPE.item),
+        ol: wearing('ol', TYPE.list),
+        p: wearing('p', TYPE.paragraph),
         pre: CodeBlock,
         screen: Screen,
         table: MarkdownTable,
         tree: TreeFence,
+        ul: wearing('ul', TYPE.list),
       }}
       extensions={[screenFences(file)]}
       headingAnchors={{ ariaHidden: false, tabIndex: 0 }}

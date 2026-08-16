@@ -1,159 +1,94 @@
 ---
-import * as stylex from '@stylexjs/stylex'
-import { styles as shell } from '../components/Layout.styles'
-import Layout from '../components/Layout.astro'
-import { Markdown } from '../components/Markdown'
-import { Screen } from '../components/Screen'
-import { styles } from '../components/Landing.styles'
-
 /* The landing.
  *
- * Five bands inside the shell: the statement, the config, the screen, the
- * daily loop, the boundary. The header and the footer are the shell's.
- * Bands 2 and 3 are one exhibit: the tool's own test writes that config
- * verbatim and snapshots the plan it produces.
+ * A garden over near-black, the promise in the calm left field, and the
+ * install line under it. Below that the same page in words: what niwa is,
+ * one real config beside the real plan it produces, the three motions of a
+ * day, the limits, and three ways into the documentation.
+ *
+ * The page draws its own structure. The layout hands this slot straight to
+ * the body, so the header, the main and the sections below are all stated
+ * here rather than borrowed from the documentation's chrome.
  */
+import Layout from '../components/Layout.astro'
+import Boundary from '../components/landing/Boundary.astro'
+import Config from '../components/landing/Config.astro'
+import DocsRouter from '../components/landing/DocsRouter.astro'
+import Hero from '../components/landing/Hero.astro'
+import InstallCta from '../components/landing/InstallCta.astro'
+import Loop from '../components/landing/Loop.astro'
+import LandingNav from '../components/landing/Nav.astro'
+import Why from '../components/landing/Why.astro'
+import { heroDesktop, heroMobile } from '../lib/hero-art'
+import '../styles/landing.css'
 
-// The source a refused fence names. This page holds its own markdown.
-const SELF = 'src/pages/index.astro'
-
-// Both blocks go through the same markdown pipeline the documentation uses,
-// so the frame, the language badge and the copy control are the site's own.
-const INSTALL = ['```shell', 'curl -fsSL niwa.rs | sh', '```'].join('\n')
-
-const CONFIG_SOURCE = `--!strict
-local niwa = require("@niwa")
-
-niwa.brew.formula { "fd", "ripgrep", "jq" }
-
-niwa.dock {
-  autohide = true,
-  tilesize = 48,
-}
-
-niwa.file("~/.zshrc", { source = "@self/files/zshrc" })
-
-local nvim = niwa.brew.formula "neovim"
-local cfg  = niwa.link("~/.config/nvim", { to = "@self/files/nvim" })
-if nvim.changed or cfg.changed then
-  niwa.run("nvim --headless '+Lazy! sync' +qa", { timeout = "5m" })
-end`
-
-const CONFIG = ['```luau', CONFIG_SOURCE, '```'].join('\n')
-
-/* Band 3 is the plan the config above produces: the tool's own test writes
- * that config verbatim and snapshots this screen. */
-const PLAN = 'plan_mixed_pending_color'
+// The pair mirrors LANDING_QUERY in scripts/landing/geometry.ts, which owns
+// the 780 boundary; 781 is its complement, so the two preloads split the
+// viewports with no gap and no overlap.
+const NARROW = '(max-width: 780px)'
+const WIDE = '(min-width: 781px)'
 ---
 
-{/* The landing renders no rail: it draws its own full-width bands, and its
-  header carries the navigation at every width. */}
-<Layout description="niwa is a configuration tool for macOS." wide>
-  {/* Band 1. The statement, one hairline, and what follows from it. */}
-  <section {...stylex.props(shell.column, styles.bandStatement)}>
-    <div {...stylex.props(styles.column)}>
-      <h1 {...stylex.props(styles.statement)}>
-        Your whole Mac, configured by one script you can actually read.
-      </h1>
-      <hr {...stylex.props(styles.rule)} />
-      <p {...stylex.props(styles.lede)}>
-        niwa is a configuration tool for macOS. One Luau script declares what the machine
-        should be: packages, dotfiles, settings, and services. Applying it makes that true.
-        Apply again and almost nothing happens, because almost everything is already true.
-      </p>
-      <div {...stylex.props(styles.install)}>
-        <Markdown source={INSTALL} file={SELF} />
+<Layout
+  surface="landing"
+  pageTitle="niwa · your Mac, cultivated"
+  description="niwa grows a complete macOS setup from one readable Luau file."
+>
+  {
+    /* The hero is the first paint, and its two encodes are split on the
+      landing's own breakpoint. The preloads carry the same split, so the
+      browser starts the one file it will actually draw before it has parsed
+      the picture that names it. */
+  }
+  <Fragment slot="head">
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      href={heroMobile.src}
+      media={NARROW}
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      href={heroDesktop.src}
+      media={WIDE}
+    />
+  </Fragment>
+
+  <div id="top">
+    <LandingNav />
+    {
+      /* Search indexes what the page says, which is the main and not the
+        header's four words. */
+    }
+    <main id="main" data-pagefind-body>
+      <Hero />
+      {
+        /* Everything below the hero rides over the pinned garden on its own
+          opaque ground, which is what ends the garden's hold on the window. */
+      }
+      <div class="story">
+        <Why />
+        <Config />
+        <Loop />
+        <Boundary />
+        <DocsRouter />
+        <InstallCta />
       </div>
-      <p {...stylex.props(styles.secondary)}>
-        <a href="/start">What the installer touches</a>
-      </p>
-    </div>
-  </section>
-
-  {/* Band 2. The config. */}
-  <section {...stylex.props(shell.column, styles.band)}>
-    <div {...stylex.props(styles.column)}>
-      <figure {...stylex.props(styles.figure)}>
-        {/* No client directive. React runs once, during the build. */}
-        <Markdown source={CONFIG} file={SELF} />
-        <figcaption {...stylex.props(styles.caption)}>init.luau</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  {/* Band 3. The screen that config produces. Read as one pair with band 2. */}
-  <section {...stylex.props(shell.column, styles.band)}>
-    <div {...stylex.props(styles.column)}>
-      <Screen fixture={PLAN} command="niwa plan" />
-    </div>
-  </section>
-
-  {/* Band 4. The three motions, numbered. */}
-  <section {...stylex.props(shell.column, styles.band)}>
-    <div {...stylex.props(styles.column)}>
-      <h2 {...stylex.props(styles.heading)}>The daily loop</h2>
-      <ol {...stylex.props(styles.steps)}>
-        <li {...stylex.props(styles.step)}>
-          <span {...stylex.props(styles.numeral)}>1</span>
-          <div>
-            <p {...stylex.props(styles.stepText)}>
-              Change the machine through the config. Add a line, run{' '}
-              <code {...stylex.props(styles.code)}>niwa apply</code>, done.
-            </p>
-            <p {...stylex.props(styles.onward)}>
-        <a href="/start/first-apply">Your first apply</a>
-            </p>
-          </div>
-        </li>
-        <li {...stylex.props(styles.step)}>
-          <span {...stylex.props(styles.numeral)}>2</span>
-          <div>
-            <p {...stylex.props(styles.stepText)}>
-              Change the machine directly, then keep it. niwa notices, and offers the config
-              line back. Accept it, and your script says what your machine says.
-            </p>
-            <p {...stylex.props(styles.onward)}>
-        <a href="/concepts/drift">Drift and the write-back loop</a>
-            </p>
-          </div>
-        </li>
-        <li {...stylex.props(styles.step)}>
-          <span {...stylex.props(styles.numeral)}>3</span>
-          <div>
-            <p {...stylex.props(styles.stepText)}>
-              Set up a new machine. One command, then read the plan and confirm.
-            </p>
-            <p {...stylex.props(styles.onward)}>
-        <a href="/start/second-machine">Set up a second machine</a>
-            </p>
-          </div>
-        </li>
-      </ol>
-    </div>
-  </section>
-
-  {/* Band 5. The boundary. */}
-  <section {...stylex.props(shell.column, styles.bandLast)}>
-    <div {...stylex.props(styles.column)}>
-      <h2 {...stylex.props(styles.heading)}>What niwa will not do</h2>
-      <p {...stylex.props(styles.boundaryText)}>
-        It never applies on its own. The watcher notices and notifies; applying is your call,
-        unless you declare a schedule yourself.
-      </p>
-      <p {...stylex.props(styles.boundaryText)}>
-        Undo restores what the last apply changed. It is not a rollback of the whole world.
-      </p>
-      <p {...stylex.props(styles.boundaryText)}>
-        One plan, in your order. Program order is the order; there is no dependency graph to
-        out-guess you.
-      </p>
-      <p {...stylex.props(styles.boundaryOnward)}>
-        <a href="/concepts/limits">Every refusal, with its reason</a>
-      </p>
-    </div>
-  </section>
+    </main>
+  </div>
 
   <script>
     import '../scripts/copy'
+  </script>
+  <script>
+    import { start } from '../scripts/landing/ui'
+    start()
+  </script>
+  <script>
+    import { start } from '../scripts/landing/index'
+    start()
   </script>
 </Layout>

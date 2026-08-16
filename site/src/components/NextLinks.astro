@@ -1,5 +1,6 @@
 ---
 import * as stylex from '@stylexjs/stylex'
+import { TYPE } from '../styles/type.stylex'
 import { styles } from './NextLinks.styles'
 
 /** One to three, written by hand. There is no mechanical next page. */
@@ -17,14 +18,14 @@ interface Props {
 const { links } = Astro.props
 ---
 
-<div {...stylex.props(styles.block)}>
+<div {...stylex.props(TYPE.chapter)}>
   <p {...stylex.props(styles.label)}>Next</p>
-  <ul {...stylex.props(styles.list)}>
+  <ul {...stylex.props(TYPE.entries)}>
     {
       links.map((link) => (
-        <li {...stylex.props(styles.item)}>
+        <li {...stylex.props(TYPE.item)}>
           <a href={link.href}>{link.label}</a>{' '}
-          <span {...stylex.props(styles.why)}>— {link.why}</span>
+          <span {...stylex.props(TYPE.said)}>— {link.why}</span>
         </li>
       ))
     }

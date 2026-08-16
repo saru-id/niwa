@@ -9,15 +9,13 @@ import type { AstroIntegration } from 'astro'
  * Astro writes every registered renderer's client entrypoint into the
  * client build whether or not a component hydrates. React on this site
  * runs during the build, and what reaches the reader is HTML, so that
- * entrypoint is 191 KB of react-dom that no page loads. It used to be
- * removed by stripping the entrypoint out of the renderer, which also made
- * a `client:*` directive fail the build. The design system needs that
- * directive back for the components that carry state, so the strip is
- * gone.
+ * entrypoint is 191 KB of react-dom that no page loads.
  *
- * This runs after the build instead, and reads the output rather than
- * predicting it. A page that hydrates nothing pays nothing, a page that
- * hydrates keeps every chunk it names, and neither case needs a flag.
+ * The integration reads the output rather than predicting it. Deleting the
+ * entrypoint at its source would make any `client:*` directive fail the
+ * build. Reading the output deletes only what no page names, and a page
+ * that hydrates keeps its chunks. Nothing on the site hydrates, so every
+ * pass deletes the entrypoint.
  *
  * A file is kept when its name appears in any built page or in any script
  * that survives. Astro and Vite write the hashed file name into the
