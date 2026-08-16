@@ -184,7 +184,7 @@ check 4 "the example applies clean (exit 0)" test "$STATUS" -eq 0
 niwa plan
 check 4a "the plan answers pending, not a crash (exit 2)" test "$STATUS" -eq 2
 check 4b "the pending work is the /Library kind" \
-    grep -Eq 'hosts:|rosetta|login_shell|hostname' "$SANDBOX/stdout"
+    grep -Eq '/Library/Preferences/|hosts:|rosetta|login_shell|hostname' "$SANDBOX/stdout"
 check 4c "only /Library work and the rosetta run stay pending" \
     sh -c "! grep -Eq 'zshrc|starship|ghostty|netrc|brew\.formula|brew\.cask|npm:|mise:|service:|lazygit|com\.apple\.dock|com\.apple\.finder|nvim' '$SANDBOX/stdout'"
 
