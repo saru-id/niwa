@@ -332,4 +332,7 @@ packages are alpha or beta and treat a minor as breaking.
 - Maintenance and weight: both current; the indexer is a platform binary
   that runs at build time only, the interface is a small script loaded on
   demand.
+- Pin: exact. pagefind is a platform binary that astro-pagefind invokes at
+  build time, and an exact pin is what keeps the binary a known quantity
+  across machines.
 - License: MIT (both).
