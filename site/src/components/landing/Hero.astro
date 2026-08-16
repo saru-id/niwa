@@ -45,9 +45,12 @@ const WIDE = '(min-width: 781px)'
 
   <div class="hero-inner">
     <div class="hero-copy">
+      {/* The lines are blocks, so the space after each one never paints.
+          It is for every reader of the text alone, which otherwise runs the
+          lines into one word at each seam. */}
       <h1 id="hero-title">
-        <span class="headline-line">Your Mac,</span>
-        <span class="headline-line"><em>grown</em> from</span>
+        <span class="headline-line">Your Mac,</span>{' '}
+        <span class="headline-line"><em>grown</em> from</span>{' '}
         <span class="headline-line">one file.</span>
       </h1>
       <p class="hero-subcopy">Declarative macOS setup, written in Luau.</p>
