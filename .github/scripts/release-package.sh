@@ -22,6 +22,10 @@ OUTDIR="$(cd "$OUTDIR" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+# Build into a scratch target directory, so the packaged binary is the one this
+# run compiled and never a file left behind in the checkout's `target/`.
+BUILD="$WORK/target"
+
 # The two arch tokens are the two `uname -m` prints on macOS. `install.sh`
 # interpolates that print into the file name and the site worker redirects the
 # same two tokens, so each Rust target maps to one of these names and no other.
@@ -32,16 +36,26 @@ package() {
 
     # The lockfile is the dependency set the release is built from. A build
     # that would rewrite it fails instead.
-    cargo build --release --locked --target "$target"
+    CARGO_TARGET_DIR="$BUILD" cargo build --release --locked --target "$target"
+    built="$BUILD/$target/release/niwa"
 
     # An Apple silicon runner has no Rosetta, so the x86_64 binary is never
     # executed here. lipo is what proves which machine it is for.
-    archs="$(lipo -archs "target/$target/release/niwa")"
+    archs="$(lipo -archs "$built")"
     [ "$archs" = "$arch" ] || fail "$target built $archs, not $arch"
 
     stage="$WORK/stage-$arch"
     mkdir -p "$stage"
-    cp "target/$target/release/niwa" "$stage/niwa"
+    cp "$built" "$stage/niwa"
+
+    # The arm64 binary is native here, so its own reported version must match
+    # the name it ships under. The x86_64 binary cannot run on this runner.
+    if [ "$arch" = "arm64" ]; then
+        reported="$("$stage/niwa" --version)"
+        [ "$reported" = "niwa $VERSION" ] \
+            || fail "the built binary reports \"$reported\", not niwa $VERSION"
+    fi
+
     (cd "$stage" && COPYFILE_DISABLE=1 tar --no-mac-metadata --uid 0 --gid 0 -czf "$OUTDIR/$name" niwa)
 
     listing="$(tar -tzf "$OUTDIR/$name")"

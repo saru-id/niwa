@@ -60,12 +60,14 @@ jobs:
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
 
+      # Cargo resolves the package version, so a stray `version =` line elsewhere
+      # in the manifest cannot become the version the release is named for.
       - name: Read the version
         id: version
         run: |
-          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
-          if [ -z "$version" ]; then
-            printf 'Cargo.toml no longer carries a top-level version line\n' >&2
+          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "niwa") | .version')"
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            printf 'cargo metadata did not report a version for the niwa package\n' >&2
             exit 1
           fi
           printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
