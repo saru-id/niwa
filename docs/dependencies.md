@@ -560,7 +560,8 @@ repository. None of this links into the binary or ships on the site.
 - Pin: 0.734, exact. The release publishes no checksums, so the pin is
   the digest computed from the asset: `luau-macos.zip`, SHA256
   `b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd`. A
-  version bump recomputes it and re-checks the archive's file list.
+  version bump recomputes it. CI extracts only `luau-analyze` from the
+  archive onto PATH.
 - License: MIT.
 
 ### Node

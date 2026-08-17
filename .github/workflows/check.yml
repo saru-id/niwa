@@ -101,7 +101,9 @@ jobs:
           curl -fsSLo luau-macos.zip https://github.com/luau-lang/luau/releases/download/0.734/luau-macos.zip
           # The Luau release publishes no checksums, so this digest is the pin.
           printf '%s  luau-macos.zip\n' "b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd" | shasum -a 256 -c -
-          unzip -q -o luau-macos.zip -d luau
+          # Only luau-analyze goes on PATH, so nothing else in the archive
+          # can shadow a tool a later step runs.
+          unzip -q -o luau-macos.zip luau-analyze -d luau
           # Exit 0 here proves the downloaded binary runs on this runner, so a
           # zip that cannot run fails in this step, not inside the site gate.
           ./luau/luau-analyze --version
