@@ -63,6 +63,13 @@ describe('the release redirect', () => {
   test('points at the repository the site names', () => {
     expect(SITE.repository).toBe(`https://github.com/${RELEASE_REPO}`)
   })
+
+  // The deploy preflight checks the running repository's own releases, so a
+  // redirect pointed at any other repository would pass that gate and still
+  // send every install elsewhere. This holds the name to the one it must be.
+  test('is the repository the releases live in', () => {
+    expect(RELEASE_REPO).toBe('saru-id/niwa')
+  })
 })
 
 // The installer's default version is what `curl niwa.rs | sh` fetches when
