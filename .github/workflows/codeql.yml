@@ -1,0 +1,59 @@
+name: codeql
+
+# There is no pull_request trigger. The SARIF upload needs
+# security-events: write, and the token on a pull request from a fork cannot
+# hold it. A repository with default setup enabled also refuses an advanced
+# setup workflow. Push and schedule keep pull requests clear of both.
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly. The minute is off the hour because runs scheduled on the hour
+    # wait in a longer queue.
+    - cron: "14 8 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-24.04
+    # No run of this scan is measured yet. Fifteen minutes is a ceiling that
+    # stops a stuck job. The workflow runs after merge, so a low value blocks
+    # no pull request.
+    timeout-minutes: 15
+    # A job permissions block replaces the workflow block. The two never merge,
+    # so contents: read is repeated here.
+    permissions:
+      security-events: write # SARIF upload
+      contents: read
+    strategy:
+      # A rust extraction failure must not cancel the javascript analysis.
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: rust
+            build-mode: none
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize the analyzer
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Analyze the code
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: "/language:${{ matrix.language }}"

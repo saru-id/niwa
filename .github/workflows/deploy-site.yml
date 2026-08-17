@@ -1,0 +1,140 @@
+name: deploy-site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Broad on purpose. The site gate reads the Rust sources, the root
+      # manifest, the snapshot tests and the shipped types, and the build
+      # copies the installer, so a change to any of them can change what the
+      # site must say or ship.
+      - site/**
+      - install.sh
+      - share/**
+      - tests/**
+      - src/**
+      - Cargo.toml
+      - Cargo.lock
+      - Makefile
+      - .github/workflows/deploy-site.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The default run shell is `bash -e`, with no pipefail. The workflow linters
+# read run blocks as `-eo pipefail`. Naming the shell makes the linted
+# semantics the executed ones.
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy
+    # The push trigger is already main-only, so this guards workflow_dispatch.
+    # Without it, anyone with write access could dispatch the job on an
+    # arbitrary branch and run that branch's code with the production secrets
+    # in scope.
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    environment: production
+    # Minutes on a warm machine. Forty-five leaves room for a cold runner,
+    # because a tight timeout reads as a flake.
+    timeout-minutes: 45
+    # This job restores no cache of any kind. A job that both reads a cache and
+    # publishes carries a poisoned entry straight to the live site.
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The deploy fails closed here. The built site copies install.sh into its
+      # output, so publishing a site whose installer defaults to a version with
+      # no release breaks every `curl niwa.rs | sh` until that release exists.
+      - name: Check the installer's default release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(sed -n 's/^VERSION="[$]{NIWA_VERSION:-\(.*\)}"$/\1/p' install.sh)"
+          if [ -z "$version" ]; then
+            printf 'Checking the release the installer defaults to. install.sh no longer carries the expected default version line. Update this preflight with the line it carries now. Nothing is deployed.\n' >&2
+            exit 1
+          fi
+          status="$(curl -sS -o "$RUNNER_TEMP/release.json" -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/v$version")" || status="000"
+          if [ "$status" = "404" ]; then
+            printf 'Checking the release the installer defaults to. Release v%s is not published. Publish it, then re-run this deploy. Nothing is deployed.\n' "$version" >&2
+            exit 1
+          fi
+          if [ "$status" = "000" ]; then
+            printf 'Checking the release the installer defaults to. curl never got an HTTP response from the releases API. This is an infrastructure error, not a missing release. Re-run this deploy. Nothing is deployed.\n' >&2
+            exit 1
+          fi
+          if [ "$status" != "200" ]; then
+            printf 'Checking the release the installer defaults to. The releases API answered %s. This is an infrastructure error, not a missing release. Re-run this deploy. Nothing is deployed.\n' "$status" >&2
+            exit 1
+          fi
+          if ! jq -e 'has("assets")' "$RUNNER_TEMP/release.json" >/dev/null; then
+            printf 'Checking the release the installer defaults to. The releases API answered 200 with a body that is not a release. This is an infrastructure error, not a missing release. Re-run this deploy. Nothing is deployed.\n' >&2
+            exit 1
+          fi
+          missing=""
+          for asset in \
+            "niwa-$version-macos-arm64.tar.gz" \
+            "niwa-$version-macos-arm64.tar.gz.sha256" \
+            "niwa-$version-macos-x86_64.tar.gz" \
+            "niwa-$version-macos-x86_64.tar.gz.sha256"; do
+            if ! jq -e --arg name "$asset" 'any(.assets[]?; .name == $name)' "$RUNNER_TEMP/release.json" >/dev/null; then
+              missing="$missing $asset"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            printf 'Checking the release the installer defaults to. Release v%s is missing:%s. Add those files to the release, then re-run this deploy. Nothing is deployed.\n' "$version" "$missing" >&2
+            exit 1
+          fi
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Build the tool
+        run: cargo build
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.23.2
+      # Corepack runs inside `site/`, because the repository root carries no
+      # package.json and a root invocation resolves nothing.
+      - name: Enable pnpm through Corepack
+        working-directory: site
+        run: |
+          corepack enable
+          version="$(pnpm --version)"
+          if [ "$version" != "11.21.0" ]; then
+            printf 'pnpm resolved to %s, not the pinned 11.21.0\n' "$version" >&2
+            exit 1
+          fi
+      - name: Install luau-analyze
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLo luau-macos.zip https://github.com/luau-lang/luau/releases/download/0.734/luau-macos.zip
+          # The Luau release publishes no checksums, so this digest is the pin.
+          printf '%s  luau-macos.zip\n' "b76ae047fafc86f82be646af6a2767228c1589437fb38f36959a8ea4bd967cdd" | shasum -a 256 -c -
+          # Only luau-analyze goes on PATH, so nothing else in the archive
+          # can shadow a tool a later step runs.
+          unzip -q -o luau-macos.zip luau-analyze -d luau
+          # Exit 0 here proves the downloaded binary runs on this runner, so a
+          # zip that cannot run fails in this step, not inside the site gate.
+          ./luau/luau-analyze --version
+          printf '%s/luau\n' "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Run the site gate
+        run: make site-check
+      # The Cloudflare credentials live in the production environment, so they
+      # reach this step only through the job's environment binding.
+      - name: Deploy the site
+        working-directory: site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy

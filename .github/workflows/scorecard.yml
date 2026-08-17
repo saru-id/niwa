@@ -1,0 +1,60 @@
+name: scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly. The minute is off the hour because runs scheduled on the hour
+    # wait in a longer queue.
+    - cron: "41 9 * * 1"
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analysis:
+    name: analysis
+    # publish_results sends a score to the Scorecard API under the running
+    # repository's name. A fork must not publish one, so only this repository
+    # runs the job.
+    if: github.repository == 'saru-id/niwa'
+    runs-on: ubuntu-24.04
+    # No run of this scan is measured yet. Fifteen minutes is a ceiling that
+    # stops a stuck job. The workflow runs after merge, so a low value blocks
+    # no pull request.
+    timeout-minutes: 15
+    permissions:
+      security-events: write # SARIF upload
+      id-token: write # OIDC token that signs the published results
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run the analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # The Scorecard project scans public repositories weekly. Publishing
+          # gives it this run instead. It is also what makes the score
+          # readable over the project's public API.
+          publish_results: true
+
+      - name: Keep the results on the run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: SARIF file
+          path: results.sarif
+          # Five days is the window the action documents. The raw results stay
+          # downloadable that long for anyone debugging a run.
+          retention-days: 5
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          sarif_file: results.sarif
