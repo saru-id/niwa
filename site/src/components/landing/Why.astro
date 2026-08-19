@@ -1,31 +1,131 @@
 ---
 /* What niwa is, in the words the site already publishes.
  *
- * One claim, one paragraph, and the three nouns under it. The section makes
- * no promise the documentation does not keep, so it borrows nothing from
- * anywhere else.
- *
- * The three nouns are not a feature list. They are the answer to the only
- * question a reader has at this point — what does "what the machine should
- * be" actually cover — and they are the four words the paragraph above
- * would otherwise have to spend a sentence on.
+ * The first pass put four nouns under a paragraph. This one lets the nouns
+ * prove themselves: each is a branch from one script and each holds one real
+ * declaration. They are links because this is also the first point
+ * where a reader knows enough to choose a guide.
  */
+
+const branches = [
+  {
+    name: 'Packages',
+    note: 'Apps, tools, and runtimes',
+    href: '/guides/packages',
+    icon: [
+      'M3 5.25 8 2.5l5 2.75v5.5L8 13.5l-5-2.75z',
+      'M3 5.25 8 8l5-2.75M8 8v5.5',
+    ],
+    tokens: [
+      ['variable', 'niwa'],
+      ['operator', '.'],
+      ['property', 'brew'],
+      ['operator', '.'],
+      ['function', 'formula'],
+      ['operator', ' { '],
+      ['string', '"fd"'],
+      ['operator', ', '],
+      ['string', '"ripgrep"'],
+      ['operator', ' }'],
+    ],
+  },
+  {
+    name: 'Dotfiles',
+    note: 'Files, links, and templates',
+    href: '/guides/dotfiles',
+    icon: ['M4 2.5h5l3 3v8H4z', 'M9 2.5v3h3M6 8h4M6 10.5h3'],
+    tokens: [
+      ['variable', 'niwa'],
+      ['operator', '.'],
+      ['function', 'link'],
+      ['operator', '('],
+      ['string', '"~/.config/nvim"'],
+      ['operator', ', { … })'],
+    ],
+  },
+  {
+    name: 'Settings',
+    note: 'The Dock, Finder, and defaults',
+    href: '/guides/system-settings',
+    icon: [
+      'M2.5 4h11M5.25 2.5v3M2.5 8h11M10.25 6.5v3M2.5 12h11M7.5 10.5v3',
+    ],
+    tokens: [
+      ['variable', 'niwa'],
+      ['operator', '.'],
+      ['property', 'dock'],
+      ['operator', ' { '],
+      ['property', 'autohide'],
+      ['operator', ' = '],
+      ['literal', 'true'],
+      ['operator', ' }'],
+    ],
+  },
+  {
+    name: 'Services',
+    note: 'Agents and schedules',
+    href: '/guides/services',
+    icon: ['M2.5 9h2l1.3-4 2.15 6 1.7-5 1.1 3h2.75'],
+    tokens: [
+      ['variable', 'niwa'],
+      ['operator', '.'],
+      ['property', 'service'],
+      ['operator', ' { '],
+      ['property', 'interval'],
+      ['operator', ' = '],
+      ['string', '"15m"'],
+      ['operator', ', … }'],
+    ],
+  },
+] as const
 ---
 
 <section class="why" id="why" aria-labelledby="why-title">
-  <div>
-    <h2 id="why-title">A setup you can read.</h2>
-  </div>
-  <div class="why-body">
-    <p>
-      niwa is a configuration tool for macOS. One Luau script declares what the machine
-      should be. Applying it makes that true.
+  <div class="why-intro">
+    <h2 id="why-title"><span>A setup </span><span>you can read.</span></h2>
+    <p class="why-lede">
+      niwa is a configuration tool for macOS. One script declares what the machine should be.
+      Applying it makes that true.
     </p>
-    <ul class="why-covers">
-      <li>Packages</li>
-      <li>Dotfiles</li>
-      <li>Settings</li>
-      <li>Services</li>
-    </ul>
+    <p class="why-aside">Written by you. Type-checked by niwa.</p>
+  </div>
+
+  <div class="why-field">
+    <ol class="why-covers" aria-label="What a niwa config can declare">
+      {
+        branches.map((branch) => (
+          <li>
+            <a href={branch.href}>
+              <span class="why-icon" aria-hidden="true">
+                <svg viewBox="0 0 16 16">
+                  {branch.icon.map((path) => <path d={path}></path>)}
+                </svg>
+              </span>
+              <span class="why-name">
+                <strong>{branch.name}</strong>
+                <small>{branch.note}</small>
+              </span>
+              <code>
+                {
+                  branch.tokens.map(([kind, text]) => (
+                    <span class={`why-token why-token-${kind}`}>{text}</span>
+                  ))
+                }
+              </code>
+              {
+                /* The way on, as a mark rather than a bare stroke. It is the
+                  same object the way on from `No private format.` is, at the
+                  size a list of four can carry. */
+              }
+              <span class="why-action" aria-hidden="true">
+                <svg class="why-arrow" viewBox="0 0 16 16">
+                  <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"></path>
+                </svg>
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
   </div>
 </section>

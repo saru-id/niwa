@@ -50,7 +50,7 @@ export type WindowName =
  * carries any water.
  */
 export const WINDOWS: readonly SampleWindow[] = [
-  { name: 'pond', left: 131, top: 149, width: 100, height: 90 },
+  { name: 'pond', left: 101, top: 140, width: 176, height: 100 },
   { name: 'sunken-stone', left: 200, top: 206, width: 19, height: 11 },
   { name: 'left-boulders', left: 70, top: 168, width: 47, height: 32 },
   { name: 'lower-boulder', left: 203, top: 229, width: 32, height: 11 },
@@ -82,12 +82,12 @@ const FILES: Record<Encode, { readonly path: string; readonly sha256: string }> 
     source: {
       path: './water-samples-source.bin',
       sha256:
-        '470d3e921fd41d4d908cce649526370d1d25a02587fd10f9f52d2f61dd6f4fe4',
+        '862c299a3058cd42aa8dc6e250c980182b480ff51b1fa3dfafe54517450e45eb',
     },
     encoded: {
       path: './water-samples-encoded.bin',
       sha256:
-        'ccd7735413b1b4646a2382e720e1b46fd8c2dc740deeb1b756960a874fb2b76b',
+        '0fec43abceae7a662c3b0d781791b9a6ced43de679b4c658028041809d6e446c',
     },
   }
 

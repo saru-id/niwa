@@ -126,8 +126,33 @@ interface Ripple {
   reach: number
 }
 
+/**
+ * The pond, plus the one thing that is allowed to reach it from outside.
+ *
+ * A pointer is not the only thing that can touch this water. A needle coming
+ * off the pine lands on it, and a landing is a strike. The alternative was to
+ * let the needles draw their own ring, and they cannot: the mask that keeps
+ * ripples on the water is composited at the end of this effect's pass, so a
+ * ring drawn by anything later would sit on whatever it landed on, stone
+ * included. Rings belong to the water, so the water is asked for them.
+ */
+export interface Ripples extends Effect {
+  /**
+   * Strike the water at a place on the art, from something that is not the
+   * pointer.
+   *
+   * It skips the pointer's two throttles on purpose. Those exist because a
+   * pointer reports a continuous drag far faster than the water can answer;
+   * a fall is a single event that has already been rationed by how many
+   * things are in the air. Running it through the chain would also leave the
+   * pointer's next ring measured from wherever a needle happened to come
+   * down.
+   */
+  drop(nx: number, ny: number, strength: number): void
+}
+
 /** The pond's ripples, holding nothing until the factory runs. */
-export function createRipples(): Effect {
+export function createRipples(): Ripples {
   const pool: Ripple[] = []
   const water = createWater()
   let measured: Scene | null = null
@@ -167,6 +192,21 @@ export function createRipples(): Effect {
   }
 
   return {
+    drop(nx: number, ny: number, strength: number): void {
+      if (!measured) return
+
+      pool.push({
+        nx,
+        ny,
+        strength,
+        createdAt: performance.now(),
+        duration: LIFE + Math.random() * LIFE_SPREAD,
+        reach: REACH + Math.random() * REACH_SPREAD,
+      })
+
+      if (pool.length > POOL_LIMIT) pool.shift()
+    },
+
     init(image: HTMLImageElement, scene: Scene): void {
       measured = scene
       water.build(image)

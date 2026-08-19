@@ -12,16 +12,22 @@
  * Rules the entry enforces and every effect relies on:
  *
  * - Draw order is fixed: clear, then ripples, then the basin, then the
- *   lantern, the fireflies and the flowers. The order is load-bearing.
- *   Ripples ends by compositing the water mask over the whole canvas with
- *   `destination-in`, which erases every pixel outside the water. Save and
- *   restore protect state, not pixels, so anything drawn before that
- *   composite that should survive it must not exist: ripples draws first.
+ *   lantern, the canopy, the fireflies, the flowers and the needles. The
+ *   order is load-bearing. Ripples ends by compositing the water mask over
+ *   the whole canvas with `destination-in`, which erases every pixel outside
+ *   the water. Save and restore protect state, not pixels, so anything drawn
+ *   before that composite that should survive it must not exist: ripples
+ *   draws first. The needles draw last, because they fall in front of
+ *   everything they pass.
  * - The entry gates the calls. Ripples draws while it holds live ripples.
  *   The basin draws while the hero is visible and motion is not reduced.
- *   The lantern, the fireflies and the flowers add `scene.covered` being
- *   false to that. An effect that is not called contributes nothing to the
- *   reschedule answer.
+ *   The lantern, the canopy, the fireflies, the flowers and the needles add
+ *   `scene.covered` being false to that. An effect that is not called
+ *   contributes nothing to the reschedule answer.
+ * - Effects do not know about each other. One pair is wired together, and it
+ *   is wired in the entry: a needle off the pine can land on the pond, and
+ *   the pond is what draws the ring it leaves. Both halves of that are ports
+ *   the entry passes in, so neither module imports the other.
  * - No effect calls `setTransform`: the entry applies the density transform
  *   and re-applies it after any resize of the backing store.
  * - `scene.canvas` is for drawing. Pointer math reads a live

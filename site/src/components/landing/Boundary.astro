@@ -1,44 +1,111 @@
 ---
-/* The limits, said on the front page rather than buried in the reference.
+/* The write-back loop, reduced to one change a newcomer already understands.
  *
- * A tool that changes a machine has to state what it will not change, and
- * the honest place for that is beside the pitch. It is also, read the right
- * way round, the strongest thing on the page: every refusal here is a
- * promise about what the tool will not do behind your back.
+ * The source section above proves that a niwa config is readable in the
+ * config-to-machine direction. This section earns its place by proving the
+ * surprising reverse: use the Mac normally, then let niwa propose the line
+ * that keeps the change. The Dock setting is real Luau and the interaction
+ * follows the real sequence — the machine moves first, `pull` brings the
+ * declaration home second.
  *
- * Each refusal is named before it is explained. Three loose paragraphs made
- * a reader take the whole block or none of it; a named thing can be scanned
- * and the one that matters to this reader can be found.
+ * The atmosphere is moss rather than another drawn garden symbol. A sparse
+ * stipple grows in soft, irregular patches behind the proof, keeping the
+ * section organic without introducing more leaves, vines, or literal scenery.
  */
-
-/** What niwa refuses, and why that is the better answer. */
-const REFUSALS = [
-  {
-    name: 'It never applies on its own.',
-    why: 'The watcher notices and notifies. Applying is your call, unless you declare a schedule yourself.',
-  },
-  {
-    name: 'Undo is not a time machine.',
-    why: 'It restores what the last apply changed. It is not a rollback of the whole world, and it does not pretend to be.',
-  },
-  {
-    name: 'No dependency graph.',
-    why: 'One plan, in your order. Program order is the order, so there is nothing to out-guess you.',
-  },
-]
 ---
 
-<section class="boundary" aria-labelledby="boundary-title">
-  <h2 id="boundary-title">What niwa will not do</h2>
-  <ul class="boundary-refusals">
+<section class="boundary" id="capture" aria-labelledby="boundary-title" data-writeback-demo>
+  <div class="boundary-moss" aria-hidden="true">
+    <span class="boundary-moss-patch boundary-moss-patch-one"></span>
+    <span class="boundary-moss-patch boundary-moss-patch-two"></span>
+    <span class="boundary-moss-patch boundary-moss-patch-three"></span>
+  </div>
+
+  <div class="boundary-intro">
+    <h2 id="boundary-title">
+      <span>Change your Mac.</span>
+      <span>Keep the change.</span>
+    </h2>
+    <p class="boundary-lede">
+      Use your Mac normally. When something changes, <code>niwa pull</code> proposes the
+      matching edit to your config.
+    </p>
     {
-      REFUSALS.map((refusal) => (
-        <li>
-          <h3>{refusal.name}</h3>
-          <p>{refusal.why}</p>
-        </li>
-      ))
+      /* The same way on the config section ends with: a section's last word
+        is always this object, so a reader meets one shape for `here is where
+        this continues` rather than one per section. */
     }
-  </ul>
-  <p class="onward"><a href="/concepts/limits">Every refusal, with its reason</a></p>
+    <p class="onward onward-block boundary-onward">
+      <a href="/guides/capture-a-change">
+        <span class="onward-block-copy">
+          <span class="onward-block-title">Capture your first change</span>
+          <span class="onward-block-note">Flip something in System Settings and keep it.</span>
+        </span>
+        <span class="onward-block-action" aria-hidden="true">
+          <svg viewBox="0 0 16 16">
+            <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"></path>
+          </svg>
+        </span>
+      </a>
+    </p>
+  </div>
+
+  <div class="boundary-demo">
+    <div class="boundary-demo-part boundary-demo-machine">
+      <p class="boundary-demo-place">On your Mac</p>
+      <div class="boundary-setting">
+        <span>Automatically hide the Dock</span>
+        <button
+          class="boundary-switch is-on"
+          type="button"
+          aria-label="Automatically hide and show the Dock"
+          aria-pressed="true"
+          data-writeback-toggle
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="boundary-transfer">
+      <span class="boundary-moss-bloom" aria-hidden="true"></span>
+      <span class="boundary-transfer-line" aria-hidden="true"></span>
+      {
+        /* The status is written twice, the way the installer's outcome is:
+          the visible word is hidden from the button's name, so a change of
+          state never renames the control mid-press, and the announcement
+          comes from the region below, which stands outside the button where
+          a live region is reliably heard. The description still reads the
+          visible word — a referenced element speaks even hidden. */
+      }
+      <button
+        class="boundary-pull"
+        type="button"
+        aria-describedby="boundary-pull-status"
+        data-writeback-pull
+      >
+        <code>niwa pull</code>
+        <span
+          class="boundary-pull-status"
+          id="boundary-pull-status"
+          data-writeback-status
+          aria-hidden="true">1 change ready</span
+        >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2v10m-3.5-3.5L8 12l3.5-3.5"></path>
+        </svg>
+      </button>
+      <span class="sr-only" data-writeback-announce role="status"></span>
+    </div>
+
+    <div class="boundary-demo-part boundary-demo-config">
+      <p class="boundary-demo-place">In your config</p>
+      <pre
+        class="boundary-code"
+        role="group"
+        aria-label="The Dock setting in a niwa config"><code><span class="boundary-token-variable">niwa</span><span class="boundary-token-operator">.</span><span class="boundary-token-function">dock</span> <span class="boundary-token-operator">{'{'}</span>
+  <span class="boundary-token-property">autohide</span> <span class="boundary-token-operator">=</span> <span class="boundary-token-literal" data-writeback-value><span data-writeback-before>false</span><span class="boundary-token-arrow" aria-hidden="true">→</span><span class="boundary-token-after" data-writeback-after aria-hidden="true">true</span></span><span class="boundary-token-operator">,</span>
+<span class="boundary-token-operator">{'}'}</span></code></pre>
+    </div>
+  </div>
 </section>

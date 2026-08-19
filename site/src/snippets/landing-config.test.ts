@@ -45,9 +45,10 @@ describe('the landing config', () => {
     const test = RUST.slice(RUST.lastIndexOf('\nfn ', named), named)
     expect(test).toContain(`${FIXTURE}()`)
     // The screen the fixture renders carries the config's own rows; their
-  // presence is what binds the snapshot to this config rather than another.
-  expect(SNAP).toContain('brew.formula:fd')
-  expect(SNAP).toContain('~/.zshrc')
-  expect(SNAP).toContain('~/.config/nvim')
+    // presence is what binds the snapshot to this config rather than another.
+    expect(SNAP).toContain('brew.formula:git')
+    expect(SNAP).toContain('brew.cask:firefox')
+    expect(SNAP).toContain('com.apple.finder')
+    expect(SNAP).toContain('~/.zshrc')
   })
 })

@@ -1,17 +1,10 @@
 --!strict
 local niwa = require("@niwa")
 
-niwa.brew.formula { "fd", "ripgrep", "jq" }
+niwa.brew.formula { "git", "jq", "ripgrep" }
+niwa.brew.cask { "firefox", "visual-studio-code" }
 
-niwa.dock {
-  autohide = true,
-  tilesize = 48,
-}
+niwa.dock { autohide = true, tilesize = 48 }
+niwa.finder { show_hidden = true, default_view = "list" }
 
 niwa.file("~/.zshrc", { source = "@self/files/zshrc" })
-
-local nvim = niwa.brew.formula "neovim"
-local cfg  = niwa.link("~/.config/nvim", { to = "@self/files/nvim" })
-if nvim.changed or cfg.changed then
-  niwa.run("nvim --headless '+Lazy! sync' +qa", { timeout = "5m" })
-end

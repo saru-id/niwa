@@ -21,9 +21,16 @@ class Target {
 class FakeElement extends Target {
   textContent: string | null = null
   parentElement: FakeElement | null = null
+  disabled = false
   readonly classes = new Set<string>()
   readonly dataset: Record<string, string | undefined> = {}
   readonly classList = {
+    add: (name: string): void => {
+      this.classes.add(name)
+    },
+    remove: (name: string): void => {
+      this.classes.delete(name)
+    },
     toggle: (name: string, force: boolean): void => {
       if (force) this.classes.add(name)
       else this.classes.delete(name)
@@ -31,7 +38,7 @@ class FakeElement extends Target {
   }
 
   /* What the trail writes and reads. The attributes are the current stop's
-   * announcement, the properties are where the light was put, and the box is
+   * announcement, the properties are where the sprout was put, and the box is
    * the layout the script measures: a stop carries its own offset inside the
    * trail, and a section carries where it sits down the document. */
   readonly attributes = new Map<string, string>()
@@ -53,6 +60,10 @@ class FakeElement extends Target {
     this.attributes.set(name, value)
   }
 
+  getAttribute(name: string): string | null {
+    return this.attributes.get(name) ?? null
+  }
+
   removeAttribute(name: string): void {
     this.attributes.delete(name)
   }
@@ -61,8 +72,12 @@ class FakeElement extends Target {
     return this.matched
   }
 
-  getBoundingClientRect(): { top: number } {
-    return { top: this.documentTop - (globalThis.window?.scrollY ?? 0) }
+  getBoundingClientRect(): { top: number; left: number; width: number } {
+    return {
+      top: this.documentTop - (globalThis.window?.scrollY ?? 0),
+      left: this.offsetLeft,
+      width: this.offsetWidth,
+    }
   }
 }
 
@@ -75,7 +90,10 @@ const settle = async (): Promise<void> => {
   await Promise.resolve()
 }
 
-function environment(clipboard?: { writeText?: (text: string) => Promise<void> }) {
+function environment(
+  clipboard?: { writeText?: (text: string) => Promise<void> },
+  reduceMotion = false,
+) {
   const bar = new FakeElement()
   const button = new FakeElement()
   button.textContent = 'Copy'
@@ -93,12 +111,32 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   command.dataset.command = COMMAND
   command.parentElement = line
 
+  // The write-back proof starts with the Mac changed and the config still at
+  // its previous value. Pulling is the explicit step that reconciles them.
+  const writeback = new FakeElement()
+  const writebackToggle = new FakeElement()
+  writebackToggle.setAttribute('aria-pressed', 'true')
+  writebackToggle.classes.add('is-on')
+  const writebackPull = new FakeElement()
+  const writebackValue = new FakeElement()
+  const writebackBefore = new FakeElement()
+  writebackBefore.textContent = 'false'
+  const writebackAfter = new FakeElement()
+  writebackAfter.textContent = 'true'
+  const writebackStatus = new FakeElement()
+  writebackStatus.textContent = '1 change ready'
+  const writebackAnnounce = new FakeElement()
+  writebackAnnounce.textContent = ''
+
   /* The trail: three stops in a nav, and the section each one names. The
    * offsets are a plausible row of words, and the tops are a page with the
    * garden above the first section. `install` has no stop pointing at it
    * from `sections` alone — the pairing is the `data-trail-stop` attribute,
    * exactly as it is on the page. */
   const trail = new FakeElement()
+  const sprout = new FakeElement()
+  const sproutBody = new FakeElement()
+  sprout.offsetWidth = 60
   const STOPS = [
     { id: 'why', left: 0, width: 69, top: 1170 },
     { id: 'config', left: 95, width: 45, top: 1700 },
@@ -121,10 +159,20 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   const elements = new Map<string, FakeElement>([
     ['.site-header', bar],
     ['[data-trail]', trail],
+    ['[data-trail-sprout]', sprout],
+    ['[data-trail-sprout-body]', sproutBody],
     ['[data-install-copy]', button],
     ['[data-install-label]', label],
     ['[data-install-status]', status],
     ['[data-command]', command],
+    ['[data-writeback-demo]', writeback],
+    ['[data-writeback-toggle]', writebackToggle],
+    ['[data-writeback-pull]', writebackPull],
+    ['[data-writeback-value]', writebackValue],
+    ['[data-writeback-before]', writebackBefore],
+    ['[data-writeback-after]', writebackAfter],
+    ['[data-writeback-status]', writebackStatus],
+    ['[data-writeback-announce]', writebackAnnounce],
   ])
 
   const selected: unknown[] = []
@@ -136,11 +184,18 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
     },
   }
 
+  // Held mutable, because the script asks at each pull rather than at load:
+  // a test can change the answer mid-visit the way a reader's settings can.
+  const motion = { reduced: reduceMotion }
+
   const frames: FrameRequestCallback[] = []
   const window = Object.assign(new Target(), {
     scrollY: 0,
     innerHeight: 900,
     innerWidth: 1440,
+    matchMedia(): { matches: boolean } {
+      return { matches: motion.reduced }
+    },
     requestAnimationFrame(callback: FrameRequestCallback): number {
       frames.push(callback)
       return frames.length
@@ -188,16 +243,27 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
   return {
     bar,
     trail,
+    sprout,
+    sproutBody,
     stops: trail.matched,
     sections,
     button,
     label,
     status,
     command,
+    writeback,
+    writebackToggle,
+    writebackPull,
+    writebackValue,
+    writebackBefore,
+    writebackAfter,
+    writebackStatus,
+    writebackAnnounce,
     line,
     range,
     selected,
     cleared,
+    motion,
     window,
     scroll(to: number): void {
       window.scrollY = to
@@ -208,11 +274,18 @@ function environment(clipboard?: { writeText?: (text: string) => Promise<void> }
       return trail.matched.find((stop) => stop.attributes.has('aria-current'))?.dataset
         .trailStop
     },
-    /** Where the light was put, and how wide it was made. */
-    light(): { x: string | undefined; width: string | undefined } {
+    /** Where the sprout was put, and whether the trail shows it. */
+    marker(): { transform: string | undefined; visible: boolean } {
       return {
-        x: trail.properties.get('--trail-x'),
-        width: trail.properties.get('--trail-width'),
+        transform: sprout.properties.get('transform'),
+        visible: trail.classes.has('has-current'),
+      }
+    },
+    /** The little give inside the travelling marker. */
+    plant(): { transform: string | undefined; duration: string | undefined } {
+      return {
+        transform: sproutBody.properties.get('transform'),
+        duration: sproutBody.properties.get('transition-duration'),
       }
     },
     frames(): number {
@@ -277,6 +350,101 @@ describe('the header scroll state', () => {
   })
 })
 
+describe('the write-back proof', () => {
+  test('starts with the machine changed and one config edit ready', () => {
+    const env = environment()
+    start()
+
+    expect(env.writebackToggle.attributes.get('aria-pressed')).toBe('true')
+    expect(env.writebackBefore.textContent).toBe('false')
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(false)
+    expect(env.writebackStatus.textContent).toBe('1 change ready')
+    expect(env.writebackPull.attributes.get('aria-disabled')).toBe('false')
+    // The page opens already saying this, so the live region has nothing to
+    // add: a first render that wrote it would be announced over the arrival.
+    expect(env.writebackAnnounce.textContent).toBe('')
+  })
+
+  test('pulls the machine value into the config and settles the motion', () => {
+    const env = environment()
+    start()
+    env.writebackPull.dispatch('click')
+
+    expect(env.writebackBefore.textContent).toBe('false')
+    expect(env.writebackAfter.textContent).toBe('true')
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(true)
+    expect(env.writebackStatus.textContent).toBe('1 change ready')
+    // Dimmed, never disabled: the reader's focus is on this control right
+    // now, and a disabled button would drop it on the floor.
+    expect(env.writebackPull.attributes.get('aria-disabled')).toBe('true')
+    expect(env.writebackPull.disabled).toBe(false)
+    expect(env.writebackToggle.disabled).toBe(true)
+    expect(env.writeback.classes.has('is-pulling')).toBe(true)
+
+    vi.advanceTimersByTime(719)
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(true)
+    expect(env.writebackValue.classes.has('is-committing')).toBe(false)
+    expect(env.writebackBefore.textContent).toBe('false')
+
+    vi.advanceTimersByTime(1)
+    expect(env.writebackValue.classes.has('is-committing')).toBe(true)
+    expect(env.writebackBefore.textContent).toBe('false')
+
+    vi.advanceTimersByTime(559)
+    expect(env.writeback.classes.has('is-pulling')).toBe(true)
+    expect(env.writebackBefore.textContent).toBe('false')
+
+    vi.advanceTimersByTime(1)
+    expect(env.writebackBefore.textContent).toBe('true')
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(false)
+    expect(env.writebackValue.classes.has('is-committing')).toBe(false)
+    expect(env.writebackStatus.textContent).toBe('in sync')
+    expect(env.writebackAnnounce.textContent).toBe('in sync')
+    expect(env.writebackToggle.disabled).toBe(false)
+    expect(env.writebackPull.attributes.get('aria-disabled')).toBe('true')
+    expect(env.writeback.classes.has('is-synced')).toBe(true)
+    expect(env.writeback.classes.has('is-pulling')).toBe(false)
+  })
+
+  test('creates drift again when the Mac changes later', () => {
+    const env = environment()
+    start()
+    env.writebackPull.dispatch('click')
+    vi.advanceTimersByTime(1280)
+    env.writebackToggle.dispatch('click')
+
+    expect(env.writebackToggle.attributes.get('aria-pressed')).toBe('false')
+    expect(env.writebackBefore.textContent).toBe('true')
+    expect(env.writebackStatus.textContent).toBe('1 change ready')
+    expect(env.writebackAnnounce.textContent).toBe('1 change ready')
+    expect(env.writeback.classes.has('is-synced')).toBe(false)
+    expect(env.writebackPull.attributes.get('aria-disabled')).toBe('false')
+  })
+
+  test('settles without an intermediate animation when motion is reduced', () => {
+    const env = environment(undefined, true)
+    start()
+    env.writebackPull.dispatch('click')
+
+    expect(env.writebackBefore.textContent).toBe('true')
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(false)
+    expect(env.writebackStatus.textContent).toBe('in sync')
+    expect(env.writeback.classes.has('is-pulling')).toBe(false)
+  })
+
+  test('honours a motion setting changed after the page loaded', () => {
+    const env = environment()
+    start()
+
+    env.motion.reduced = true
+    env.writebackPull.dispatch('click')
+
+    expect(env.writebackBefore.textContent).toBe('true')
+    expect(env.writebackValue.classes.has('is-diffing')).toBe(false)
+    expect(env.writeback.classes.has('is-pulling')).toBe(false)
+  })
+})
+
 describe('the trail', () => {
   /* The reading line sits at 0.42 of a 900 pixel window, so a section counts
    * as reached once its top is 378 pixels down the viewport — that is, once
@@ -293,10 +461,10 @@ describe('the trail', () => {
     start()
 
     expect(env.current()).toBeUndefined()
-    expect(env.light().width).toBe('0px')
+    expect(env.marker()).toEqual({ transform: undefined, visible: false })
   })
 
-  test('lights the stop the reader has reached', () => {
+  test('marks the stop the reader has reached', () => {
     const env = environment()
     start()
 
@@ -313,7 +481,7 @@ describe('the trail', () => {
     expect(env.current()).toBe('install')
   })
 
-  test('lights one stop and no more', () => {
+  test('marks one stop and no more', () => {
     const env = environment()
     start()
 
@@ -323,9 +491,9 @@ describe('the trail', () => {
     expect(env.stops.filter((stop) => stop.attributes.has('aria-current'))).toHaveLength(1)
   })
 
-  // The stop behind the reader keeps the light through the sections the trail
+  // The stop behind the reader keeps the sprout through the sections the trail
   // does not name, which is the whole stretch between the config and the last
-  // word. A trail whose light goes out reads as broken.
+  // word. A trail whose marker disappears reads as broken.
   test('holds the last stop passed through the sections between', () => {
     const env = environment()
     start()
@@ -337,7 +505,7 @@ describe('the trail', () => {
 
   /* The last section's top stops 24 pixels short of the reading line however
    * far the page is scrolled, because the page runs out first. A line that
-   * did not move for that left the final stop lighting over the last two
+   * did not move for that left the final stop unmarked over the last two
    * dozen pixels of the scroll, which no reader would ever see. */
   test('reaches the last stop well before the page ends', () => {
     const env = environment()
@@ -359,7 +527,7 @@ describe('the trail', () => {
 
   // The slide belongs to the end of the page and nowhere else: with a
   // viewport or more still to come the line is exactly where it was, so the
-  // stop before the last one is not handed the light early.
+  // stop before the last one is not handed the sprout early.
   test('does not slide the line while the page still has a viewport to give', () => {
     const env = environment()
     start()
@@ -369,7 +537,7 @@ describe('the trail', () => {
     expect(env.current()).toBe('config')
   })
 
-  test('goes dark again above the first section', () => {
+  test('closes above the first section without moving back to the origin', () => {
     const env = environment()
     start()
 
@@ -380,22 +548,87 @@ describe('the trail', () => {
     env.scroll(0)
     env.frames()
     expect(env.current()).toBeUndefined()
-    expect(env.light().width).toBe('0px')
+    expect(env.marker()).toEqual({
+      transform: 'translate3d(87.5px, 0, 0)',
+      visible: false,
+    })
   })
 
-  // The light carries eight pixels of air past each end of the word, which is
-  // the fade the stylesheet lays over each end of the gradient.
-  test('puts the light on the stop, with a pad at each end', () => {
+  // The marker is sixty pixels wide, so its centre meets the word's centre
+  // without any word-specific offset.
+  test('centres the sprout under the current stop', () => {
     const env = environment()
     start()
 
     env.scroll(reaches(1700))
     env.frames()
 
-    expect(env.light()).toEqual({ x: '87px', width: '61px' })
+    expect(env.marker()).toEqual({
+      transform: 'translate3d(87.5px, 0, 0)',
+      visible: true,
+    })
   })
 
-  test('says where the reader is to someone who cannot see the light', () => {
+  test('leans behind a move to the right, then relaxes', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1170))
+    env.frames()
+    expect(env.plant()).toEqual({ transform: undefined, duration: undefined })
+
+    env.scroll(reaches(1700))
+    env.frames()
+    expect(env.plant()).toEqual({
+      transform:
+        'translate3d(0, 0, 0) skewX(-0.8deg) rotate(0.65deg) scaleX(0.996)',
+      duration: '140ms',
+    })
+
+    vi.advanceTimersByTime(140)
+    expect(env.plant()).toEqual({
+      transform: 'translate3d(0, 0, 0) skewX(0deg) rotate(0deg) scaleX(1)',
+      duration: '240ms',
+    })
+  })
+
+  test('leans the other way when the trail moves left', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1700))
+    env.frames()
+    env.scroll(reaches(1170))
+    env.frames()
+
+    expect(env.plant()).toEqual({
+      transform: 'translate3d(0, 0, 0) skewX(0.8deg) rotate(-0.65deg) scaleX(0.996)',
+      duration: '140ms',
+    })
+  })
+
+  test('retargets a rapid reversal instead of finishing stale motion', () => {
+    const env = environment()
+    start()
+
+    env.scroll(reaches(1170))
+    env.frames()
+    env.scroll(reaches(1700))
+    env.frames()
+    vi.advanceTimersByTime(40)
+    env.scroll(reaches(1170))
+    env.frames()
+
+    vi.advanceTimersByTime(100)
+    expect(env.plant().transform).toContain('skewX(0.8deg)')
+    vi.advanceTimersByTime(40)
+    expect(env.plant()).toEqual({
+      transform: 'translate3d(0, 0, 0) skewX(0deg) rotate(0deg) scaleX(1)',
+      duration: '240ms',
+    })
+  })
+
+  test('says where the reader is to someone who cannot see the sprout', () => {
     const env = environment()
     start()
 
@@ -411,15 +644,15 @@ describe('the trail', () => {
 
     env.scroll(reaches(1700))
     env.frames()
-    env.trail.properties.clear()
+    env.sprout.properties.clear()
 
     env.scroll(reaches(1700) + 5)
     env.frames()
-    expect(env.trail.properties.size).toBe(0)
+    expect(env.sprout.properties.size).toBe(0)
   })
 
   // The stops move when the window does, and the reader who resized never
-  // scrolled, so nothing else would have told the light to follow them.
+  // scrolled, so nothing else would have told the sprout to follow them.
   test('follows the stops when the window changes width', () => {
     const env = environment()
     start()
@@ -431,7 +664,11 @@ describe('the trail', () => {
 
     env.window.innerWidth = 1100
     env.window.dispatch('resize')
-    expect(env.light()).toEqual({ x: '192px', width: '76px' })
+    expect(env.marker()).toEqual({
+      transform: 'translate3d(200px, 0, 0)',
+      visible: true,
+    })
+    expect(env.plant()).toEqual({ transform: undefined, duration: undefined })
   })
 })
 
@@ -460,6 +697,8 @@ describe('the installer copy control', () => {
     await settle()
     expect(env.label.textContent).toBe('Copied')
     expect(env.status.textContent).toBe('Copied')
+    // The transient word never renames the control; only Select does.
+    expect(env.button.attributes.get('aria-label')).toBe('Copy')
 
     vi.advanceTimersByTime(1599)
     expect(env.label.textContent).toBe('Copied')
@@ -479,6 +718,9 @@ describe('the installer copy control', () => {
     await settle()
 
     expect(env.label.textContent).toBe('Select')
+    // Select is the word that settles and stays, so it becomes the name too:
+    // a reader who repeats the word they see has to reach the control by it.
+    expect(env.button.attributes.get('aria-label')).toBe('Select')
     expect(env.status.textContent).toBe('Copy failed')
     expect(env.range.node).toBe(env.command)
     expect(env.range.node).not.toBe(env.line)

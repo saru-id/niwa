@@ -60,7 +60,8 @@ const WIDE = '(min-width: 781px)'
       </h1>
       <p class="hero-subcopy">Declarative macOS setup, written in Luau.</p>
 
-      <div class="installer" aria-label="Install niwa">
+      {/* A group, because a label on a plain div names nothing. */}
+      <div class="installer" role="group" aria-label="Install niwa">
         {
           /* The vine twice: the second copy is masked to the hanging third
             and brightened, so the leaves that overhang the pond keep their
@@ -105,10 +106,17 @@ const WIDE = '(min-width: 781px)'
         <span class="sr-only" data-install-status role="status"></span>
       </div>
 
+      {
+        /* The same way-on the sections below use: one label, one arrow, and
+          the arrow is the drawing rather than the character, so a reader
+          meets this shape once and recognises it everywhere after. */
+      }
       <a class="docs-link" href="/start">
         <span>What is niwa?</span>
         <strong>Read the docs</strong>
-        <span class="docs-arrow" aria-hidden="true">→</span>
+        <svg class="docs-arrow" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"></path>
+        </svg>
       </a>
     </div>
   </div>

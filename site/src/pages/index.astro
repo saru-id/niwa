@@ -3,8 +3,8 @@
  *
  * A garden over near-black, the promise in the calm left field, and the
  * install line under it. Below that the same page in words: what niwa is,
- * one real config beside the real plan it produces, the three motions of a
- * day, the limits, and three ways into the documentation.
+ * one real config beside the real plan it produces, its limits, and three
+ * ways into the documentation.
  *
  * The page draws its own structure. The layout hands this slot straight to
  * the body, so the header, the main and the sections below are all stated
@@ -13,10 +13,9 @@
 import Layout from '../components/Layout.astro'
 import Boundary from '../components/landing/Boundary.astro'
 import Config from '../components/landing/Config.astro'
-import Converged from '../components/landing/Converged.astro'
-import Drift from '../components/landing/Drift.astro'
 import Hero from '../components/landing/Hero.astro'
 import InstallCta from '../components/landing/InstallCta.astro'
+import LandingFooter from '../components/landing/Footer.astro'
 import LandingNav from '../components/landing/Nav.astro'
 import Why from '../components/landing/Why.astro'
 import { heroDesktop, heroMobile } from '../lib/hero-art'
@@ -76,12 +75,15 @@ const WIDE = '(min-width: 781px)'
       <div class="story">
         <Why />
         <Config />
-        <Drift />
-        <Converged />
         <Boundary />
         <InstallCta />
       </div>
     </main>
+    {
+      /* Below the main, so it is the document's own `contentinfo` and so
+        search indexes the page's words rather than its colophon. */
+    }
+    <LandingFooter />
   </div>
 
   <script>
