@@ -37,7 +37,7 @@
     "typescript": "6.0.3",
     "typescript-7": "npm:typescript@7.0.2",
     "unplugin": "2.3.11",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "wrangler": "4.122.0"
   }
 }
