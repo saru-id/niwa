@@ -16,7 +16,7 @@ set -eu
 
 main() {
     BASE="${NIWA_RELEASE_BASE:-https://niwa.rs/release}"
-VERSION="${NIWA_VERSION:-0.1.1}"
+VERSION="${NIWA_VERSION:-0.1.2}"
 ARCH="$(uname -m)"
 NAME="niwa-$VERSION-macos-$ARCH.tar.gz"
 
