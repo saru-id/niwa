@@ -28,7 +28,7 @@ export interface NavGroup {
 /** The version the chrome names, and the links the footer sets beside it. */
 export const SITE = {
   /** The crate version in `Cargo.toml`. A test binds them together. */
-  version: '0.1.1',
+  version: '0.1.2',
   // The repository's public home, the same address the git remote carries.
   repository: 'https://github.com/saru-id/niwa',
   /** The name the header prints beside the mark. A test binds it to the URL. */

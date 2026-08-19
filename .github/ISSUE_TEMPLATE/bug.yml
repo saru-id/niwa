@@ -22,7 +22,7 @@ body:
     attributes:
       label: niwa version
       description: Paste the output of `niwa --version`, or provide the commit hash.
-      placeholder: niwa 0.1.1
+      placeholder: niwa 0.1.2
     validations:
       required: true
   - type: input
