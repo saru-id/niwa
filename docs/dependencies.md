@@ -491,7 +491,7 @@ repository. None of this links into the binary or ships on the site.
   rustfmt beside it.
 - Why not our own: it is the compiler.
 - Maintenance: the Rust project, releases every six weeks.
-- Pin: channel 1.97.0, in `rust-toolchain.toml`. rustup fetches it from the
+- Pin: channel 1.97.1, in `rust-toolchain.toml`. rustup fetches it from the
   Rust project's own distribution and checks each component against the
   channel manifest it fetched beside it.
 - License: MIT OR Apache-2.0.
