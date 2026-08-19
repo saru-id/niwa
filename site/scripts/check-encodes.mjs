@@ -1,10 +1,12 @@
 // Every encoded derivative in the build weighs what its budget says.
 //
-// The qualities in `src/lib/hero-art.ts` are measured budgets, and the
-// encoder is deterministic: the same source, version and options produce the
-// same bytes. So the budget is checkable as an exact size. A mismatch means
-// the encoder moved or a quality changed, and either way the image budgets
-// need measuring again before the build can claim them.
+// The qualities in `src/lib/hero-art.ts` are measured budgets. The encoder
+// is deterministic on one machine, but not across them: the same source,
+// version and options land within a percent of each other on different
+// platforms, never on the same byte. So a budget holds to two percent —
+// wide enough for that drift, and far under the swing a changed quality or
+// a moved encoder produces. A miss means one of those moved, and the image
+// budgets need measuring again before the build can claim them.
 
 import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -32,14 +34,21 @@ try {
 const sizes = files.map((file) => ({ file, bytes: statSync(path.join(ASSETS, file)).size }))
 const failures = []
 
+/** The share of a budget the platforms' encoders drift across. */
+const TOLERANCE = 0.02
+
 for (const pin of PINNED) {
   const match = sizes.find(
-    (candidate) => candidate.file.startsWith(pin.name) && candidate.bytes === pin.bytes,
+    (candidate) =>
+      candidate.file.startsWith(pin.name) &&
+      Math.abs(candidate.bytes - pin.bytes) <= pin.bytes * TOLERANCE,
   )
   if (match === undefined) {
     const near = sizes.filter((candidate) => candidate.file.startsWith(pin.name))
     const seen = near.length > 0 ? near.map((c) => `${c.file} at ${c.bytes}`).join(', ') : 'none'
-    failures.push(`${pin.says}: no ${pin.name} derivative of ${pin.bytes} bytes (built: ${seen})`)
+    failures.push(
+      `${pin.says}: no ${pin.name} derivative within 2% of ${pin.bytes} bytes (built: ${seen})`,
+    )
   }
 }
 
