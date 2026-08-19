@@ -22,7 +22,7 @@
     "@stylexjs/stylex": "0.19.0",
     "@tanstack/highlight": "0.0.10",
     "@tanstack/markdown": "0.0.13",
-    "astro": "7.2.1",
+    "astro": "7.2.4",
     "astro-pagefind": "2.0.1",
     "pagefind": "1.5.2",
     "react": "19.2.8",
