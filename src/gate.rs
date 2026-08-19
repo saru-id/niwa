@@ -110,19 +110,48 @@ fn known_shape(line: &str) -> Option<String> {
 /// A long token whose characters are too evenly spread to be words.
 /// Hex digests sit at 4.0 bits per character; the threshold sits
 /// safely above them, where random base64 lives.
+///
+/// `/` belongs to a token because base64 spends it, and that is what
+/// made an absolute path look like a credential: the separator glued
+/// every segment of `/var/folders/…/T/` into one long mixed-case word
+/// with the entropy of the random part spread across all of it. This
+/// tool's whole subject is files at paths, so a config is full of them,
+/// and whether one tripped came down to what `mktemp` had produced that
+/// morning.
+///
+/// So a word that starts a path is judged one segment at a time. A path
+/// is then only as suspicious as its most suspicious component, which
+/// for a real path is a short ordinary word. A secret written inside a
+/// path is still a long high-entropy segment, and still caught. Nothing
+/// that does not begin with `/` is treated differently at all.
 fn high_entropy_token(line: &str) -> Option<String> {
     for word in line.split(|c: char| {
         !(c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=' || c == '_' || c == '-')
     }) {
-        if word.len() < 28 {
-            continue;
+        let found = if word.starts_with('/') {
+            word.split('/').find_map(credentialish)
+        } else {
+            credentialish(word)
+        };
+        if found.is_some() {
+            return found;
         }
-        let mixed = word.chars().any(|c| c.is_ascii_uppercase())
-            && word.chars().any(|c| c.is_ascii_lowercase())
-            && word.chars().any(|c| c.is_ascii_digit());
-        if mixed && entropy(word) > 4.6 {
-            return Some(format!("{}…", &word[..8.min(word.len())]));
-        }
+    }
+    None
+}
+
+/// One run of characters, judged on its own: long enough to be a
+/// secret, mixed enough not to be a word, and spread enough not to be a
+/// digest.
+fn credentialish(word: &str) -> Option<String> {
+    if word.len() < 28 {
+        return None;
+    }
+    let mixed = word.chars().any(|c| c.is_ascii_uppercase())
+        && word.chars().any(|c| c.is_ascii_lowercase())
+        && word.chars().any(|c| c.is_ascii_digit());
+    if mixed && entropy(word) > 4.6 {
+        return Some(format!("{}…", &word[..8.min(word.len())]));
     }
     None
 }
@@ -209,6 +238,46 @@ mod tests {
     fn ordinary_config_text_passes() {
         let clean = b"export EDITOR=nvim\nalias ls=\"eza\"\n# a long ordinary comment line about the configuration\n";
         assert!(scan_bytes(clean).is_empty());
+    }
+
+    /* A path is not a credential, however random a temp directory looks.
+     *
+     * This is the line that failed in CI and passed here on the same
+     * commit: `/` holds a token together, so the whole path was one
+     * mixed-case word and the random segment's entropy carried it over
+     * the threshold. Whether it tripped depended on what `mktemp` had
+     * just produced, which made it a coin flip on every machine rather
+     * than a fault of one.
+     */
+    #[test]
+    fn absolute_paths_are_not_credentials() {
+        for line in [
+            "niwa.file(\"/var/folders/xy/8kJ2h4Gd5f6D7s8A9bC/T/.tmpQr7XzK/absolute-target\")",
+            "niwa.file(\"/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T/tmp.AbC123/x\")",
+            "niwa.link(\"~/.config/nvim\", { to = \"@self/files/nvim\" })",
+            "source = \"/Users/someone/Library/Application Support/Code/User/settings\"",
+        ] {
+            assert!(
+                scan_bytes(format!("{line}\n").as_bytes()).is_empty(),
+                "flagged a path: {line}"
+            );
+        }
+    }
+
+    // The relaxation reaches paths and stops there: a secret written
+    // inside one is still a long high-entropy run of its own.
+    #[test]
+    fn a_secret_inside_a_path_is_still_caught() {
+        let hits = scan_bytes(b"source = \"/etc/niwa/q7Rv2mXz9Kp4Lw8Nt3Jd6Fh1Bg5Yc0SaUeIoP\"\n");
+        assert_eq!(hits.len(), 1, "{hits:?}");
+    }
+
+    // And a token that merely contains `/` without starting one is
+    // judged whole, the way base64 needs it to be.
+    #[test]
+    fn base64_keeps_its_slashes() {
+        let hits = scan_bytes(b"key = \"aB3/dEf9GhJ2kLm5NpQ8rSt1UvW4xYz7AbC0dEf6GhJ=\"\n");
+        assert_eq!(hits.len(), 1, "{hits:?}");
     }
 
     #[test]
