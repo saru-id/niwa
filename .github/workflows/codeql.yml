@@ -5,6 +5,10 @@ name: codeql
 # hold it. A repository with default setup enabled also refuses an advanced
 # setup workflow. Push and schedule keep pull requests clear of both.
 on:
+  # A pull request is where a finding is cheapest to act on, and running
+  # there is also what makes the analysis cover every commit that reaches
+  # `main` rather than only the merge that lands it.
+  pull_request:
   push:
     branches: [main]
   schedule:

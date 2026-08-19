@@ -100,6 +100,24 @@ function plain(text) {
 function extract(source) {
   const ids = new Set()
   const links = []
+  /* CodeQL reads the next line as an incomplete HTML sanitizer and reports
+   * that `<script` or `<!--` could survive it. It could, and it does not
+   * matter, because nothing here sanitizes anything.
+   *
+   * This gate reads the site's own `dist/` off the disk, pulls every `href`
+   * and `src`, and checks each internal one names a file the build wrote. It
+   * renders nothing and returns no markup. The stripped string goes to the
+   * tag regex below, and what comes out is a list of link strings compared
+   * against filenames. There is no HTML sink anywhere downstream, so a
+   * surviving `<script` has nothing to be injected into.
+   *
+   * The two replacements are here to keep the extractor from reading a link
+   * that the page does not have: the search modal ships its result markup
+   * inside a `script`, and that template's `href` is a placeholder the
+   * browser never resolves.
+   *
+   * The alerts are dismissed on those grounds. Reopen them if this ever
+   * grows a path that emits HTML. */
   const body = source.replace(COMMENT, '').replace(RAW_TEXT, '')
   for (const tag of body.matchAll(TAG)) {
     for (const attribute of tag[2].matchAll(ATTRIBUTE)) {
