@@ -1,6 +1,6 @@
 name = "niwa-site"
 main = "worker/index.ts"
-compatibility_date = "2026-08-13"
+compatibility_date = "2026-08-15"
 
 # The address, in the repository rather than in a dashboard.
 #
