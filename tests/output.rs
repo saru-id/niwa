@@ -233,7 +233,12 @@ fn apply_sandbox_rehearses_from_nothing_without_touching_home() {
 #[test]
 fn a_rehearsal_leaves_absolute_targets_alone() {
     let home = tempfile::tempdir().unwrap();
-    let outside = tempfile::tempdir().unwrap();
+    // The target's whole path lands inside the config, and the gate reads a
+    // path as one token. Under /tmp the path stays too short to score;
+    // under the platform temp root, whose middle component is random, the
+    // line reads as a credential on some machines and the test fails on
+    // the gate instead of the rehearsal.
+    let outside = tempfile::tempdir_in("/tmp").unwrap();
     let target = outside.path().join("absolute-target");
     write(
         home.path(),
