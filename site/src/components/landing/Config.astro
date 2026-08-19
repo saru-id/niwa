@@ -24,13 +24,58 @@ const PLAN = 'plan_mixed_pending_color'
 ---
 
 <section class="config" id="config" aria-labelledby="config-title">
-  <div class="config-copy">
+  <div class="config-intro">
     <h2 id="config-title">No private format.</h2>
-    <p>Just Luau you can read at a glance.</p>
+    <div class="config-copy">
+      <p class="config-lede">
+        <a class="config-luau" href="https://luau.org/"
+          >Luau
+          <svg viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M3 9 9 3m-4 0h4v4"></path>
+          </svg></a
+        > is a typed scripting language, so your config can use variables, loops, and helper
+        functions instead of repeating itself.
+      </p>
+      <p>
+        <code>niwa plan</code> shows exactly what the script would change before anything
+        touches your Mac. Read the diff, then decide.
+      </p>
+      <p class="onward onward-block config-onward">
+        <a href="/start/first-config"
+          ><span class="onward-block-copy">
+            <span class="onward-block-title">Write your first config</span>
+            <span class="onward-block-note">From an empty file to your first plan.</span>
+          </span>
+          <span class="onward-block-action" aria-hidden="true">
+            <svg viewBox="0 0 16 16">
+              <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5"></path>
+            </svg>
+          </span></a
+        >
+      </p>
+    </div>
   </div>
-  <div class="exhibit">
-    {/* No client directive. React runs once, during the build. */}
-    <Markdown source={FENCE} file={SELF} />
-    <Screen fixture={PLAN} command="niwa plan" />
+
+  <div class="config-proof">
+    <div class="config-source">
+      {/* No client directive. React runs once, during the build. */}
+      <Markdown source={FENCE} file={SELF} />
+    </div>
+
+    <div class="config-flow" aria-hidden="true">
+      <svg viewBox="0 0 72 96">
+        <path class="config-flow-stem" pathLength="1" d="M3 49c19-13 38 11 66-1"></path>
+        <path class="config-flow-branch" pathLength="1" d="M31 49c1-11 7-18 15-23"></path>
+        <path class="config-flow-leaf" d="M44 28c-1-9 5-14 14-14 0 9-5 14-14 14Z"></path>
+        <path class="config-flow-vein" pathLength="1" d="m46 26 9-9"></path>
+        <path class="config-flow-leaf config-flow-leaf-low" d="M24 46c-8 0-12-5-11-13 8 1 12 5 11 13Z"></path>
+        <circle class="config-flow-bud config-flow-bud-static" cx="69" cy="48" r="2.5"></circle>
+        <circle class="config-flow-bud config-flow-tip" cx="0" cy="0" r="2.5"></circle>
+      </svg>
+    </div>
+
+    <div class="config-result">
+      <Screen fixture={PLAN} command="niwa plan" provenance={false} />
+    </div>
   </div>
 </section>

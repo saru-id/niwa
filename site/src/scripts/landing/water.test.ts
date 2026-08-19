@@ -8,6 +8,7 @@ import {
   type WindowName,
 } from './__fixtures__/water-samples'
 import {
+  enclosedByWater,
   isMaskColor,
   isWaterColor,
   maskAlpha,
@@ -137,7 +138,7 @@ describe('the water the wide viewport loads', () => {
   }
 
   test('is asked about the whole pond', () => {
-    expect(sampled).toBe(6786)
+    expect(sampled).toBe(10564)
   })
 
   test('agrees with the source outside a sample of the edge', () => {
@@ -241,7 +242,11 @@ describe('the mask over the stone around the pond', () => {
     (encode) => {
       const { covered, marked } = count(encode, COVERED)
 
-      expect(covered).toBe(191)
+      // The outline covers this stone whole now, where before it clipped a
+      // corner off. That is the outline getting the pond's foot right rather
+      // than the stone getting bigger, and it is why the colour test is the
+      // only guard here: the bound below is what says the guard still holds.
+      expect(covered).toBe(209)
       // One covered sample is the stone's own rim, where the four art pixels
       // behind it are part water: 0.53% of the window. The nearest loosening
       // measured on this stone — dropping the test that blue holds most of
@@ -342,5 +347,105 @@ describe('the mask alpha', () => {
 
   test('carries the alpha it was given', () => {
     expect(maskAlpha(100, 110, 123, 128)).toBe(101)
+  })
+})
+
+/* What the water closes around.
+ *
+ * A colour test cannot tell a fish in the water from a hole in it, and the
+ * shape can. These check the rule itself on grids small enough to state, and
+ * then on the art, where the fish and the stone have to come out differently.
+ */
+describe('the water closing around what floats in it', () => {
+  /** A grid from rows of text: `~` is water, `.` is dry. */
+  const grid = (rows: readonly string[]) => {
+    const width = rows[0].length
+    const alphas = new Uint8Array(width * rows.length)
+    rows.forEach((row, y) => {
+      for (let x = 0; x < width; x += 1) alphas[y * width + x] = row[x] === '~' ? 255 : 0
+    })
+    return { alphas, width, height: rows.length }
+  }
+  const show = (flags: Uint8Array, width: number, height: number) =>
+    Array.from({ length: height }, (_, y) =>
+      Array.from({ length: width }, (_, x) => (flags[y * width + x] === 1 ? '#' : '.')).join(''),
+    )
+
+  test('closes around a hole the water surrounds', () => {
+    const { alphas, width, height } = grid([
+      '........',
+      '.~~~~~~.',
+      '.~~..~~.',
+      '.~~~~~~.',
+      '........',
+    ])
+    expect(show(enclosedByWater(alphas, width, height), width, height)).toEqual([
+      '........',
+      '........',
+      '...##...',
+      '........',
+      '........',
+    ])
+  })
+
+  test('leaves dry ground that reaches the outside alone', () => {
+    // The notch opens onto the rim, so it is shore rather than island — which
+    // is the sunken stone at the pond's foot, and why it still stops a ripple.
+    const { alphas, width, height } = grid([
+      '........',
+      '.~~~~~~.',
+      '.~~..~~.',
+      '.~~..~~.',
+      '.~~..~~.',
+      '........',
+    ])
+    expect(enclosedByWater(alphas, width, height).reduce((a, b) => a + b, 0)).toBe(0)
+  })
+
+  test('closes around the koi, and never reaches past the pond', () => {
+    // The art itself, read the way the mask reads it.
+    const alphas = new Uint8Array(SAMPLE_WIDTH * SAMPLE_HEIGHT)
+    const samples = readWindow('source', 'pond')
+    const { window } = samples
+
+    for (let y = 0; y < SAMPLE_HEIGHT; y += 1) {
+      for (let x = 0; x < SAMPLE_WIDTH; x += 1) {
+        const inWindow =
+          x >= window.left &&
+          y >= window.top &&
+          x < window.left + window.width &&
+          y < window.top + window.height
+        if (!inWindow || !pointInPond(x / SAMPLE_WIDTH, y / SAMPLE_HEIGHT)) continue
+        const at = samples.at(x, y)
+        alphas[y * SAMPLE_WIDTH + x] = maskAlpha(
+          samples.bytes[at],
+          samples.bytes[at + 1],
+          samples.bytes[at + 2],
+          samples.bytes[at + 3],
+        )
+      }
+    }
+
+    const closed = enclosedByWater(alphas, SAMPLE_WIDTH, SAMPLE_HEIGHT)
+    let filled = 0
+    let beyond = 0
+
+    for (let y = 0; y < SAMPLE_HEIGHT; y += 1) {
+      for (let x = 0; x < SAMPLE_WIDTH; x += 1) {
+        if (closed[y * SAMPLE_WIDTH + x] !== 1) continue
+        filled += 1
+        if (!pointInPond(x / SAMPLE_WIDTH, y / SAMPLE_HEIGHT)) beyond += 1
+      }
+    }
+
+    // The koi and the lilies are real, and the fill is not trivial.
+    expect(filled).toBeGreaterThan(200)
+
+    // And it stops at the outline. This is the assertion that matters, because
+    // it does not depend on which pixels happen to sit on the shoreline:
+    // whatever the water closes around is inside the pond, so the boulders and
+    // the stepping stones are out of this rule's reach entirely. What keeps a
+    // ripple off those is the outline, and only the outline.
+    expect(beyond).toBe(0)
   })
 })

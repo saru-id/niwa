@@ -3,8 +3,8 @@
  *
  * A garden over near-black, the promise in the calm left field, and the
  * install line under it. Below that the same page in words: what niwa is,
- * one real config beside the real plan it produces, the three motions of a
- * day, the limits, and three ways into the documentation.
+ * one real config beside the real plan it produces, its limits, and three
+ * ways into the documentation.
  *
  * The page draws its own structure. The layout hands this slot straight to
  * the body, so the header, the main and the sections below are all stated
@@ -13,18 +13,21 @@
 import Layout from '../components/Layout.astro'
 import Boundary from '../components/landing/Boundary.astro'
 import Config from '../components/landing/Config.astro'
-import DocsRouter from '../components/landing/DocsRouter.astro'
 import Hero from '../components/landing/Hero.astro'
 import InstallCta from '../components/landing/InstallCta.astro'
-import Loop from '../components/landing/Loop.astro'
+import LandingFooter from '../components/landing/Footer.astro'
 import LandingNav from '../components/landing/Nav.astro'
 import Why from '../components/landing/Why.astro'
 import { heroDesktop, heroMobile } from '../lib/hero-art'
 import '../styles/landing.css'
 
-// The pair mirrors LANDING_QUERY in scripts/landing/geometry.ts, which owns
-// the 780 boundary; 781 is its complement, so the two preloads split the
-// viewports with no gap and no overlap.
+// The pair splits on width alone, and deliberately does not follow
+// LANDING_QUERY: that boundary decides which composition the art is drawn
+// in, and this one decides how many bytes of it to send. An upright tablet
+// takes the covered composition and paints the art across a screen far
+// larger than a phone's, so it is served the fuller encode. 781 is the
+// width's complement, so the two preloads split the viewports with no gap
+// and no overlap.
 const NARROW = '(max-width: 780px)'
 const WIDE = '(min-width: 781px)'
 ---
@@ -72,12 +75,15 @@ const WIDE = '(min-width: 781px)'
       <div class="story">
         <Why />
         <Config />
-        <Loop />
         <Boundary />
-        <DocsRouter />
         <InstallCta />
       </div>
     </main>
+    {
+      /* Below the main, so it is the document's own `contentinfo` and so
+        search indexes the page's words rather than its colophon. */
+    }
+    <LandingFooter />
   </div>
 
   <script>

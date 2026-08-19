@@ -2,8 +2,33 @@ import react from '@astrojs/react'
 import stylex from '@stylexjs/unplugin'
 import { defineConfig } from 'astro/config'
 import pagefind from 'astro-pagefind'
+import { fileURLToPath } from 'node:url'
 import { installScript } from './integrations/install-script'
 import { pruneOrphanScripts } from './integrations/prune-orphan-scripts'
+
+const snapshots = fileURLToPath(new URL('../tests/snapshots', import.meta.url))
+
+type SnapshotDevServer = {
+  watcher: {
+    add: (path: string) => void
+    on: (event: 'change', listener: (file: string) => void) => void
+  }
+  ws: { send: (message: { type: 'full-reload'; path: string }) => void }
+}
+
+/** The screens live above the site's Vite root, so reading them at render
+ * time is not enough to make dev mode notice when a snapshot changes. */
+const reloadSnapshots = () => ({
+  name: 'niwa:reload-snapshots',
+  configureServer(server: SnapshotDevServer) {
+    server.watcher.add(snapshots)
+    server.watcher.on('change', (file) => {
+      if (file.startsWith(snapshots) && file.endsWith('.snap')) {
+        server.ws.send({ type: 'full-reload', path: '*' })
+      }
+    })
+  },
+})
 
 export default defineConfig({
   site: 'https://niwa.rs',
@@ -27,6 +52,7 @@ export default defineConfig({
     // has no place to pass a Babel plugin. `treeshakeCompensation` keeps the
     // bundler from dropping modules that only export style definitions.
     plugins: [
+      reloadSnapshots(),
       stylex.vite({
         treeshakeCompensation: true,
         /* Which stylesheet the collected rules are appended to.

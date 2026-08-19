@@ -27,9 +27,11 @@
 
 import {
   createBasin,
+  createCanopy,
   createFireflies,
   createFlowers,
   createLantern,
+  createNeedles,
   createRipples,
 } from './effects'
 import { computeScene, LANDING_QUERY, type Effect, type Rect, type Scene } from './geometry'
@@ -59,7 +61,7 @@ function sameRect(a: Rect, b: Rect): boolean {
 function sameScene(a: Scene, b: Scene): boolean {
   return (
     a.density === b.density &&
-    a.mobile === b.mobile &&
+    a.covered === b.covered &&
     sameRect(a.canvas, b.canvas) &&
     sameRect(a.frame, b.frame)
   )
@@ -96,12 +98,32 @@ export function start(): void {
   const ripples = createRipples()
   const basin = createBasin()
   const lantern = createLantern()
+  const canopy = createCanopy()
   const fireflies = createFireflies()
   const flowers = createFlowers()
-  const effects: readonly Effect[] = [ripples, basin, lantern, fireflies, flowers]
+  // The one place in the scene where an effect hears another one. The pine
+  // stands over the far corner of the pond, so a needle off it can land on
+  // water, and a landing is a strike — but only the water may draw on the
+  // water, for the reason `Ripples` gives. The wiring is here because the
+  // entry owns what the scene is made of; neither module knows the other.
+  const needles = createNeedles({
+    stirring: (index) => canopy.stirring(index),
+    onWater: (nx, ny, strength) => {
+      ripples.drop(nx, ny, strength)
+    },
+  })
+  const effects: readonly Effect[] = [
+    ripples,
+    basin,
+    lantern,
+    canopy,
+    fireflies,
+    flowers,
+    needles,
+  ]
 
   const reduced = window.matchMedia(REDUCED_MOTION)
-  const narrow = window.matchMedia(LANDING_QUERY)
+  const covered = window.matchMedia(LANDING_QUERY)
 
   let scene: Scene | undefined
   let seen = false
@@ -124,7 +146,7 @@ export function start(): void {
     const next = computeScene(
       wrap.getBoundingClientRect(),
       { w: image.naturalWidth, h: image.naturalHeight },
-      narrow.matches,
+      covered.matches,
       window.devicePixelRatio,
     )
     if (scene !== undefined && sameScene(scene, next)) return undefined
@@ -145,7 +167,7 @@ export function start(): void {
     if (stopped || scene === undefined) return
 
     const awake = seen && !reduced.matches
-    const ambient = awake && !scene.mobile
+    const ambient = awake && !scene.covered
 
     context.clearRect(0, 0, scene.canvas.width, scene.canvas.height)
 
@@ -156,8 +178,17 @@ export function start(): void {
     if (ripples.draw(context, scene, now)) animating = true
     if (awake && basin.draw(context, scene, now)) animating = true
     if (ambient && lantern.draw(context, scene, now)) animating = true
+    if (ambient && canopy.draw(context, scene, now)) animating = true
     if (ambient && fireflies.draw(context, scene, now)) animating = true
     if (ambient && flowers.draw(context, scene, now)) animating = true
+    // The needles draw last because they fall in front of everything they
+    // pass, the tree they left included. They are also the only effect whose
+    // frame can put a ring on the water, and the water drew several passes
+    // ago: a needle landing now is answered on the next frame, which is one
+    // sixtieth of a second after it touched down and is not a wait anyone can
+    // see. The alternative is the pond reaching forward into an effect that
+    // has not moved yet.
+    if (ambient && needles.draw(context, scene, now)) animating = true
 
     // At rest the loop ends rather than idling, so the main thread reaches
     // windows with nothing scheduled in them.
@@ -356,7 +387,7 @@ export function start(): void {
     visibility.disconnect()
     resizes.disconnect()
     reduced.removeEventListener('change', schedule)
-    narrow.removeEventListener('change', remeasure)
+    covered.removeEventListener('change', remeasure)
     window.removeEventListener('load', onLoad)
     window.removeEventListener('pagehide', onPageHide)
     document.removeEventListener('visibilitychange', onHidden)
@@ -379,7 +410,7 @@ export function start(): void {
   // the gates, so a scene that has just been parked clears itself and a scene
   // that has just been released starts moving.
   reduced.addEventListener('change', schedule)
-  narrow.addEventListener('change', remeasure)
+  covered.addEventListener('change', remeasure)
   hero.addEventListener('pointermove', onMove)
   hero.addEventListener('pointerdown', onDown)
   hero.addEventListener('pointerleave', onLeave)

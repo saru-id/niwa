@@ -70,9 +70,17 @@ const styles = stylex.create({
     paddingInlineStart: '0.75rem',
     position: 'absolute',
     insetInlineEnd: '1px',
-    insetBlockStart: '1px',
-    // Clear of the frame's own corner, and ending where a line of code ends.
-    marginBlockStart: '0.625rem',
+    // Where the row sits down the frame, published rather than fixed. A page
+    // of fences wants it in the corner, clear of the first line of code; a
+    // page with one fence and one line of it wants the control on that line.
+    // The defaults are the corner, so a consumer that says nothing is
+    // unchanged, and one that wants the other places it without having to
+    // outrank an atomic rule it cannot see.
+    insetBlockStart: 'var(--copy-block-start, 1px)',
+    marginBlockStart: 'var(--copy-block-drop, 0.625rem)',
+    // `none`, not zero: a zero translate is still a transform, and a row
+    // that gains one gains a stacking context it never had.
+    translate: 'var(--copy-block-shift, none)',
     marginInlineEnd: BOX.padInline,
   },
   badge: {
@@ -169,8 +177,12 @@ function CodeBlock({ children, className, ...rest }: PreProps) {
           holds the right edge. A fence with no language and a fence
           declaring `plaintext` are the same thing downstream, and neither
           has anything to announce. */}
+        {/* The attribute is the badge's address for a page that hides it,
+          so styling it never has to lean on where it sits in the row. */}
         {lang && lang !== 'plaintext' ? (
-          <span {...stylex.props(styles.badge)}>{lang}</span>
+          <span data-lang-badge="" {...stylex.props(styles.badge)}>
+            {lang}
+          </span>
         ) : null}
       </div>
       {/* A fence wider than its column scrolls sideways, and the tab stop is

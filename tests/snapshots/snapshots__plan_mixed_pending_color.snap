@@ -3,13 +3,13 @@ source: tests/snapshots.rs
 expression: run.stdout
 ---
  init ──────────────────────────────
-[32m+[0m [1mbrew.formula:fd[22m
-[32m+[0m [1mbrew.formula:ripgrep[22m
+[32m+[0m [1mbrew.formula:git[22m
 [32m+[0m [1mbrew.formula:jq[22m
+[32m+[0m [1mbrew.formula:ripgrep[22m
+[32m+[0m [1mbrew.cask:firefox[22m
+[32m+[0m [1mbrew.cask:visual-studio-code[22m
 [33m~[0m [1mcom.apple.dock autohide[22m                 [2mfalse → true[0m
+[32m+[0m [1mcom.apple.finder AppleShowAllFiles[22m
+[32m+[0m [1mcom.apple.finder FXPreferredViewStyle[22m
 [32m+[0m [1m~/.zshrc[22m
-[32m+[0m [1mbrew.formula:neovim[22m
-[32m+[0m [1m~/.config/nvim[22m
-[32m+[0m [1mrun:nvim --headless '+Lazy! sync' +qa[22m
-[33m~[0m 9 checked · 8 would change
-  [2mresults read past the first change are predictions until apply[0m
+[33m~[0m 10 checked · 9 would change

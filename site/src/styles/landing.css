@@ -17,6 +17,33 @@
  * is used.
  */
 
+/* ---- The growing things ------------------------------------------------
+ * One plant runs through this page: the sprout under the trail in the
+ * header, the stem down the field guide in `A setup you can read.`, the
+ * connector in `No private format.`, and the leaf on every way out. They are
+ * one plant, so they are one palette, and it is declared here rather than on
+ * any of them.
+ *
+ * It used to live on `.trail`, which is a nav in the header. Custom
+ * properties inherit, so nothing outside that nav could see them: every rule
+ * further down the page that reached for `--sprout-stem` or an ease resolved
+ * to nothing, and a `var()` that fails to substitute takes its whole
+ * declaration with it. The stem beside the field guide, the branch and leaf
+ * on each of its rows, and every hover transition in the sections below were
+ * all written, and none of them ever painted.
+ */
+
+.surface-landing {
+  --sprout-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --sprout-ease-move: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --sprout-stem: #85958b;
+  --sprout-leaf-deep: #7f9580;
+  --sprout-leaf-light: #a8b99d;
+  --sprout-vein: #ced5c6;
+  --sprout-bloom: #d98d82;
+  --sprout-heart: #e8c394;
+}
+
 /* ---- The page ----------------------------------------------------------
  * The site's `scrollbar-gutter: stable` stays: it costs the composition
  * nothing and it keeps an anchor jump from re-wrapping the page. The
@@ -104,9 +131,24 @@
  * Fixed glass at the top of the page. It is transparent over the first
  * viewport and thickens once the page has moved; `is-scrolled` is how the
  * page says which of the two it is.
+ *
+ * Three registers across one line, and the grid is what holds them apart:
+ * the outer columns take an equal share of whatever the middle does not
+ * want, so the trail sits on the page's centre however wide the mark and
+ * the ways out happen to be. A flex row would have hung it off whichever
+ * neighbour grew.
+ *
+ * One face, one size, one track for every word on the bar; the registers
+ * are told apart by ink. The two sizes are stated here rather than at each
+ * of the three places that set type, so no register can drift off the line
+ * again — which is exactly how the trail ended up in the sans face a size
+ * above the ways out beside it.
  */
 
 .surface-landing .site-header {
+  --chrome-size: clamp(0.76rem, 0.62vw, 0.86rem);
+  --chrome-track: 0.014em;
+
   position: fixed;
   z-index: 30;
   top: 0;
@@ -131,29 +173,29 @@
 }
 
 .surface-landing .site-header-inner {
-  display: flex;
+  display: grid;
   width: min(100%, 82rem);
   min-height: 2.1rem;
   margin: 0 auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 2rem;
 }
 
-.surface-landing .header-left {
-  display: flex;
-  min-height: 2.1rem;
-  align-items: center;
-  gap: 2.75rem;
-}
+/* ---- The mark ----------------------------------------------------------
+ * The seedling, the wordmark and the version, which is the same trio the
+ * documentation's bar prints. Nothing here is nudged into place by a
+ * transform on the group: each part states its own alignment, and the one
+ * offset below is a correction to a drawing rather than to a layout.
+ */
 
 /* The mark is a link outside any nav, so the site's underline reaches it.
- * Two images are not a phrase to underline. */
+ * Two images and a number are not a phrase to underline. */
 .surface-landing .mini-mark {
   display: inline-flex;
   min-height: 2.1rem;
-  flex: 0 0 auto;
   align-items: center;
+  justify-self: start;
   gap: 0.18rem;
   color: inherit;
   opacity: 0.96;
@@ -190,63 +232,619 @@
   transform: translateY(0.08rem);
 }
 
-.surface-landing .site-nav {
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-  transform: translateY(0.125rem);
+/* The fact slot stands off the wordmark's last letter rather than against
+ * it, and holds whichever fact the mark is showing.
+ *
+ * The offset is optical, not arithmetic. The row centres each child's line
+ * box, and the wordmark is a drawing whose letters sit low in a box with
+ * air above them, so a centred fact floats well over the name it belongs
+ * to. This drops it onto the wordmark's own baseline, which is the line the
+ * eye reads the pair on, and it is measured against the wordmark at the
+ * 1.5rem the rule above sets: change that height and this moves with it. */
+.surface-landing .mark-fact {
+  display: inline-block;
+  position: relative;
+  margin-left: 0.6rem;
+  /* The slot takes the facts' own metrics rather than inheriting the
+     body's, so its box is exactly the box the version draws — which is
+     what lets the meaning, placed absolutely at the slot's top, land on
+     the version's own line and baseline instead of a strut's. */
+  font-size: var(--chrome-size);
+  line-height: 1;
+  transform: translateY(0.51rem);
 }
 
-.surface-landing .site-nav-actions {
-  margin-left: auto;
+/* Both facts take the bar's size like every other word — the version was
+ * once set two steps under everything around it and read as a footnote to
+ * the mark rather than a fact beside it — and stay subordinate in ink
+ * alone.
+ *
+ * A transition reads its timing from the state it is heading for, so the
+ * delays on these resting rules are the way OUT of the swap and the delays
+ * on the hover rules below are the way in. Both directions keep the same
+ * order — whatever is arriving waits for the slot to empty — because the
+ * version and the word share the first third of the slot, and without the
+ * wait the two cross mid-fade as a smudge. */
+.surface-landing .mark-version,
+.surface-landing .mark-meaning {
+  display: inline-block;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--chrome-size);
+  font-weight: 500;
+  letter-spacing: var(--chrome-track);
+  line-height: 1;
+  transition:
+    opacity 180ms ease,
+    transform 180ms var(--sprout-ease-out);
+}
+
+/* The version is the last thing home on the way out: it waits for the word
+ * to sink and the seal to lift before it settles back down. */
+.surface-landing .mark-version {
+  transition-delay: 160ms;
+}
+
+/* The meaning waits under the version, out of the flow so the bar never
+ * reflows under a pointer, and it is wider than the version — the room it
+ * opens into is the grid gap beside the mark, which the trail never enters.
+ * It is the same inline box the version is — the same size, the same
+ * single-line strut, the same left edge — so the swap is a replacement in
+ * place: one fact leaves the line and the other takes the very spot it
+ * held, on the baseline the bar reads every word on. */
+.surface-landing .mark-meaning {
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* No box and no fill: the bar's own rule is that registers are told apart
+ * by ink alone, and a filled block here would be the one closed shape on
+ * it. The glyph takes the warm ink the headline spends on its one loaded
+ * word, because that is what it is — the loaded word of the name. It stays
+ * at the line's own size, since a larger one would put its ascent above the
+ * strut and push the shared baseline off the version's; a kanji reads a
+ * shade small at Latin size, and a shade small is what a baseline this
+ * carefully placed is worth. No family is named for it: none of the page's
+ * stacks carries kanji, so the face is the reader's system's. */
+.surface-landing .mark-glyph {
+  display: inline-block;
+  margin-right: 0.35em;
+  color: var(--accent-soft);
+  opacity: 0;
+  transform: translateY(0.35em);
+  transition:
+    opacity 180ms ease,
+    transform 180ms var(--sprout-ease-out);
+  /* On the way out the glyph leaves only after the word has started to
+     sink, so the pair leaves in the reverse of the order it arrived. */
+  transition-delay: 40ms;
+}
+
+.surface-landing .mark-meaning-word {
+  display: inline-block;
+  color: var(--ink-muted);
+  opacity: 0;
+  transform: translateY(0.4em);
+  transition:
+    opacity 180ms ease,
+    transform 180ms var(--sprout-ease-out);
+}
+
+/* Asking the mark swaps the facts: the version rises away at once, and the
+ * meaning grows up into the room it cleared — the glyph first, its word a
+ * beat behind, the order the trail's own leaves open in. Focus asks the
+ * same question the pointer does. The zeroed delay is stated because the
+ * resting rules above carry the exit's waits, and without the zero the
+ * entrance would inherit them. */
+.surface-landing .mini-mark:hover .mark-version,
+.surface-landing .mini-mark:focus-visible .mark-version {
+  opacity: 0;
+  transform: translateY(-0.35em);
+  transition-delay: 0s;
+}
+
+.surface-landing .mini-mark:hover .mark-glyph,
+.surface-landing .mini-mark:focus-visible .mark-glyph {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 80ms;
+}
+
+.surface-landing .mini-mark:hover .mark-meaning-word,
+.surface-landing .mini-mark:focus-visible .mark-meaning-word {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 140ms;
+}
+
+/* The site's catch-all zeroes durations and leaves delays standing, so in
+ * either direction the facts would still trade places in slow steps for the
+ * very reader who turned the stagger off. Every delay in the swap goes. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-landing .mark-version,
+  .surface-landing .mark-glyph,
+  .surface-landing .mark-meaning-word,
+  .surface-landing .mini-mark:hover .mark-glyph,
+  .surface-landing .mini-mark:focus-visible .mark-glyph,
+  .surface-landing .mini-mark:hover .mark-meaning-word,
+  .surface-landing .mini-mark:focus-visible .mark-meaning-word {
+    transition-delay: 0s;
+  }
+}
+
+/* ---- The trail ---------------------------------------------------------
+ * The three stops this page makes, and where in them the reader is.
+ *
+ * The labels take the bar's face and the bar's size, which is the mono the
+ * version and the slug are already set in. They had been a sans face half a
+ * step larger, and next to the ways out the two registers read as two
+ * different bars rather than two parts of one.
+ *
+ * One sprout stands under the stop being read. The script moves the complete
+ * drawing, so it never stretches into a progress line. Before the story
+ * starts it stays closed and out of sight.
+ */
+
+.surface-landing .trail {
+  /* How long the stem takes to reach its end. The bud on its tip shares it
+     exactly — any drift between the two and the bud floats off the line it
+     is meant to be pulling — and every offshoot is a fraction of it. The
+     flower opens after it, which is what leaves the reach short of the whole
+     gesture rather than equal to it. This one is the trail's own; the rest of
+     the sprout's palette is the page's, at the top of this sheet. */
+  --sprout-reach: 690ms;
+  --sprout-ease-grow: cubic-bezier(0.35, 0.8, 0.45, 1);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.surface-landing .trail-stops {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  align-items: baseline;
+  gap: clamp(1.3rem, 1.35vw, 1.7rem);
+  list-style: none;
+}
+
+/* The stops do not change weight when they become current. The ink and the
+ * sprout say it, and a word that thickened under the reader would move its
+ * neighbours. */
+.surface-landing .trail-stops a {
+  display: block;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--chrome-size);
+  font-weight: 500;
+  letter-spacing: var(--chrome-track);
+  line-height: 1;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.surface-landing .trail-stops a:hover,
+.surface-landing .trail-stops a[aria-current] {
+  color: var(--ink-strong);
+}
+
+/* The outer box travels and does nothing else. The SVG inside it owns the
+ * quiet appearance, so placement and presence never compete for one
+ * transform. */
+.surface-landing .trail-sprout {
+  position: absolute;
+  top: calc(100% + 0.28rem);
+  left: 0;
+  display: block;
+  width: 3.75rem;
+  height: 1.125rem;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 360ms var(--sprout-ease-move);
+}
+
+.surface-landing .trail-sprout svg {
+  display: block;
+  width: 3.75rem;
+  height: 1.125rem;
+  overflow: visible;
+  opacity: 0;
+  transform: translateY(-0.6px);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 180ms ease,
+    transform 220ms var(--sprout-ease-out);
+}
+
+.surface-landing .trail.has-current .trail-sprout svg {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* The box reaches the next word first; the plant follows a fraction behind
+ * and then relaxes. Keeping this deformation inside the SVG lets placement,
+ * entrance and physical response stay three independent transforms. */
+.surface-landing .trail-sprout-body {
+  transform: translate3d(0, 0, 0) skewX(0deg) rotate(0deg) scaleX(1);
+  transform-box: view-box;
+  transform-origin: 7% 25%;
+  transition: transform 240ms var(--sprout-ease-move);
+}
+
+.surface-landing .trail-sprout-stem,
+.surface-landing .trail-sprout-branch {
+  fill: none;
+  stroke: var(--sprout-stem);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.92px;
+}
+
+.surface-landing .trail-sprout-branch {
+  opacity: 0.82;
+}
+
+.surface-landing .trail-sprout-leaf {
+  fill: var(--sprout-leaf-deep);
+}
+
+.surface-landing .trail-sprout-leaf-left {
+  fill: var(--sprout-leaf-light);
+}
+
+.surface-landing .trail-sprout-leaf-end {
+  fill: var(--sprout-leaf-light);
+}
+
+.surface-landing .trail-sprout-vein {
+  fill: none;
+  stroke: var(--sprout-vein);
+  stroke-linecap: round;
+  stroke-width: 0.42px;
+  opacity: 0.62;
+}
+
+.surface-landing .trail-sprout-bud {
+  fill: var(--sprout-heart);
+  opacity: 0.9;
+}
+
+.surface-landing .trail-sprout-flower {
+  fill: var(--sprout-bloom);
+}
+
+.surface-landing .trail-sprout-flower-heart {
+  fill: var(--sprout-heart);
+}
+
+/* ---- The growth --------------------------------------------------------
+ * The plant arrives by growing, which is the mechanic the connector in `No
+ * private format.` runs on: one line draws itself, a bud rides its tip, and
+ * every offshoot waits until the tip has passed the point it grows from.
+ * Down there the clock is the scroll. Up here it is time — the bar is fixed
+ * and has no travel of its own to read — but it is one clock either way, so
+ * the order can never come apart.
+ *
+ * It plays when the trail takes its first stop, which is the moment the
+ * reader leaves the garden for the story, and again whenever they come back
+ * over that line. That boundary is already the plant's open and shut state;
+ * this only makes the opening the thing the plant actually does. Between
+ * stops nothing regrows — `has-current` stays on, and the move keeps the
+ * travel and the give it already had.
+ *
+ * Each piece carries its own moment as `--at` and the stylesheet turns that
+ * into a delay, so the timing lives next to the drawing it belongs to rather
+ * than in a keyframe block that cannot say which stroke it means. The
+ * component measured those numbers off the stem; nothing here invents them.
+ */
+
+.surface-landing .trail.has-current .trail-sprout-stem {
+  animation: trail-draw var(--sprout-reach) var(--sprout-ease-grow) both;
+}
+
+.surface-landing .trail.has-current .trail-sprout-branch,
+.surface-landing .trail.has-current .trail-sprout-vein {
+  animation: trail-draw 200ms linear both;
+  animation-delay: calc(var(--sprout-reach) * var(--at));
+}
+
+.surface-landing .trail.has-current .trail-sprout-leaf {
+  animation: trail-open 210ms var(--sprout-ease-out) both;
+  animation-delay: calc(var(--sprout-reach) * var(--at));
+  transform-box: fill-box;
+  transform-origin: left top;
+}
+
+/* Every leaf on this plant hangs below the stem it joins, so each pivots on
+ * a top corner; which corner is which way the leaf falls away. */
+.surface-landing .trail.has-current .trail-sprout-leaf-low,
+.surface-landing .trail.has-current .trail-sprout-leaf-right {
+  transform-origin: right top;
+}
+
+/* The bud keeps the opacity its own rule gives it, so it opens on scale
+ * alone. At nothing it is invisible regardless. */
+.surface-landing .trail.has-current .trail-sprout-bud {
+  animation: trail-swell 210ms var(--sprout-ease-out) both;
+  animation-delay: calc(var(--sprout-reach) * var(--at));
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The flower is the last thing that happens: it stands at the end of the
+ * stem, so it waits for the whole reach. Its placement is an attribute on
+ * the group above it — a CSS transform there would overwrite the placement
+ * and open the flower on the origin — so the opening runs on the group
+ * inside. */
+.surface-landing .trail.has-current .trail-sprout-flower {
+  animation: trail-bloom 240ms var(--sprout-ease-out) both;
+  animation-delay: var(--sprout-reach);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The growing point. It is drawn only where a path can carry it, and the
+ * growth is whole without it — the stem draws either way. Two animations
+ * rather than one: `offset-distance` keeps a single interval so it stays
+ * locked to the stem's easing, and the fade needs keyframes in the middle
+ * that would otherwise cut that interval in half and let the bud drift off
+ * the end of the line it is meant to be pulling. */
+.surface-landing .trail-sprout-tip {
+  display: none;
+  fill: var(--sprout-heart);
+}
+
+@supports (offset-path: path('M0 0')) {
+  .surface-landing .trail.has-current .trail-sprout-tip {
+    display: block;
+    offset-path: path('M4.2 4.8c6.1-1.4 11.3.8 17.2.6 7-.2 11.8-2.1 18.4-.1 5 1.5 9 2.2 15.7.8');
+    offset-rotate: 0deg;
+    animation:
+      trail-tip-travel var(--sprout-reach) var(--sprout-ease-grow) both,
+      trail-tip-fade calc(var(--sprout-reach) + 240ms) linear both;
+  }
+}
+
+@keyframes trail-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes trail-open {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes trail-swell {
+  from {
+    transform: scale(0);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes trail-tip-travel {
+  from {
+    offset-distance: 0%;
+  }
+
+  to {
+    offset-distance: 100%;
+  }
+}
+
+/* The bud is the tip of the stem while there is stem left to make, and it
+ * hands over to the flower exactly where the stem ends, which is the whole
+ * reason it was there. */
+@keyframes trail-tip-fade {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  8%,
+  74% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* It overshoots once. A flower that scales straight to its size reads as a
+ * disc being resized; the small step past it is what makes it open. */
+@keyframes trail-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-24deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.12) rotate(4deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* ---- The ways out ------------------------------------------------------
+ * The two places that are not this page: the documentation and the
+ * repository. Each is a mark and a word, and they are deliberately the same
+ * object twice — what says a way out leaves the page is that it carries a
+ * mark, which nothing on the trail does.
+ *
+ * Which one the page would rather you took is said in ink alone. It has
+ * been said three other ways in the course of getting here: an underline,
+ * then a bordered pill, then a rule above and below. All three drew a frame
+ * around one item on a page that has no frames anywhere else, and each one
+ * read as a control lifted out of some other site. The old header had the
+ * hierarchy upside down on top of that, and the repository was the
+ * brightest thing on the bar.
+ */
+
+/* The gap between the two ways is wider than the gap inside either one, so
+ * a mark reads as belonging to the word after it rather than the word
+ * before. At the old spacing the four parts were evenly spread and the bar
+ * offered no grouping at all. */
+.surface-landing .site-ways {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 0.85rem;
   text-shadow: 0 1px 10px rgba(3, 5, 4, 0.88);
 }
 
-.surface-landing .site-nav a {
+.surface-landing .way {
   display: inline-flex;
-  min-height: 2.1rem;
+  height: 2rem;
   align-items: center;
+  padding: 0 0.32rem;
+  gap: 0.42rem;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
+  font-size: var(--chrome-size);
+  font-weight: 500;
+  letter-spacing: var(--chrome-track);
   line-height: 1;
   text-decoration: none;
-  transition: color 160ms ease;
+  transition: color 180ms ease;
 }
 
-.surface-landing .site-nav a:hover {
+/* The documentation is the errand the page would rather you ran, and the
+ * whole of how it says so is the ink: strong against the repository's
+ * muted. Nothing is drawn around it. Both ways answer a hover the same
+ * way, because they are the same kind of thing. */
+.surface-landing .way-docs {
   color: var(--ink-strong);
 }
 
-.surface-landing .site-nav .repo-link {
-  padding: 0;
-  gap: 0.45rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--ink-strong);
-}
-
-/* The mark is the site's own drawing. Its file asks for `currentColor` at
- * one em, which here would take the ink of the words beside it and a size
- * from the type: both are stated instead. The white at 88% is what the
- * composition was measured with. */
-.surface-landing .repo-link svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  fill: #ffffff;
-  opacity: 0.88;
-}
-
-.surface-landing .site-nav .repo-link:hover {
-  border-color: var(--accent);
+.surface-landing .way:hover {
   color: var(--accent-soft);
 }
 
-.surface-landing .site-nav a:focus-visible,
+/* Both marks take the ink of the word beside them and answer the hover with
+ * it, which is what both files already ask for by painting in
+ * `currentColor`. The GitHub mark stood at a fixed white before, a shade
+ * brighter than anything it sat next to and unable to respond to anything.
+ * The size is stated because each file asks for one em and would otherwise
+ * be set by the type. Both are lifted a hair: a mark centred on the line box
+ * sits below the cap line its word reads on, which is what made the pair
+ * look like two sizes when they were one.
+ *
+ * The two boxes are not equal, because the two drawings are not the same
+ * kind of drawing. The book is a stroked outline on a rectangle and the
+ * GitHub mark is a filled disc; given one box the disc fills its corners,
+ * the outline does not, and the repository ends up the heaviest thing on a
+ * bar it is meant to be the quietest thing on. The disc takes the smaller
+ * box so the two carry the same mass. */
+.surface-landing .way svg {
+  width: 1.16em;
+  height: 1.16em;
+  flex: 0 0 auto;
+  transform: translateY(-0.045em);
+}
+
+.surface-landing .way-repo svg {
+  width: 1.02em;
+  height: 1.02em;
+}
+
+.surface-landing .trail-stops a:focus-visible,
+.surface-landing .way:focus-visible,
+.surface-landing .mini-mark:focus-visible,
 .surface-landing .copy-button:focus-visible,
-.surface-landing .docs-link:focus-visible {
+.surface-landing .docs-link:focus-visible,
+.surface-landing .config-luau:focus-visible,
+.surface-landing .why-covers a:focus-visible,
+.surface-landing .boundary-switch:focus-visible,
+.surface-landing .boundary-pull:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
+}
+
+/* Below this the three registers stop fitting across one line, and the
+ * trail is the one that goes: a trail read at a squeeze is worse than the
+ * scroll it describes, and it is the only thing on the bar the reader can
+ * do without. The grid closes to two columns behind it. */
+@media (max-width: 1000px) {
+  .surface-landing .site-header-inner {
+    grid-template-columns: auto 1fr;
+  }
+
+  .surface-landing .trail {
+    display: none;
+  }
+}
+
+/* Placement remains under reduced motion, while travel and the entrance
+ * shift disappear. The complete plant stays visible in its current state:
+ * the growth is how the plant arrives, not what it is, so switching it off
+ * has to leave every piece drawn rather than leave the stem half made. The
+ * dash properties are reset by hand because a cancelled animation returns
+ * each one to the value the rule above it set, and those rules set none. */
+@media (prefers-reduced-motion: reduce) {
+  .surface-landing .trail-sprout,
+  .surface-landing .trail-sprout svg,
+  .surface-landing .trail-sprout-body {
+    transition: none;
+  }
+
+  .surface-landing .trail-sprout svg,
+  .surface-landing .trail-sprout-body {
+    transform: none !important;
+  }
+
+  .surface-landing .trail.has-current .trail-sprout-stem,
+  .surface-landing .trail.has-current .trail-sprout-branch,
+  .surface-landing .trail.has-current .trail-sprout-vein,
+  .surface-landing .trail.has-current .trail-sprout-leaf,
+  .surface-landing .trail.has-current .trail-sprout-bud,
+  .surface-landing .trail.has-current .trail-sprout-flower,
+  .surface-landing .trail.has-current .trail-sprout-tip {
+    animation: none;
+    transform: none;
+  }
+
+  .surface-landing .trail-sprout-stem,
+  .surface-landing .trail-sprout-branch,
+  .surface-landing .trail-sprout-vein {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+
+  /* The travelling bud has nothing to lead once the drawing is instant, and
+     it would sit on the flower it hands over to. */
+  .surface-landing .trail.has-current .trail-sprout-tip {
+    display: none;
+  }
 }
 
 /* ---- The hero ----------------------------------------------------------
@@ -266,12 +864,23 @@
   isolation: isolate;
 }
 
+/* The width is the garden's whole size: the art is contained in this box and
+ * anchored to its right bottom corner, so a wider box is a bigger painting.
+ *
+ * The second term is what keeps the composition from breaking on a wide
+ * window. The art is three by two, so 88% of the width outgrows the window's
+ * height once the window is wider than about 1.6 of it, and from there the
+ * garden runs the full height of the screen with the pine jammed under the
+ * header. Capping the box at one and a half times 95svh states the same
+ * thing as a height: the garden stands at most 95% of the window tall and
+ * keeps sky above it, which is the proportion it already has on a laptop.
+ * Below that aspect the 88% still governs and nothing changes. */
 .surface-landing .hero-art-wrap {
   position: sticky;
   z-index: -1;
   top: 0;
   right: 0;
-  width: 88%;
+  width: min(88%, calc(1.5 * 95svh));
   height: 100svh;
   margin-left: auto;
   transform: translate3d(0, 0, 0);
@@ -420,20 +1029,30 @@
   z-index: 3;
 }
 
+/* The command is the one thing in the first viewport a reader can act on,
+ * and it was set below the subcopy above it in both size and weight — the
+ * quietest line on a bar built to carry it. It takes the strongest ink on
+ * the page and a medium weight: enough to hold the bar without turning a
+ * shell line into a heading, which a bold mono at this measure does. */
 .surface-landing .installer code {
   min-width: 0;
   overflow: hidden;
-  color: var(--ink);
+  color: var(--ink-strong);
   font-family: var(--font-mono);
-  font-size: clamp(0.69rem, 1.05vw, 0.8rem);
+  font-size: clamp(0.75rem, 1.15vw, 0.88rem);
+  font-weight: 500;
   line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* The prompt stays at the command's old weight. It is not part of what
+ * pastes, and matching the line's new weight would have made it read as the
+ * first word of it. */
 .surface-landing .prompt {
   margin-right: 0.6rem;
   color: var(--accent);
+  font-weight: 400;
 }
 
 .surface-landing .copy-button {
@@ -464,15 +1083,24 @@
 }
 
 /* The quiet way out of the first viewport, kept subordinate to the command
- * above it. It is a link outside any nav, so it says so itself. */
+ * above it. It is a link outside any nav, so it says so itself.
+ *
+ * It is the same object every other way on this page is: mono at `.onward`'s
+ * size, a label, and the arrow drawn on the sixteen grid. It had been the
+ * one exception — a smaller size of its own and a typed `→` where every
+ * other arrow on the page is the drawing — which put a third way-on shape in
+ * front of a reader who had not yet met the first two.
+ *
+ * The question and the errand are one line of type in two inks. Two weights
+ * and two sizes were doing what one step of ink does. */
 .surface-landing .docs-link {
   display: inline-flex;
-  margin-top: 1rem;
+  margin-top: 1.15rem;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.5rem;
   color: var(--ink-muted);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.76rem;
   letter-spacing: 0.01em;
   line-height: 1.4;
   text-decoration: none;
@@ -481,13 +1109,21 @@
 }
 
 .surface-landing .docs-link strong {
-  color: var(--ink);
-  font-weight: 500;
+  color: var(--ink-strong);
+  font-weight: inherit;
   transition: color 180ms ease;
 }
 
 .surface-landing .docs-arrow {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
   color: var(--accent-soft);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
   transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -497,44 +1133,44 @@
 }
 
 .surface-landing .docs-link:hover .docs-arrow {
-  transform: translateX(0.2rem);
+  transform: translateX(0.18rem);
 }
 
 /* ---- The story ---------------------------------------------------------
  * Everything below the hero rides over the pinned art on its own opaque
  * ground, which is what ends the garden's hold on the window.
+ *
+ * Five screens, and they are deliberately not the same screen five times.
+ * The page used to set every section as one giant heading in the left
+ * column with its content beside it, which meant nothing was emphasised,
+ * because emphasis is a thing you can only have some of. The order below is
+ * a rhythm: the claim, wide and quiet; the exhibit, dense; the argument,
+ * lifted onto its own panel; the boundaries, sober; and the garden again at
+ * the end.
+ *
+ * The measures are shared. `--say` is the width prose is set to and no
+ * heading or paragraph on this page runs past it; `--breathe` is the air a
+ * section holds above and below its content, and it is one value so the
+ * page keeps one pulse.
  */
 
 .surface-landing .story {
+  --say: 34rem;
+  --breathe: clamp(4.5rem, 7.5vw, 7rem);
+
   position: relative;
   z-index: 2;
   background: var(--ground);
 }
 
+/* The clearance under the header on a fragment jump is the root's
+ * `scroll-padding-top` alone. A margin here would stack on top of it —
+ * the two are additive — and land every anchor twice as deep. */
 .surface-landing .story > section {
   width: min(100% - 3rem, 76rem);
   margin: 0 auto;
-  scroll-margin-top: 5.25rem;
-}
-
-/* Two columns: the claim on the left, what backs it on the right. */
-.surface-landing .why,
-.surface-landing .config {
-  display: grid;
-  gap: clamp(4rem, 9vw, 9rem);
-  padding: clamp(7rem, 13vw, 11rem) 0;
+  padding: var(--breathe) 0;
   border-bottom: 1px solid var(--border);
-}
-
-.surface-landing .why {
-  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.2fr);
-}
-
-/* The exhibit's column is the wider of the two by more than the section
- * above it: the config's longest line is sixty-nine characters, and a fence
- * that has to scroll to show one of them is a fence a reader distrusts. */
-.surface-landing .config {
-  grid-template-columns: minmax(12rem, 0.62fr) minmax(0, 1.38fr);
 }
 
 .surface-landing .story h2 {
@@ -545,194 +1181,1869 @@
   text-wrap: balance;
 }
 
-.surface-landing .why h2 {
-  max-width: 10ch;
-  font-size: clamp(3.25rem, 6vw, 6rem);
-}
-
-.surface-landing .why-body {
-  align-self: end;
-}
-
-.surface-landing .why-body p {
-  max-width: 34rem;
-  margin-bottom: 0;
-  color: var(--ink-muted);
-  font-size: clamp(1.08rem, 1.8vw, 1.35rem);
-  letter-spacing: -0.015em;
-  line-height: 1.65;
-}
-
-.surface-landing .config-copy {
-  align-self: center;
-}
-
-.surface-landing .config h2 {
-  max-width: 8ch;
-  font-size: clamp(3rem, 5vw, 5.1rem);
-}
-
-.surface-landing .config-copy p {
-  max-width: 24rem;
-  margin: 1.5rem 0 0;
-  color: var(--ink-muted);
-  font-size: 0.98rem;
-  line-height: 1.65;
-}
-
-/* The config and the plan it produces are one exhibit, so they stand in one
- * column with nothing between them but the air the frames already carry. */
-.surface-landing .exhibit {
-  min-width: 0;
-}
-
-/* ---- The daily loop and the boundary -----------------------------------
- * One measure for both, because they are one argument: here is what you do
- * with it, and here is what it will not do for you.
+/* The story's type scale.
+ *
+ * Six sizes, and every section reads them rather than setting its own. They
+ * are here because the alternative is what was here before: four section
+ * headings on four different rates, two names in the display face a third of
+ * a pixel apart, two notes under them at different sizes, and three sizes of
+ * small mono. None of those differences carried meaning — they were four
+ * people's worth of separate decisions about the same object.
+ *
+ * A section that genuinely needs its own size overrides one of these and says
+ * why. That is the difference between a scale and a suggestion.
  */
+.surface-landing .story {
+  /* A section's heading. */
+  --say-title: clamp(3.25rem, 5.8vw, 5.8rem);
+  /* The paragraph directly under it. */
+  --say-lede: clamp(1.08rem, 1.5vw, 1.3rem);
+  /* A named thing in the display face: a tile, a way on. */
+  --say-name: clamp(1.02rem, 1.18vw, 1.14rem);
+  /* The line under such a name. */
+  --say-note: clamp(0.68rem, 0.83vw, 0.74rem);
+  /* A specimen of code standing on its own line. */
+  --say-code: clamp(0.72rem, 0.86vw, 0.79rem);
+  /* A stamp or a caption, in mono. */
+  --say-mark: 0.76rem;
 
-.surface-landing .loop,
-.surface-landing .boundary {
-  padding: clamp(7rem, 13vw, 11rem) 0;
-  border-bottom: 1px solid var(--border);
+  /* And one clock. Anything on this page that answers a pointer answers on
+     this beat and this curve, so two things reached at once arrive together
+     rather than a fifth of a second apart. */
+  --say-beat: 240ms;
+  --say-ease: var(--sprout-ease-out);
 }
 
-.surface-landing .loop h2,
-.surface-landing .boundary h2,
-.surface-landing .router h2 {
-  max-width: 12ch;
-  margin-bottom: 3.25rem;
-  font-size: clamp(2.75rem, 4.5vw, 4rem);
-}
-
-.surface-landing .motions {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.surface-landing .motions li {
-  display: grid;
-  grid-template-columns: 2.5rem 1fr;
-  gap: 1rem;
-  padding: 1.25rem 0;
-  border-top: 1px solid var(--border);
-}
-
-.surface-landing .motions li > span {
-  padding-top: 0.18rem;
+/* One paragraph shape for the whole story, so a line of prose is the same
+ * object wherever it stands.
+ *
+ * `:where()` on the middle term is what makes this a default rather than a
+ * ruling. Written plainly it carries a class and an element, which outranks
+ * every paragraph rule on this page that carries only a class — so the lede
+ * in `A setup you can read.`, the one in `Change your Mac.`, both ways on and
+ * two captions all declared a size and silently got this one instead. Zeroing
+ * the `.story` term leaves one class and one element, which still clears the
+ * bare `p` rules in `app.css` — the thing this sheet has to outrank on
+ * specificity because it cannot rely on being served after them — while
+ * losing to anything here that names a paragraph by what it is.
+ */
+.surface-landing :where(.story) p {
+  max-width: var(--say);
   color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 1.02rem;
+  line-height: 1.7;
 }
 
-.surface-landing .motions h3 {
-  margin-bottom: 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.018em;
-  line-height: 1.35;
-}
-
-.surface-landing .motions p,
-.surface-landing .boundary p {
-  max-width: 34rem;
-  margin-bottom: 0;
-  color: var(--quiet);
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.surface-landing .boundary p {
-  margin-bottom: 1rem;
-}
-
+/* The way on from a section: quiet, in mono, and always the last thing. */
 .surface-landing .onward {
-  margin-top: 0.7rem;
+  margin-top: 2rem;
+  margin-bottom: 0;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--say-mark);
+  letter-spacing: 0.01em;
   line-height: 1.4;
 }
 
-.surface-landing .boundary .onward {
-  margin-top: 2rem;
-}
-
-/* ---- The way into the documentation ------------------------------------
- * Three doors, named by the three groups the sidebar is built from.
+/* ---- The claim ---------------------------------------------------------
+ * A field guide rather than a feature row. The claim stays editorial on the
+ * left; on the right, one file grows into four real declarations.
+ *
+ * A row is a block, not a table line. The declaration sits under the name it
+ * belongs to, which is what lets the rules between rows go: set across the
+ * row, a name and its Luau ended a column apart with nothing tying them
+ * together, and the rule was the only thing saying they were one thing. Put
+ * them one above the other and the tie is proximity, which needs no ink. What
+ * separates the rows after that is space, and what says a row is one object
+ * is the ground that comes up under it when it is reached.
+ *
+ * The declaration is set larger than the name. It is what the section is
+ * making its case with; the name is the label on it.
  */
 
-.surface-landing .router {
-  padding: clamp(7rem, 13vw, 11rem) 0;
-  border-bottom: 1px solid var(--border);
+.surface-landing .why {
+  display: grid;
+  position: relative;
+  gap: clamp(4rem, 8vw, 8.5rem);
+  grid-template-columns: minmax(15rem, 0.78fr) minmax(0, 1.22fr);
+  align-items: start;
+  isolation: isolate;
 }
 
-.surface-landing .router-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
+.surface-landing .why h2 {
+  position: relative;
+  max-width: none;
+  font-size: var(--say-title);
+}
+
+/* The line break is part of the composition. Leaving it to the available
+ * measure produced three short lines on wide screens, where the heading has
+ * enough room to make one complete thought per line. */
+.surface-landing .why h2 span {
+  display: block;
+  white-space: nowrap;
+}
+
+.surface-landing .why-lede {
+  margin: 2rem 0 0;
+  font-size: var(--say-lede);
+  letter-spacing: -0.012em;
+  line-height: 1.62;
+}
+
+/* The stamp under the claim, and it has to out-rank `.story p` to be one.
+ * That rule carries an element in its selector and this one did not, so the
+ * aside lost every value it set and rendered as a full-size mono paragraph in
+ * the body's own ink — a second lede in the wrong face, directly under the
+ * first. Matching the element here is what makes the design it declares the
+ * design it gets. */
+.surface-landing .story p.why-aside {
+  max-width: none;
+  margin: 1.45rem 0 0;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--say-mark);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.surface-landing .why-covers {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.surface-landing .router-card {
-  display: block;
-  padding: 1.75rem 2rem 1.75rem 0;
-  border-top: 1px solid var(--border);
+/* The rows run the whole column, the way every other block on this page does.
+ * What stops a full-width row reading as an empty bar is where its ground is
+ * strongest: the wash below comes up under the content and falls away toward
+ * the edge, so the width is carried by the row rather than left over at the
+ * end of it.
+ *
+ * Between rows there is four times the space there is inside one. That ratio
+ * is the whole of what tells four blocks apart with no rule between them, and
+ * it is the first thing to protect if these numbers are ever touched.
+ */
+.surface-landing .why-covers li + li {
+  margin-top: 1rem;
+}
+
+.surface-landing .why-covers a {
+  display: grid;
+  position: relative;
+  align-items: start;
+  padding: 0.9rem 0.85rem 0.95rem;
+  border-radius: 4px;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  column-gap: 1.05rem;
+  row-gap: 0.46rem;
   color: inherit;
   text-decoration: none;
-  transition: border-color 220ms ease;
+  isolation: isolate;
 }
 
-.surface-landing .router-card:hover {
-  border-top-color: var(--accent);
+/* The ground, washing in from the left. It is the section below's own
+ * treatment for a full-width way on, and using it here is what makes the two
+ * read as one page rather than two lists that happen to sit above each
+ * other. */
+.surface-landing .why-covers a::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 7%, transparent),
+    color-mix(in srgb, var(--accent) 2%, transparent) 62%,
+    transparent
+  );
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.96);
+  transform-origin: left;
+  transition:
+    opacity var(--say-beat) ease,
+    transform var(--say-beat) var(--say-ease);
 }
 
-.surface-landing .router-card h3 {
-  margin-bottom: 0.6rem;
-  font-size: 1.35rem;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  transition: color 180ms ease;
+.surface-landing .why-covers a:hover::before,
+.surface-landing .why-covers a:focus-visible::before {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
-.surface-landing .router-card:hover h3 {
+/* The mark and the way on stand against the whole row rather than against
+ * either of its lines, so both are centred across the two. */
+.surface-landing .why-icon {
+  grid-row: 1 / span 2;
+  grid-column: 1;
+  align-self: center;
+}
+
+.surface-landing .why-name {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.surface-landing .why-covers code {
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.surface-landing .why-action {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  align-self: center;
+}
+
+
+
+/* The mark, in a well of its own.
+ *
+ * A tile with no border needs its ends held, and the well and the way on hold
+ * one each: between them the row reads as a tile without a line being drawn
+ * around it. The corner is the one the page cuts its exhibits with, so the
+ * well belongs to the same family as the fence and the chip below it. */
+.surface-landing .why-icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink-strong) 3.5%, transparent);
+  color: var(--sprout-leaf-light);
+  place-items: center;
+  transition:
+    background-color var(--say-beat) ease,
+    border-color var(--say-beat) ease,
+    color var(--say-beat) ease;
+}
+
+.surface-landing .why-icon svg {
+  width: 1.32rem;
+  height: 1.32rem;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Thinned as the mark grew, so a bigger icon is not also a heavier one. */
+  stroke-width: 1.05;
+}
+
+.surface-landing .why-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.surface-landing .why-name strong {
+/* The display face, at the size and tracking the way on from `No private
+ * format.` sets its own title in. The section around these tiles is set in
+ * that face throughout — heading and lede both — so a sans name here was the
+ * third face in a section that only has room for two, and it read as a
+ * control rather than as a name. */
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: var(--say-name);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  transition: color var(--say-beat) ease;
+}
+
+.surface-landing .why-name small {
+  color: var(--quiet);
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--say-note);
+  letter-spacing: 0.008em;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The declaration is a specimen: held, and second.
+ *
+ * The site's own rule is that inline code takes weight and not a box, because
+ * a border around every flag name speckles running prose. This is the other
+ * kind — a whole declaration standing on its own line, which is what the fence
+ * in `No private format.` and the bar in the hero both are, and both of those
+ * are contained. Unheld, it read as a second sentence in a second face rather
+ * than as a thing being shown.
+ *
+ * Held too firmly it read as the first thing instead. A border and a lit
+ * ground made the example the heaviest object in a tile whose name is the
+ * point of it, so the containment is now a ground and nothing else: enough to
+ * say `this is a specimen`, not enough to say `read this first`.
+ *
+ * It is also quiet in colour until it is attended to. The highlighter paints
+ * string literals in the same warm the page keeps for the thing under the
+ * reader's pointer, so at full saturation every tile wore the accent at rest
+ * and the accent stopped meaning anything. Held back here, it comes up with
+ * the rest of the tile.
+ *
+ * Sized to its own content rather than to the column: a specimen that runs
+ * the width of the row is a paragraph again however it is painted. And the
+ * ground is translucent, so the row's wash passes behind it rather than
+ * leaving a hole where one ground covers the other. */
+.surface-landing .why-covers code {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.28rem 0.5rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ink-strong) 4%, transparent);
+  color: var(--th-token);
+  font-family: var(--font-mono);
+  font-size: var(--say-code);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  filter: saturate(0.62) brightness(0.9);
+  transition: filter var(--say-beat) ease;
+}
+
+.surface-landing .why-token-variable {
+  color: var(--th-variable);
+}
+
+.surface-landing .why-token-property {
+  color: var(--th-property);
+}
+
+.surface-landing .why-token-function {
+  color: var(--th-function);
+}
+
+.surface-landing .why-token-string {
+  color: var(--th-string);
+}
+
+.surface-landing .why-token-literal {
+  color: var(--th-literal);
+}
+
+.surface-landing .why-token-operator {
+  color: var(--th-operator);
+}
+
+.surface-landing .why-arrow {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+}
+
+/* The way on. Same object as the one at the foot of `No private format.`, at
+ * the size a list of four can carry: it is the second of the two things
+ * holding the tile's ends, and the one that says the tile leads somewhere. */
+.surface-landing .why-action {
+  display: grid;
+  width: 1.95rem;
+  height: 1.95rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  color: color-mix(in srgb, var(--accent-soft) 70%, var(--ink-muted));
+  place-items: center;
+  transition:
+    background-color var(--say-beat) ease,
+    border-color var(--say-beat) ease,
+    color var(--say-beat) ease,
+    transform var(--say-beat) var(--say-ease);
+}
+
+/* The whole tile answers on one beat: the ground washes in, the well and the
+ * name warm, the specimen comes up to full colour, and the way on fills and
+ * steps out. One thing travels, and it is the mark whose job is to say so. */
+.surface-landing .why-covers a:hover .why-name strong,
+.surface-landing .why-covers a:focus-visible .why-name strong {
   color: var(--accent-soft);
 }
 
-.surface-landing .router-card p {
-  max-width: 18rem;
-  margin-bottom: 0;
-  color: var(--quiet);
-  font-size: 0.9rem;
-  line-height: 1.6;
+.surface-landing .why-covers a:hover .why-icon,
+.surface-landing .why-covers a:focus-visible .why-icon {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background-color: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--accent-soft);
 }
 
-/* ---- The last word -----------------------------------------------------
- * The command again, at the bottom, where a reader who read the whole page
- * arrives ready to run it.
+.surface-landing .why-covers a:hover code,
+.surface-landing .why-covers a:focus-visible code {
+  filter: saturate(1) brightness(1);
+}
+
+.surface-landing .why-covers a:hover .why-action,
+.surface-landing .why-covers a:focus-visible .why-action {
+  border-color: var(--accent-soft);
+  background-color: var(--accent-soft);
+  color: var(--ground);
+  transform: translateX(0.14rem);
+}
+
+/* The two-part section still has room here, so only the row's own spacing
+ * closes up. Dropping the declaration under its name used to happen at this
+ * width and is now what a row is at every width, which is why nothing here
+ * places anything any more. */
+@media (max-width: 1000px) {
+  .surface-landing .why {
+    gap: clamp(3.25rem, 6vw, 4.75rem);
+  }
+
+  .surface-landing .why-covers a {
+    padding: 0.8rem 0.7rem 0.85rem;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    column-gap: 0.8rem;
+    row-gap: 0.42rem;
+  }
+}
+
+/* ---- The exhibit -------------------------------------------------------
+ * The config and the plan it produces share one field. The introduction
+ * and proof keep the page's usual measure. The source is deliberately terse
+ * enough that readability comes from type, not from breaking the grid.
  */
 
-.surface-landing .install {
-  display: flex;
-  min-height: 34rem;
-  padding: clamp(7rem, 12vw, 10rem) 0 max(clamp(7rem, 12vw, 10rem), env(safe-area-inset-bottom));
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 4rem;
+.surface-landing .config-intro {
+  display: grid;
+  width: 100%;
+  margin: 0 auto;
+  gap: clamp(4rem, 8vw, 8.5rem);
+  grid-template-columns: minmax(15rem, 0.78fr) minmax(0, 1.22fr);
+  align-items: start;
+}
+
+.surface-landing .config h2 {
+  max-width: 9ch;
+  font-size: var(--say-title);
+}
+
+/* Everything in this column shares one right edge, and it is the column's.
+ *
+ * The block had two edges before, and neither was the section's: the prose
+ * stopped at a measure this section kept for itself and the way on was let
+ * out past it to the column's end. Capping them together fixed the raggedness
+ * and introduced a worse one — the copy became the only block on the page not
+ * reaching the right margin, with the proof directly below it running the
+ * full width.
+ *
+ * So the measure goes instead. It can, because the section is capped at 76rem
+ * and this column is a shade over 40rem at every width above a laptop: the
+ * line lands near fifty characters of this face uncapped, well inside what a
+ * reader wants. The cap was guarding a width this column never reaches.
+ */
+.surface-landing .config-copy p {
+  margin: 1.35rem 0 0;
+  max-width: none;
+}
+
+.surface-landing .config-copy .config-lede {
+  margin-top: 0.3rem;
+  color: var(--ink);
+  font-size: var(--say-lede);
+  letter-spacing: -0.012em;
+  line-height: 1.62;
+}
+
+.surface-landing .config-copy code {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* Luau belongs beside the real source that follows. The warm stroke marks
+ * the external language without turning the prose into a call to action. */
+.surface-landing .config-luau {
+  display: inline-flex;
+  position: relative;
+  align-items: baseline;
+  gap: 0.16em;
+  color: var(--ink-strong);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.surface-landing .config-luau::after {
+  position: absolute;
+  right: 0;
+  bottom: 0.08em;
+  left: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--accent) 68%, transparent);
+  content: '';
+  transform: scaleX(0.62);
+  transform-origin: left;
+  transition: transform 220ms var(--sprout-ease-out);
+}
+
+.surface-landing .config-luau svg {
+  width: 0.62em;
+  height: 0.62em;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.25;
+  transition: transform 220ms var(--sprout-ease-out);
+}
+
+.surface-landing .config-luau:hover::after,
+.surface-landing .config-luau:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.surface-landing .config-luau:hover svg,
+.surface-landing .config-luau:focus-visible svg {
+  transform: translate3d(1px, -1px, 0);
+}
+
+/* A source and its answer are one proof, not two cards. Their own frames are
+ * functional: one copies and one scrolls. The open field around them and the
+ * living line between them carry the composition. */
+.surface-landing .config-proof {
+  --config-flow-width: clamp(3.25rem, 5vw, 4.5rem);
+  --text-code: clamp(0.78rem, 0.82vw, 0.9rem);
+  --text-output: clamp(0.78rem, 0.82vw, 0.9rem);
+
+  display: grid;
+  position: relative;
+  margin-top: clamp(2.75rem, 5vw, 5rem);
+  grid-template-columns: minmax(15rem, 0.78fr) clamp(4rem, 8vw, 8.5rem) minmax(0, 1.22fr);
+  align-items: start;
+}
+
+/* The three run end to end: the file stops where the vine starts, and the
+ * vine stops where the screen starts. The file comes back half a connector to
+ * make room, which is what puts the vine's middle — rather than its near edge
+ * — on the line the copy column above begins at. */
+.surface-landing .config-source {
+  min-width: 0;
+  margin-right: calc(var(--config-flow-width) / 2);
+  grid-column: 1 / 3;
+  grid-row: 1;
+}
+
+/* The result comes half a connector back with the vine, so the stem still
+ * lands on it. Left where it was, the vine would reach out of the file and
+ * stop short of the screen it is drawn to reach. */
+.surface-landing .config-result {
+  min-width: 0;
+  margin-left: calc(var(--config-flow-width) / 2);
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Both frames arrive carrying the exhibit's own block margin, and here they
+ * keep it: side by side it falls above and below each of them equally, so the
+ * two columns still line up and the only thing it costs is height.
+ *
+ * A rule stood here that read `margin: 0`, and it never once applied — the
+ * atomic class carrying that margin is written `.x…:not(#\#):not(#\#)`, which
+ * buys it two ids' worth of specificity, and no selector spelled out of
+ * classes and attributes reaches over that. What this composition actually
+ * stands on is the margin being present, so the way to retire it is the
+ * property the exhibit publishes, and the place that does is the stacked
+ * arrangement below, where it has a connector to hold off. */
+
+/* The output is shorter than the source. Lowering it aligns the optical
+ * centres of the two frames, so the stem can travel straight across. */
+.surface-landing .config-result {
+  margin-top: 4.45rem;
+}
+
+/* The screen's caption is taken off the page but not out of it.
+ *
+ * The prose above already names the command — `niwa plan` is the subject of
+ * its own sentence — so printing it again under the screen says nothing a
+ * reader has not just read. It stays in the document because it is the only
+ * name this figure has, and the screen inside it takes focus for scrolling:
+ * deleting it would leave a focusable region with nothing to announce. */
+.surface-landing .config-result figcaption {
+  position: absolute;
+  overflow: hidden;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  block-size: 1px;
+  inline-size: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The connector is centred on the line the copy column starts at, rather than
+ * beginning on it. That line is the page's spine, and the source's own edge
+ * sits on it: straddling it puts the stem's middle exactly where the file
+ * ends, so the vine reads as leaving the file rather than as starting in the
+ * gap beside it. */
+.surface-landing .config-flow {
+  display: grid;
+  min-width: 0;
+  width: var(--config-flow-width);
+  margin-left: calc(var(--config-flow-width) / -2);
+  align-self: center;
+  color: var(--sprout-stem, #85958b);
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: start;
+  place-items: center;
+  view-timeline-axis: block;
+  view-timeline-name: --config-flow-growth;
+}
+
+.surface-landing .config-flow svg {
+  display: block;
+  width: min(100%, 4.5rem);
+  height: auto;
+  overflow: visible;
+}
+
+.surface-landing .config-flow-stem,
+.surface-landing .config-flow-branch,
+.surface-landing .config-flow-vein {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.surface-landing .config-flow-stem {
+  stroke: var(--sprout-stem, #85958b);
+  stroke-width: 1.15;
+}
+
+.surface-landing .config-flow-branch {
+  stroke: color-mix(in srgb, var(--sprout-stem, #85958b) 76%, transparent);
+  stroke-width: 0.9;
+}
+
+.surface-landing .config-flow-leaf {
+  fill: var(--sprout-leaf-deep, #7f9580);
+  opacity: 0.86;
+  transform-box: fill-box;
+  transform-origin: left bottom;
+}
+
+.surface-landing .config-flow-leaf-low {
+  fill: var(--sprout-leaf-light, #a8b99d);
+  opacity: 0.7;
+  transform-origin: right bottom;
+}
+
+.surface-landing .config-flow-vein {
+  stroke: var(--sprout-vein, #ced5c6);
+  stroke-width: 0.5;
+  opacity: 0.55;
+}
+
+.surface-landing .config-flow-bud {
+  fill: var(--sprout-heart, #e8c394);
+  opacity: 0.9;
+}
+
+.surface-landing .config-flow-tip {
+  display: none;
+}
+
+/* The block is not prose, so the story's reading measure does not apply to
+ * it: it fills whatever column it is given. Left on the default it stopped at
+ * the measure and read as a button that had failed to reach the edge of its
+ * own column. */
+.surface-landing .onward-block {
+  max-width: none;
+}
+
+.surface-landing .onward-block a {
+  display: grid;
+  position: relative;
+  width: 100%;
+  align-items: center;
+  min-height: 4.65rem;
+  padding: 1rem 1.1rem 1.05rem 1.15rem;
+  /* A rule above and a rule below was the wrong frame twice over: it is the
+     device the tiles beside it just gave up, and this already carried a wash
+     that comes up when it is reached.
+     
+     What replaced it is a hairline and nothing else. A ground under it as
+     well made a filled block that read as the loudest thing in the section,
+     and it is not: it is the quiet way out of a section whose actual argument
+     is the file and the plan below it. The line gives it a shape to be
+     pressed; the ground it stands on arrives only when it is reached. */
+  border: 1px solid color-mix(in srgb, var(--border) 42%, transparent);
+  border-radius: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  color: var(--ink-strong);
+  text-decoration: none;
+  transition:
+    background-color var(--say-beat) ease,
+    border-color var(--say-beat) ease,
+    color var(--say-beat) ease;
+  isolation: isolate;
+}
+
+.surface-landing .onward-block a::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 6%, transparent),
+    color-mix(in srgb, var(--accent) 2%, transparent) 62%,
+    transparent
+  );
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.97);
+  transform-origin: left;
+  transition:
+    opacity var(--say-beat) ease,
+    transform var(--say-beat) var(--say-ease);
+}
+
+.surface-landing .onward-block-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.surface-landing .onward-block-title {
+  font-family: var(--font-display);
+  font-size: var(--say-name);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  transition: color var(--say-beat) ease;
+}
+
+.surface-landing .onward-block-note {
+  color: var(--quiet);
+  font-family: var(--font-sans);
+  font-size: var(--say-note);
+  letter-spacing: 0.008em;
+  line-height: 1.3;
+  transition: color var(--say-beat) ease;
+}
+
+.surface-landing .onward-block-action {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: color-mix(in srgb, var(--accent-soft) 82%, var(--ink-muted));
+  place-items: center;
+  transition:
+    background-color var(--say-beat) ease,
+    border-color var(--say-beat) ease,
+    color var(--say-beat) ease,
+    transform var(--say-beat) var(--say-ease);
+}
+
+.surface-landing .onward-block svg {
+  width: 0.88rem;
+  height: 0.88rem;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+  transition: transform 240ms var(--sprout-ease-out);
+}
+
+.surface-landing .onward-block a:hover,
+.surface-landing .onward-block a:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+}
+
+.surface-landing .onward-block a:hover::before,
+.surface-landing .onward-block a:focus-visible::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.surface-landing .onward-block a:hover .onward-block-title,
+.surface-landing .onward-block a:focus-visible .onward-block-title {
+  color: var(--accent-soft);
+}
+
+.surface-landing .onward-block a:hover .onward-block-note,
+.surface-landing .onward-block a:focus-visible .onward-block-note {
+  color: var(--ink-muted);
+}
+
+.surface-landing .onward-block a:hover .onward-block-action,
+.surface-landing .onward-block a:focus-visible .onward-block-action {
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+  color: var(--ground);
+  transform: translateX(0.14rem);
+}
+
+/* Scroll-driven growth is progressive enhancement. Without it the complete
+ * stem is present; reduced motion keeps that static state as well. */
+@supports (animation-timeline: view()) {
+  .surface-landing .config-flow-stem {
+    animation: config-stem-grow linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  /* Every piece shares the stem's exact range. Its keyframes then hold each
+   * offshoot below ground until the travelling tip reaches that attachment:
+   * 32% for the low leaf and 43% for the upper branch. The upper leaf waits
+   * for that branch to reach it. Keeping one clock also makes the order hold
+   * when the connector turns vertical on a narrow screen. */
+  .surface-landing .config-flow-leaf-low {
+    animation: config-low-leaf-grow linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+  }
+
+  .surface-landing .config-flow-branch {
+    animation: config-branch-grow linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .surface-landing .config-flow-leaf:not(.config-flow-leaf-low) {
+    animation: config-upper-leaf-grow linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+  }
+
+  .surface-landing .config-flow-vein {
+    animation: config-vein-grow linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .surface-landing .config-flow-bud-static {
+    display: none;
+  }
+
+  .surface-landing .config-flow-tip {
+    display: block;
+    offset-path: path('M3 49c19-13 38 11 66-1');
+    offset-distance: 100%;
+    offset-rotate: 0deg;
+    animation: config-tip-travel linear both;
+    animation-range: entry 12% cover 36%;
+    animation-timeline: --config-flow-growth;
+  }
+}
+
+@keyframes config-stem-grow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes config-low-leaf-grow {
+  0%,
+  32% {
+    opacity: 0;
+    transform: scale(0.58);
+  }
+
+  46%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+}
+
+@keyframes config-branch-grow {
+  0%,
+  43% {
+    stroke-dashoffset: 1;
+  }
+
+  83%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes config-upper-leaf-grow {
+  0%,
+  81% {
+    opacity: 0;
+    transform: scale(0.58);
+  }
+
+  96%,
+  100% {
+    opacity: 0.86;
+    transform: scale(1);
+  }
+}
+
+@keyframes config-vein-grow {
+  0%,
+  84% {
+    stroke-dashoffset: 1;
+  }
+
+  98%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes config-tip-travel {
+  from {
+    offset-distance: 0%;
+    opacity: 0.45;
+  }
+
+  to {
+    offset-distance: 100%;
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The grounds that wash in from the left: under reduced motion they arrive
+     rather than travel. The tiles' own ground is listed here too — it was
+     added with them and reads the same clock. */
+  .surface-landing .why-covers a::before,
+  .surface-landing .door,
+  .surface-landing .door::before,
+  .surface-landing .door-name,
+  .surface-landing .onward-block a,
+  .surface-landing .onward-block a::before,
+  .surface-landing .onward-block-title,
+  .surface-landing .onward-block-note,
+  .surface-landing .onward-block-action,
+  .surface-landing .onward-block svg,
+  .surface-landing .config-flow-stem,
+  .surface-landing .config-flow-branch,
+  .surface-landing .config-flow-vein,
+  .surface-landing .config-flow-leaf,
+  .surface-landing .config-flow-bud {
+    animation: none;
+    transition: none;
+  }
+
+  .surface-landing .boundary-moss,
+  .surface-landing .boundary-moss-bloom,
+  .surface-landing .boundary-switch,
+  .surface-landing .boundary-switch span,
+  .surface-landing .boundary-pull,
+  .surface-landing .boundary-pull-status,
+  .surface-landing .boundary-pull svg,
+  .surface-landing .boundary-transfer-line::after,
+  .surface-landing .boundary-token-literal,
+  .surface-landing .boundary-token-literal [data-writeback-before],
+  .surface-landing .boundary-token-arrow,
+  .surface-landing .boundary-token-after {
+    animation: none;
+    transition: none;
+  }
+
+  /* These three are set off by `.boundary.is-*` state rules, so the `none`
+     has to carry the same weight or the rule that starts them wins. */
+  .surface-landing .boundary.is-pulling .boundary-moss-bloom,
+  .surface-landing .boundary.is-synced .boundary-pull-status,
+  .surface-landing .boundary.is-pulling .boundary-transfer-line::after {
+    animation: none;
+  }
+
+  .surface-landing .config-flow-stem {
+    stroke-dashoffset: 0;
+  }
+
+  .surface-landing .config-flow-branch,
+  .surface-landing .config-flow-vein {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---- The write-back loop ----------------------------------------------
+ * A sparse moss stipple brings the garden's material into the flat middle of
+ * the page without adding another branch or a second code exhibit. One
+ * ordinary Dock change is the whole proof: the machine moves, pull carries
+ * it down, and the readable declaration catches up.
+ */
+.surface-landing .boundary {
+  --boundary-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+  display: grid;
+  position: relative;
+  min-height: clamp(39rem, 63vw, 48rem);
+  /* Even columns, because this section's heading is the longest on the page
+     and the uneven pair could not hold it: its longer line ran seventy-six
+     pixels past its own column, so the copy under it looked short against a
+     heading that was overflowing. Evening them fits the heading and costs the
+     demo nothing — it is capped at 35rem and justified to the far edge, so it
+     sits in exactly the same place either way. */
+  grid-template-columns: minmax(18rem, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(3rem, 6vw, 6rem);
+  isolation: isolate;
+  overflow: hidden;
+  view-timeline-axis: block;
+  view-timeline-name: --boundary-arrival;
+}
+
+.surface-landing .boundary-moss {
+  --moss-dot: color-mix(in srgb, var(--sprout-leaf-light, #a8b99d) 23%, transparent);
+  --moss-dot-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+
+  position: absolute;
+  z-index: -1;
+  top: 3%;
+  right: -5%;
+  width: 76%;
+  height: 94%;
+  opacity: 0.72;
+  pointer-events: none;
+  transform-origin: 62% 50%;
+}
+
+.surface-landing .boundary-moss-patch {
+  position: absolute;
+  background:
+    radial-gradient(circle at center, var(--moss-dot) 0 0.72px, transparent 1px) 0 0 / 8px 8px,
+    radial-gradient(circle at center, var(--moss-dot-soft) 0 0.55px, transparent 0.85px) 3px 5px / 13px 13px,
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--sprout-leaf-deep, #7f9580) 7%, transparent),
+      transparent 64%
+    );
+  -webkit-mask-image: radial-gradient(ellipse, #000 0 22%, transparent 73%);
+  mask-image: radial-gradient(ellipse, #000 0 22%, transparent 73%);
+}
+
+.surface-landing .boundary-moss-patch-one {
+  top: -2%;
+  right: -3%;
+  width: 68%;
+  height: 37%;
+  transform: rotate(-7deg);
+}
+
+.surface-landing .boundary-moss-patch-two {
+  top: 29%;
+  left: 0;
+  width: 64%;
+  height: 43%;
+  transform: rotate(8deg);
+}
+
+.surface-landing .boundary-moss-patch-three {
+  right: -5%;
+  bottom: -1%;
+  width: 73%;
+  height: 42%;
+  transform: rotate(-5deg);
+}
+
+.surface-landing .boundary-moss-bloom {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: 13rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--accent) 72%, transparent) 0 0.78px,
+    transparent 1.05px
+  ) 0 0 / 6px 6px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.42);
+  -webkit-mask-image: radial-gradient(circle, #000 0 18%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 0 18%, transparent 68%);
+}
+
+.surface-landing .boundary.is-pulling .boundary-moss-bloom {
+  animation: boundary-moss-bloom 620ms var(--boundary-ease-out) both;
+}
+
+.surface-landing .boundary-intro,
+.surface-landing .boundary-demo {
+  position: relative;
+  z-index: 1;
+}
+
+.surface-landing .boundary h2 {
+  max-width: none;
+  margin-bottom: 0;
+  /* The one heading that does not take the story's title size, and the reason
+     is its own words: it is two full sentences where every other section has
+     three or four words, and it is the only one set beside a panel rather
+     than into open field. At the shared size its longer line runs to within a
+     few pixels of the demo. Held a step under, both lines clear it. */
+  font-size: clamp(3.25rem, 5.3vw, 4.8rem);
+}
+
+.surface-landing .boundary h2 span {
+  display: block;
+  white-space: nowrap;
+}
+
+/* One right edge down this column: the lede kept a measure of its own that
+ * stopped it short of both the heading above and the way on below. */
+.surface-landing .boundary-lede {
+  max-width: none;
+  margin: 2rem 0 0;
+  color: var(--ink-muted);
+  font-size: var(--say-lede);
+  letter-spacing: -0.012em;
+  line-height: 1.62;
+}
+
+.surface-landing .boundary-lede code {
+  color: var(--accent-soft);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+}
+
+.surface-landing .boundary .boundary-onward {
+  margin: 2.1rem 0 0;
+}
+
+.surface-landing .boundary-demo {
+  width: min(100%, 35rem);
+  justify-self: end;
+}
+
+.surface-landing .boundary-demo-place {
+  max-width: none;
+  margin: 0 0 0.72rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--say-mark);
+  letter-spacing: 0.015em;
+  line-height: 1.4;
+}
+
+/* The two halves of the demo are panels, because that is what they are: a
+ * pane of the machine's settings and a file on disk. `No private format.`
+ * shows the same pairing one section earlier and frames both — so leaving
+ * these two ruled top and bottom made the page draw the same two objects two
+ * different ways, and it is the rule-above-and-below the tiles and the way on
+ * have both already given up.
+ *
+ * The corner and the hairline are the page's exhibit frame, so the settings
+ * pane, the file, the fence above and the plan screen beside it are all one
+ * kind of thing. */
+.surface-landing .boundary-setting {
+  display: grid;
+  min-height: 5.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2rem;
+  color: var(--ink-strong);
+  font-family: var(--font-sans);
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-weight: 500;
+  letter-spacing: -0.012em;
+}
+
+.surface-landing .boundary-switch {
+  position: relative;
+  width: 3rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--quiet) 28%, var(--ground));
+  cursor: pointer;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease;
+}
+
+.surface-landing .boundary-switch span {
+  position: absolute;
+  top: 0.19rem;
+  left: 0.2rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--ink-strong);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.34);
+  transform: translateX(0);
+  transition: transform 260ms var(--boundary-ease-out);
+}
+
+.surface-landing .boundary-switch.is-on {
+  border-color: color-mix(in srgb, var(--sprout-leaf-light, #a8b99d) 72%, var(--border));
+  background: color-mix(in srgb, var(--sprout-leaf-deep, #7f9580) 72%, var(--ground));
+}
+
+.surface-landing .boundary-switch.is-on span {
+  transform: translateX(1.31rem);
+}
+
+.surface-landing .boundary-switch:disabled {
+  cursor: default;
+}
+
+/* Deliberately not isolated. The two things this holds behind its own
+ * content — the line and the bloom the pull sets off — are drawn behind the
+ * panels as well, and the bloom is the reason: it is half again as tall as
+ * this box, so it reaches over the setting above and the file below, and a
+ * wash of colour across the switch a reader has just thrown reads as a
+ * decoration laid over the demonstration rather than as the ground moving
+ * under it. Isolating here would trap both at this box's own back and put
+ * that wash on top.
+ *
+ * They still cannot reach the page: `.boundary-demo` carries a z-index and
+ * so ends every negative one inside it, one level further out. That is the
+ * level this wants. */
+.surface-landing .boundary-transfer {
+  display: grid;
+  position: relative;
+  min-height: 8.75rem;
+  place-items: center;
+}
+
+.surface-landing .boundary-transfer-line {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, var(--border), var(--border-strong), var(--border));
+  overflow: hidden;
+}
+
+.surface-landing .boundary-transfer-line::after {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 42%;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  content: '';
+  opacity: 0;
+  transform: translateY(-120%);
+}
+
+.surface-landing .boundary.is-pulling .boundary-transfer-line::after {
+  animation: boundary-writeback-flow 560ms ease both;
+}
+
+.surface-landing .boundary-pull {
+  display: grid;
+  min-width: 8.75rem;
+  padding: 0.7rem 1rem 0.75rem;
+  border: 0;
+  background: var(--ground);
+  color: var(--accent-soft);
+  cursor: pointer;
+  gap: 0.18rem;
+  place-items: center;
+  transition:
+    color 200ms ease,
+    opacity 200ms ease;
+}
+
+.surface-landing .boundary-pull code {
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.surface-landing .boundary-pull span {
+  color: var(--quiet);
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+}
+
+.surface-landing .boundary.is-synced .boundary-pull-status {
+  animation: boundary-status-settle 320ms var(--boundary-ease-out) both;
+}
+
+.surface-landing .boundary-pull svg {
+  width: 0.82rem;
+  height: 0.82rem;
+  margin-top: 0.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.2;
+  transition: transform 240ms var(--boundary-ease-out);
+}
+
+.surface-landing .boundary-pull:hover svg,
+.surface-landing .boundary-pull:focus-visible svg {
+  transform: translateY(0.16rem);
+}
+
+/* Standing down is said with `aria-disabled`, never the real attribute: a
+ * truly disabled button drops the keyboard focus that is on it at that very
+ * moment. The script's guard is what makes the word true. */
+.surface-landing .boundary-pull[aria-disabled='true'] {
+  color: var(--quiet);
+  cursor: default;
+  opacity: 0.72;
+}
+
+.surface-landing .boundary-pull[aria-disabled='true'] svg {
+  transform: none;
+}
+
+/* The file, framed like the fence in the section above it. The warm wash
+ * stays and now lies over the panel's own ground rather than over the page:
+ * it is what marks this file as the one the pull is about to write to. */
+.surface-landing .boundary-code {
+  overflow-x: auto;
+  margin: 0;
+  padding: 1.15rem 1.15rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 4%, transparent),
+      transparent 76%
+    ),
+    var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: clamp(0.76rem, 0.92vw, 0.88rem);
+  line-height: 1.65;
+  tab-size: 2;
+}
+
+.surface-landing .boundary-code code {
+  font: inherit;
+}
+
+.surface-landing .boundary-token-variable {
+  color: var(--th-variable);
+}
+
+.surface-landing .boundary-token-operator {
+  color: var(--th-operator);
+}
+
+.surface-landing .boundary-token-function {
+  color: var(--th-function);
+}
+
+.surface-landing .boundary-token-property {
+  color: var(--th-property);
+}
+
+.surface-landing .boundary-token-literal {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--th-literal);
+  gap: 0;
+  transition: gap 440ms var(--boundary-ease-out);
+}
+
+.surface-landing .boundary-token-literal [data-writeback-before],
+.surface-landing .boundary-token-arrow,
+.surface-landing .boundary-token-after {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.surface-landing .boundary-token-literal [data-writeback-before] {
+  max-width: 5.5ch;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    max-width 480ms var(--boundary-ease-out),
+    opacity 280ms ease,
+    transform 480ms var(--boundary-ease-out),
+    color 360ms ease;
+}
+
+.surface-landing .boundary-token-arrow,
+.surface-landing .boundary-token-after {
+  max-width: 0;
+  opacity: 0;
+  transform: translate3d(-0.22em, 0.08em, 0);
+  transition:
+    max-width 460ms var(--boundary-ease-out),
+    opacity 300ms ease,
+    transform 460ms var(--boundary-ease-out);
+}
+
+.surface-landing .boundary-token-literal.is-diffing {
+  gap: 0.34em;
+}
+
+.surface-landing .boundary-token-literal.is-diffing [data-writeback-before] {
+  color: var(--quiet);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--accent) 64%, transparent);
+  text-decoration-thickness: 1px;
+}
+
+.surface-landing .boundary-token-literal.is-diffing .boundary-token-arrow,
+.surface-landing .boundary-token-literal.is-diffing .boundary-token-after {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.surface-landing .boundary-token-literal.is-diffing .boundary-token-arrow {
+  max-width: 1.2em;
+  transition-delay: 80ms;
+}
+
+.surface-landing .boundary-token-literal.is-diffing .boundary-token-after {
+  max-width: 5.5ch;
+  transition-delay: 150ms;
+}
+
+.surface-landing .boundary-token-literal.is-diffing.is-committing {
+  gap: 0;
+}
+
+.surface-landing .boundary-token-literal.is-committing [data-writeback-before],
+.surface-landing .boundary-token-literal.is-committing .boundary-token-arrow {
+  max-width: 0;
+  opacity: 0;
+  transform: translate3d(-0.12em, 0.12em, 0) scale(0.97);
+  transition-delay: 0ms;
+}
+
+.surface-landing .boundary-token-literal.is-committing .boundary-token-after {
+  transition-delay: 0ms;
+}
+
+.surface-landing .boundary-token-arrow {
+  color: var(--quiet);
+}
+
+.surface-landing .boundary-token-after {
+  color: var(--th-literal);
+}
+
+.surface-landing .boundary-token-literal.is-resetting,
+.surface-landing .boundary-token-literal.is-resetting * {
+  animation: none !important;
+  transition: none !important;
+}
+
+@supports (animation-timeline: view()) {
+  .surface-landing .boundary-moss {
+    animation: boundary-moss-arrive linear both;
+    animation-range: entry 10% cover 48%;
+    animation-timeline: --boundary-arrival;
+  }
+
+  /* Stopped here rather than in the page's reduced-motion block, because
+     that block comes earlier and ties on specificity: outside this rule the
+     arrival would play for the very reader who turned it off. A progress-
+     driven animation also shrugs at the global 0.01ms duration — its clock
+     is the scroll, not time — so `none` is the only word that stops it. */
+  @media (prefers-reduced-motion: reduce) {
+    .surface-landing .boundary-moss {
+      animation: none;
+    }
+  }
+}
+
+@keyframes boundary-moss-arrive {
+  from {
+    opacity: 0.16;
+    transform: translateY(1.5rem) scale(0.97);
+  }
+
+  to {
+    opacity: 0.72;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes boundary-writeback-flow {
+  0% {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  82% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(340%);
+  }
+}
+
+@keyframes boundary-moss-bloom {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.42);
+  }
+
+  30% {
+    opacity: 0.68;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+@keyframes boundary-status-settle {
+  from {
+    opacity: 0.18;
+    transform: translateY(0.16rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- The last screen ---------------------------------------------------
+ * The garden again. The page opened in the painting and it closes in it,
+ * and everything between was words and output on flat ground.
+ *
+ * The section runs the full width of the window rather than the story's
+ * measure, because a picture held inside a column is a picture in a box.
+ * The content keeps the measure by carrying it itself.
+ */
+
+/* Named through the story to reach past `.story > section`, which sets the
+ * measure every other section keeps. This one does not keep it: the picture
+ * runs the width of the window and the content carries the measure itself. */
+.surface-landing .story > .install {
+  position: relative;
+  width: 100%;
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  /* Less air than a section boundary holds, and none of the bottom-edge
+     inset this section carried while it ended the page: the colophon ends
+     the page now and owns that edge. What follows this padding is the rule
+     the colophon's root hangs from, and a full section's breathe above it
+     read as the page ending twice. */
+  padding-bottom: clamp(2.5rem, 3.5vw, 3.5rem);
+  border-bottom: 0;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Turned almost all the way down and pulled to the pond. What is left is
+ * the suggestion of water behind the command, which is the note the page
+ * should end on — not a second hero competing with the first. */
+.surface-landing .install-art {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.surface-landing .install-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% 78%;
+  opacity: 0.4;
+}
+
+/* The ink over it. It is heaviest at the top, where the section has to meet
+ * the flat ground above it without a seam, and lightest low and right,
+ * which is where the water is. */
+.surface-landing .install::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    /* Down: opaque where the section meets the flat ground above it, then
+       open, and it stays open — what closes the picture before the doors is
+       the doors' own ground, which is tied to where they actually are. A
+       share of the section's height would drift with the section. */
+    linear-gradient(
+      180deg,
+      #030504 0%,
+      rgba(3, 5, 4, 0.74) 20%,
+      rgba(3, 5, 4, 0.5) 48%,
+      rgba(3, 5, 4, 0.5) 100%
+    ),
+    /* Across: heaviest under the words, lightest where the water is. */
+    linear-gradient(90deg, rgba(3, 5, 4, 0.8) 0%, rgba(3, 5, 4, 0.3) 58%, rgba(3, 5, 4, 0.1) 100%);
+  content: '';
+  pointer-events: none;
+}
+
+.surface-landing .install-inner {
+  width: min(100%, 76rem);
+  margin: 0 auto;
 }
 
 .surface-landing .install h2 {
   max-width: 9ch;
-  font-size: clamp(3.75rem, 8vw, 8rem);
+  font-size: var(--say-title);
+  text-shadow: 0 2px 24px rgba(3, 5, 4, 0.9);
+}
+
+.surface-landing .install-say p {
+  margin: 1.5rem 0 0;
+  color: var(--ink);
+  font-size: var(--say-lede);
+  text-shadow: 0 2px 16px rgba(3, 5, 4, 0.95);
 }
 
 /* The fence holds the installer's own measure, so the command reads at the
  * same width at the end of the page as it does at the top. */
+/* The page's last word is a command, so it is dressed as one.
+ *
+ * The fence itself is the shared one the documentation uses, and it stays
+ * that: everything below is written against the hooks that component
+ * publishes — its copy control, its status, its `--copy-shown` — so a
+ * reference page is not restyled by the landing wanting a nicer prompt.
+ */
 .surface-landing .install-fence {
   width: min(34rem, 100%);
+  margin-top: 2.5rem;
+}
+
+/* The control does not wait to be hovered here. On a reference page a copy
+ * button per fence would be a row of buttons; on this page there is one
+ * command and pressing it is the whole point of the section. */
+.surface-landing .install-fence [data-code-block] {
+  --copy-shown: 1;
+}
+
+/* The prompt, in the ink the hero's own command uses for it. It is drawn
+ * rather than written: the copy control reads the code element's text, and a
+ * `::before` is not in it, so what lands on the clipboard is the command and
+ * not a shell prompt someone has to delete. */
+.surface-landing .install-fence code::before {
+  margin-right: 0.75rem;
+  color: var(--accent);
+  /* Twice, because the second form carries empty alt text — the prompt is
+     punctuation, and a screen reader that read it would put a word in front
+     of every reader's command. A browser that predates the alt form drops
+     that line and keeps the plain one. */
+  content: '$';
+  content: '$' / '';
+  font-weight: 400;
+}
+
+.surface-landing .install-fence code {
+  color: var(--ink-strong);
+  font-weight: 500;
+}
+
+/* The language badge goes. It is there to tell fences apart on a page with
+ * many of them; this page has one, and the prompt in front of it already
+ * says what kind of line it is. */
+.surface-landing .install-fence [data-lang-badge] {
+  display: none;
+}
+
+/* With the badge gone the control holds the right end on its own, so it sits
+ * on the command's line instead of above it: one row, the command at one end
+ * and the way to take it at the other, which is what the bar in the hero
+ * already is.
+ *
+ * Placed through the three properties the fence publishes for it. The drop
+ * goes because it exists to clear a first line of code on a page of fences,
+ * and here that line is the only one. */
+.surface-landing .install-fence [data-code-block] {
+  --copy-block-start: 50%;
+  --copy-block-drop: 0rem;
+  --copy-block-shift: 0 -50%;
+}
+
+/* ---- The doors ---------------------------------------------------------
+ * Under the command, and quieter than it. A reader here has either decided
+ * or is looking for the reason not to; both are served by three names and
+ * one line each.
+ */
+
+/* The doors stand on ground of their own, which is what ends the picture.
+ * It is drawn from the doors rather than from the section so that it lands
+ * where they land at any size, it bleeds to both edges of the window, and
+ * it runs off the bottom — the section clips it. A door read over a koi is
+ * a door nobody reads. */
+.surface-landing .doors {
+  position: relative;
+  margin-top: clamp(4rem, 7vw, 6rem);
+}
+
+.surface-landing .doors::before {
+  position: absolute;
+  z-index: -1;
+  inset: -4.5rem calc(50% - 50vw) -100vh;
+  background: linear-gradient(180deg, rgba(3, 5, 4, 0) 0, #030504 4.5rem);
+  content: '';
+  pointer-events: none;
+}
+
+/* The ground the doors stand on, made visible. The flat black stays — it is
+ * what keeps a door readable over the water — and onto it falls the moss
+ * stipple the write-back section already grows, thinned to a scatter: the
+ * same dot fields, the leaf tone and the accent, so the page's last stretch
+ * reads as ground rather than as absence. It sits between the ground and
+ * the doors, whose own washes paint inside their isolated boxes above it.
+ *
+ * The field is held to the measure, unlike the ground behind it: the ground
+ * bleeds to the window because its job is to end the picture everywhere,
+ * and the scatter is furniture of the doors' own row. Its bottom offset is
+ * the value the section closes with, so the dots run out exactly at the
+ * line the colophon's root hangs from — the surface that root is under —
+ * and the mask dissolves the field well before its edges, so a scatter has
+ * no drawn boundary anywhere. */
+.surface-landing .doors::after {
+  position: absolute;
+  z-index: -1;
+  inset: 2.5rem 0 calc(-1 * clamp(2.5rem, 3.5vw, 3.5rem));
+  background:
+    radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--sprout-leaf-light, #a8b99d) 20%, transparent) 0 0.7px,
+        transparent 1px
+      )
+      0 0 / 9px 9px,
+    radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--accent) 12%, transparent) 0 0.55px,
+        transparent 0.85px
+      )
+      4px 6px / 14px 14px,
+    radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--sprout-vein, #ced5c6) 11%, transparent) 0 0.8px,
+        transparent 1.1px
+      )
+      11px 3px / 23px 23px;
+  content: '';
+  opacity: 0.55;
+  pointer-events: none;
+  /* Three spacings no one of which divides another, and the whole field
+     turned a degree and a half off the screen's own grid: dots on one pitch
+     aligned to the pixel grid read as graph paper, and soil is not ruled.
+     The mask turns with the field and keeps its tilted corners dissolved. */
+  transform: rotate(-1.5deg);
+  -webkit-mask-image: radial-gradient(60% 110% at 50% 100%, #000 38%, transparent 96%);
+  mask-image: radial-gradient(60% 110% at 50% 100%, #000 38%, transparent 96%);
+}
+
+.surface-landing .doors-say {
+  margin: 0 0 1.25rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--say-mark);
+  letter-spacing: 0.01em;
+}
+
+/* The rule belongs to the row, not to each door.
+ *
+ * Three doors each carrying a border-top drew one line out of three, which
+ * only looked like one line because they were flush against each other — and
+ * it left the last piece of structure on this page made of rules. The row
+ * keeps a single line to sit under, because it does separate the row from the
+ * label above it; the doors themselves are blocks, and a block on this page
+ * answers with a ground rather than with ink on its edge.
+ */
+.surface-landing .doors-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border-strong);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 0.5rem;
+  list-style: none;
+}
+
+.surface-landing .door {
+  display: block;
+  position: relative;
+  padding: 1.4rem 1rem 1.35rem 0.85rem;
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+  isolation: isolate;
+}
+
+/* The same ground the tiles and the ways on come up with, so a door being
+ * read answers the way everything else on this page does. */
+.surface-landing .door::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 6%, transparent),
+    color-mix(in srgb, var(--accent) 2%, transparent) 62%,
+    transparent
+  );
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.96);
+  transform-origin: left;
+  transition:
+    opacity var(--say-beat) ease,
+    transform var(--say-beat) var(--say-ease);
+}
+
+.surface-landing .door:hover::before,
+.surface-landing .door:focus-visible::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.surface-landing .door-name {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: var(--say-name);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.15;
+  transition: color var(--say-beat) ease;
+}
+
+.surface-landing .door:hover .door-name,
+.surface-landing .door:focus-visible .door-name {
+  color: var(--accent-soft);
+}
+
+.surface-landing .door-line {
+  display: block;
+  max-width: 18rem;
+  color: var(--quiet);
+  font-family: var(--font-sans);
+  font-size: var(--say-note);
+  letter-spacing: 0.008em;
+  line-height: 1.45;
 }
 
 @keyframes copy-arrive {
@@ -753,54 +3064,802 @@
   }
 }
 
-/* ---- The narrow composition --------------------------------------------
- * 780px is `LANDING_QUERY` in `src/scripts/landing/geometry.ts`, where the
- * boundary is decided. The scene changes composition on the same pixel the
- * layout does, and a script cannot read a stylesheet for one number.
+/* ---- The footer --------------------------------------------------------
+ * The colophon: what this is, which version it is, and where every part of
+ * it lives. The picture has already closed under the doors, so this band
+ * stands on the flat ground below them and holds the facts a tool's site
+ * owes a reader who came the whole way down.
  *
- * Here the garden stops being a poster beside the copy and becomes the
- * field behind it: a full-height crop centred on the pond, with an ink
- * gradient over it so the promise stays readable without a card.
+ * The shape is a map: the name and one line on the left, three columns of
+ * destinations beside it, and the two routes written for machines on the
+ * last line. Three columns, because each of the three holds four links; a
+ * fourth column of two beside three of four is a row with a hole in it, and
+ * the machine routes are the one group here a person is not the reader of,
+ * so they take the closing line instead.
+ *
+ * This band sits outside `.story`, and custom properties inherit: `--say-*`
+ * and `--breathe` are declared on `.story`, so nothing here can see them,
+ * and a `var()` that fails to substitute takes its whole declaration with
+ * it. Every size below is therefore stated. The type is `--text-rail`, the
+ * size the site sets all of its chrome in and the size the documentation's
+ * own footer reads at, so the two feet of the site are one object. What
+ * tells the registers apart is ink, which is how the bar at the top of the
+ * page does it too: a label is `--quiet`, a destination is `--ink-muted`,
+ * and `--quiet` may stand here because this band is the page's own ground.
+ */
+
+.surface-landing .colophon {
+  /* The air the band holds above and below its content. It stays under the
+     story's `--breathe` on purpose — a foot that matched a section's air
+     would read as a sixth screen — and its floor is the drop the root below
+     hangs into, so the drawing can never reach the first line. */
+  --colophon-air: clamp(3.5rem, 5vw, 4.75rem);
+
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  /* The page's last element owns the bottom edge. The landing is served
+     `viewport-fit=cover`, so on a notched phone the home indicator lies over
+     whatever ends here unless the inset is taken. */
+  padding-bottom: max(var(--colophon-air), env(safe-area-inset-bottom));
+  view-timeline-axis: block;
+  view-timeline-name: --colophon-arrival;
+}
+
+/* The measure the page ends on, and the hairline is drawn on it rather than
+ * on the window: every other boundary here stops where the content stops.
+ * The band around it still runs edge to edge, which is what carries the
+ * safe-area inset. */
+.surface-landing .colophon-inner {
+  position: relative;
+  width: min(100%, 76rem);
+  margin: 0 auto;
+  padding-top: var(--colophon-air);
+  border-top: 1px solid var(--border);
+}
+
+/* The root.
+ *
+ * One plant runs through this page: the sprout under the trail, the stem
+ * down the field guide, the connector between the file and the screen.
+ * Under the page's last rule it is below ground. That is the whole of why
+ * it hangs downward instead of standing up, and why it is turned down — a
+ * root is seen through soil, and this one has to stay behind the words
+ * rather than beside them.
+ *
+ * It is taken out of the flow into the air the band already holds above its
+ * first line, so it costs the layout nothing and the band is complete
+ * without it. It starts at the left edge of the measure, which is where the
+ * name below it starts.
+ */
+.surface-landing .colophon-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 0;
+  opacity: 0.66;
+  pointer-events: none;
+}
+
+/* Both terms are stated, and they are the drawing's own ratio. Sized on one
+ * with the other left to the aspect, the box is the browser's guess rather
+ * than the drawing's, and this one hangs into a fixed clearance. */
+.surface-landing .colophon-root svg {
+  display: block;
+  width: 1.625rem;
+  height: 3rem;
+  overflow: visible;
+}
+
+.surface-landing .colophon-root-tap,
+.surface-landing .colophon-root-hair,
+.surface-landing .colophon-root-fibre {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.surface-landing .colophon-root-tap {
+  stroke: var(--sprout-stem);
+  stroke-width: 1.1;
+}
+
+/* The hairs are the stem's own stroke thinned and let down, which is what
+ * the connector's branches take. A root splits into finer things than
+ * itself, so the fibre off the first hair is thinner again. */
+.surface-landing .colophon-root-hair {
+  stroke: color-mix(in srgb, var(--sprout-stem) 76%, transparent);
+  stroke-width: 0.9;
+}
+
+.surface-landing .colophon-root-fibre {
+  stroke: color-mix(in srgb, var(--sprout-stem) 58%, transparent);
+  stroke-width: 0.5;
+}
+
+/* The seed, in the ink the sprout's own bud is drawn in. It sits where the
+ * root meets the rule, and it is the last warm point on the page. */
+.surface-landing .colophon-root-seed {
+  fill: var(--sprout-heart);
+  opacity: 0.9;
+}
+
+/* The root arrives by growing, on the clock the connector in `No private
+ * format.` runs on: the scroll. The seed swells first, the taproot draws
+ * down from it, and each hair waits until the tap has passed the point it
+ * grows from — the hold fractions in the keyframes are those attachment
+ * points, read off the taproot's arc.
+ *
+ * The timeline is the band's own entry, and its range ends at `entry 100%`
+ * on purpose. This band is the page's last element, so its bottom edge
+ * meets the window's exactly where the document runs out of scroll — which
+ * makes entry the one range whose end every screen can reach. A range
+ * measured against the viewport's height, like the connector's, would leave
+ * the root half-made on a tall window, and a plant left mid-growth reads as
+ * broken rather than as quiet. The drawing completes at seven tenths of the
+ * reveal, so the last stretch of scroll arrives on a finished root.
+ *
+ * Scroll-driven growth is progressive enhancement. Without it the complete
+ * root is present; reduced motion keeps that static state as well, and it
+ * is stated here rather than in the page's reduced-motion blocks because a
+ * progress-driven animation shrugs at a zeroed duration — its clock is the
+ * scroll, not time — so `none` is the only word that stops it.
+ */
+@supports (animation-timeline: view()) {
+  .surface-landing .colophon-root-seed {
+    animation: colophon-seed-swell linear both;
+    animation-range: entry 0% entry 100%;
+    animation-timeline: --colophon-arrival;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .surface-landing .colophon-root-tap {
+    animation: colophon-tap-grow linear both;
+    animation-range: entry 0% entry 100%;
+    animation-timeline: --colophon-arrival;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .surface-landing .colophon-root-hair {
+    animation: colophon-hair-grow linear both;
+    animation-range: entry 0% entry 100%;
+    animation-timeline: --colophon-arrival;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  .surface-landing .colophon-root-hair-low {
+    animation-name: colophon-hair-low-grow;
+  }
+
+  .surface-landing .colophon-root-fibre {
+    animation: colophon-fibre-grow linear both;
+    animation-range: entry 0% entry 100%;
+    animation-timeline: --colophon-arrival;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .surface-landing .colophon-root-seed,
+    .surface-landing .colophon-root-tap,
+    .surface-landing .colophon-root-hair,
+    .surface-landing .colophon-root-fibre {
+      animation: none;
+    }
+
+    /* Reset by hand, because a cancelled animation returns the dash
+       properties to the values the rules above set, and those rules set the
+       stroke undrawn. */
+    .surface-landing .colophon-root-tap,
+    .surface-landing .colophon-root-hair,
+    .surface-landing .colophon-root-fibre {
+      stroke-dasharray: none;
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+@keyframes colophon-seed-swell {
+  0% {
+    transform: scale(0);
+  }
+
+  8%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes colophon-tap-grow {
+  0%,
+  4% {
+    stroke-dashoffset: 1;
+  }
+
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes colophon-hair-grow {
+  0%,
+  28% {
+    stroke-dashoffset: 1;
+  }
+
+  44%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes colophon-hair-low-grow {
+  0%,
+  44% {
+    stroke-dashoffset: 1;
+  }
+
+  60%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes colophon-fibre-grow {
+  0%,
+  40% {
+    stroke-dashoffset: 1;
+  }
+
+  54%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* The colophon and the map across one row. The identity takes the narrower
+ * share: it carries a sentence and a name, and the map carries twelve
+ * destinations. */
+.surface-landing .colophon-body {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.9fr) minmax(0, 2fr);
+  align-items: start;
+  gap: clamp(2.5rem, 5vw, 4rem);
+}
+
+/* The block keeps a measure of its own, so the name, the version and the
+ * line all break on one edge and the column reads as one object. */
+.surface-landing .colophon-identity {
+  max-width: 26rem;
+}
+
+/* The name is set in type, and the drawing stays in the header: the mark at
+ * the top is the page saying who it is, and this is a colophon entry, which
+ * names things in words. It is the one word down here in the display face,
+ * and it earns it by being the name of the thing. */
+.surface-landing .colophon-name {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 1.35vw, 1.35rem);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+}
+
+/* The version, in the mono the header sets it in beside the same name. It
+ * is a fact about the build and not a word of the page. */
+.surface-landing .colophon-version {
+  margin-left: 0.45rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--text-rail);
+  font-weight: 500;
+  letter-spacing: 0.014em;
+}
+
+/* The one thing the page says about itself down here. It takes the face
+ * notes are set in, so it reads as the line under the name rather than as a
+ * paragraph the footer has started. */
+.surface-landing .colophon-say {
+  margin: 0.9rem 0 0;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-rail);
+  letter-spacing: 0.008em;
+  line-height: 1.6;
+}
+
+.surface-landing .colophon-map {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem 1.5rem;
+}
+
+/* What a group is called, and it is quieter than the group. The doors above
+ * name themselves the same way and for the same reason: the label is not
+ * the thing, the links under it are. */
+.surface-landing .colophon-head {
+  margin: 0 0 0.8rem;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: var(--text-rail);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+}
+
+.surface-landing .colophon-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A destination, and that is the whole of it: no rule, no marker, no arrow.
+ * The underline a bare link carries goes for the reason the documentation's
+ * footer gives for dropping it: a foot-of-page link is chrome and not
+ * running prose, and fourteen underlined destinations would be the loudest
+ * thing on the quietest band of the page. The colour and the answer to a pointer
+ * stay, and they answer on the header's beat, because this is the header's
+ * kind of object: a word that takes the reader somewhere else.
+ *
+ * The box is a block, because that is what makes the padding count — on an
+ * inline box block padding costs the line no height — and it is fitted to
+ * its content, so the target is the word and the air around it rather than
+ * the column's whole width. Thirteen pixel type at this leading draws a box
+ * of twenty pixels, and the padding takes each link past the twenty-four
+ * the documentation's own footer links clear. The site's focus ring lands
+ * on that padded box and needs nothing here. */
+.surface-landing .colophon-links a {
+  display: block;
+  width: fit-content;
+  padding: 0.4rem 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-rail);
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.surface-landing .colophon-links a:hover {
+  color: var(--accent-soft);
+}
+
+/* The last line, and the only one not addressed to a person: a label and
+ * its routes across one row rather than a fourth column, because a column
+ * of two beside three columns of four is a row with a hole in it. */
+.surface-landing .colophon-machines {
+  display: flex;
+  margin-top: clamp(2.25rem, 3.5vw, 3rem);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 1.5rem;
+}
+
+/* The label takes the links' block padding so the row sits on one baseline:
+ * that padding is what holds each link's target size, and a label without
+ * it would ride that much higher than the words beside it. */
+.surface-landing .colophon-machines .colophon-head {
+  margin-bottom: 0;
+  padding: 0.4rem 0;
+}
+
+.surface-landing .colophon-machines .colophon-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+/* The band's two boundaries, kept beside the grids they change. They are
+ * the page's global widths rather than a boundary of the footer's own, but
+ * the global tiers below name nothing in this band, so there is no rule for
+ * these to lose to and no reason to send them down the file — the same
+ * arrangement the ways out and the claim already keep for their own. */
+@media (max-width: 780px) {
+  /* The identity stops standing beside the map and sits above it, at the
+     gap the other two-column sections take when they stack. */
+  .surface-landing .colophon-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.75rem;
+  }
+
+  /* Across the full width the block takes the measure the story's own
+     intros take on a narrow page. */
+  .surface-landing .colophon-identity {
+    max-width: 34rem;
+  }
+
+  .surface-landing .colophon-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 440px) {
+  /* Two columns hold until about 342px, where a half-column becomes
+     narrower than `MIT or Apache-2.0` and the destination breaks across two
+     lines — harder to read than a longer list. The tier takes the page's
+     own narrow boundary rather than the label's exact width, because a line
+     the rest of the page already breaks on is one boundary rather than
+     two. */
+  .surface-landing .colophon-map {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+  }
+
+  /* With the columns stacked the machine line is one more group, so it is
+     set as one: the label above its routes rather than beside them. */
+  .surface-landing .colophon-machines {
+    display: block;
+  }
+
+  .surface-landing .colophon-machines .colophon-head {
+    margin-bottom: 0.8rem;
+    padding: 0;
+  }
+}
+
+/* ---- The narrow page ---------------------------------------------------
+ * What a screen 780px across or less changes because of its width alone:
+ * the header sheds its navigation, the two-column sections become one, and
+ * the type is set to the measure a phone gives it.
+ *
+ * The hero's composition is not here. It is not a width decision — an
+ * upright tablet takes the same one at 1024px across — so it is stated
+ * under `The covered composition` below, on the boundary that owns it.
  */
 
 @media (max-width: 780px) {
-  .surface-landing .hero-inner,
-  .surface-landing .story > section {
-    width: min(100% - 2rem, 76rem);
-  }
-
-  .surface-landing .site-header {
-    padding-right: max(1rem, env(safe-area-inset-right));
-    padding-left: max(1rem, env(safe-area-inset-left));
-  }
+  /* The edge is the page's own, not a narrower one for small screens. It
+     used to shrink to a rem here, which put a phone's text closer to the
+     glass than a laptop's is to the bezel — the opposite of what a hand
+     holding the thing wants, and out of step with the last section and the
+     doors, which never narrowed. One inset, every width. */
 
   .surface-landing .site-header-inner {
     gap: 1rem;
   }
 
-  .surface-landing .header-left .site-nav {
+  /* The slug goes and the icon stands for it, which the link's own label
+     already says in words. The way into the documentation stays: a
+     documentation site whose header cannot reach the documentation is the
+     one thing this bar must not be, and the old one was exactly that on a
+     phone. */
+  .surface-landing .way-repo .way-slug {
     display: none;
   }
 
-  .surface-landing .site-nav-actions {
-    margin-left: auto;
+  .surface-landing .way-repo {
+    padding: 0 0.45rem;
   }
 
-  .surface-landing .site-nav-actions a:not(.repo-link),
-  .surface-landing .repo-link span {
-    display: none;
+  /* The mark stands for the link on its own here, so it takes a step up
+     from the size it holds beside the slug — but it stays under the book,
+     because a filled disc and a stroked outline still do not weigh the same
+     at one box. At a full rem it was the heaviest thing on a phone's bar. */
+  .surface-landing .way-repo svg {
+    width: 1.06em;
+    height: 1.06em;
   }
 
-  .surface-landing .site-nav .repo-link {
-    padding: 0;
-    border-bottom: 0;
+  /* The promise is set to the width of a phone. The covered composition it
+     stands in is stated once, further down, for every screen that takes it. */
+  .surface-landing h1 {
+    font-size: clamp(2.9rem, 12.5vw, 3.45rem);
   }
 
-  .surface-landing .repo-link svg {
-    width: 1rem;
-    height: 1rem;
+  /* The vine is drawn to a bar the width of a phone. Every wider screen
+     keeps the measure the base rule gives it, upright ones included. */
+  .surface-landing .installer-vine {
+    top: -1.35rem;
+    right: -1rem;
+    width: min(21rem, 92vw);
+    opacity: 0.82;
   }
 
+  .surface-landing .installer-vine-highlight {
+    opacity: 0.48;
+  }
+
+  /* Every column on the page becomes one. The two-column sections stack,
+     and the rows that were four and three across become lists — a hairline
+     over each one is what said "and another" in a row, and it says the same
+     thing in a column. */
+  .surface-landing .why,
+  .surface-landing .config-intro {
+    grid-template-columns: 1fr;
+    gap: 2.75rem;
+  }
+
+  .surface-landing .config-proof {
+    --text-code: 0.72rem;
+    --text-output: 0.72rem;
+
+    /* Stacked, the frames stand one directly under another with the vine
+       between them, and the prose margin they carry is the whole gap: it is
+       what holds the connector off the file above it and the screen below,
+       so the drawing reads as sitting between two exhibits instead of
+       joining them. The grid owns this spacing now. */
+    --exhibit-block-margin: 0;
+
+    /* Stacked, the proof reads as the continuation of the sentence above it
+       rather than as a second exhibit, so it sits closer to the way on than
+       the side-by-side arrangement needed. */
+    margin-top: 2rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, the connector runs down rather than across, so there is no
+     column edge for the source to reach past. */
+  .surface-landing .config-source,
+  .surface-landing .config-flow,
+  .surface-landing .config-result {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  /* Turned a quarter turn, the vine's run across becomes its run down, so the
+     box it stands in is exactly that same length: one value, stated once and
+     read by both. Sized any longer — as a standing height — it holds the file
+     off the screen it is drawn to reach, and the connector reads as a gap
+     between two exhibits instead of as the thing joining them. */
+  .surface-landing .config-flow {
+    --config-flow-run: 4.25rem;
+
+    position: relative;
+    width: var(--config-flow-run);
+    height: var(--config-flow-run);
+    margin-left: 0;
+    justify-self: center;
+  }
+
+  .surface-landing .config-source {
+    margin-right: 0;
+  }
+
+  /* Placed from the centre out rather than laid in the box, because the
+     rotation is a transform: the drawing's own box stays tall and overruns
+     this one, and an overrunning item is exactly the case where grid gives
+     up on centring and drops it back to the start — which lands the vine low,
+     touching the screen and short of the file. Pinned to the middle it turns
+     about that same middle, so both ends come out flush. */
+  .surface-landing .config-flow svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--config-flow-run);
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .surface-landing .config-result {
+    margin-left: 0;
+    margin-top: 0;
+  }
+
+  .surface-landing .why h2,
+  .surface-landing .config h2 {
+    max-width: 10ch;
+  }
+
+  .surface-landing .why-intro {
+    max-width: 34rem;
+  }
+
+  /* On a column this narrow a declaration no longer fits on one line, so it
+     takes two rather than losing its end. The row is making its case with
+     this line: half of it behind an ellipsis is worse than a wrap, and the
+     wrap lands on the spaces the Luau already has. */
+  .surface-landing .why-covers code {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  /* The name and its note get the same answer for the same reason: they
+     share a line until they cannot, and then the note takes its own rather
+     than trailing off mid-phrase. Only the row that needs the second line
+     takes one, and the ellipsis stays behind it for a note long enough to
+     overrun even that. */
+  .surface-landing .why-name {
+    flex-wrap: wrap;
+  }
+
+  .surface-landing .doors-list {
+    grid-template-columns: 1fr;
+  }
+
+  /* Side by side this gap is the space between two columns, and it reads as
+     one thing standing next to another. Stacked it becomes a void directly
+     above a demonstration whose own parts touch, so the proof floats away
+     from the sentence it is proving — and the section's own air above and
+     below is already doing the work of holding it off its neighbours. Held
+     to two thirds, the argument and its proof read as one block again. */
+  .surface-landing .boundary {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+  }
+
+  .surface-landing .boundary h2 {
+    max-width: none;
+    font-size: clamp(2.35rem, 11.7vw, 3.2rem);
+  }
+
+  .surface-landing .boundary-moss {
+    top: 25%;
+    right: -22%;
+    width: 135%;
+    height: 76%;
+    opacity: 0.6;
+  }
+
+  .surface-landing .boundary-demo {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+  }
+
+  .surface-landing .boundary-transfer {
+    min-height: 7.75rem;
+  }
+
+  .surface-landing .boundary-setting {
+    gap: 1.25rem;
+  }
+
+  /* Stacked, the doors need air between them where the row had a column of
+     it, and no right padding to hold a neighbour off. */
+  .surface-landing .door {
+    padding: 1.1rem 0 1.75rem;
+  }
+
+  .surface-landing .door-line {
+    max-width: none;
+  }
+
+  /* The picture is the width of a phone, so the ink over it is heaviest
+     where a phone puts the words: everywhere. */
+  .surface-landing .install::before {
+    background:
+      linear-gradient(
+        180deg,
+        #030504 0%,
+        rgba(3, 5, 4, 0.78) 20%,
+        rgba(3, 5, 4, 0.62) 48%,
+        rgba(3, 5, 4, 0.62) 100%
+      ),
+      linear-gradient(90deg, rgba(3, 5, 4, 0.72) 0%, rgba(3, 5, 4, 0.42) 100%);
+  }
+}
+
+@media (max-width: 440px) {
+  .surface-landing .site-header {
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+  }
+
+  .surface-landing .brand-seedling {
+    height: 1.9rem;
+  }
+
+  .surface-landing .brand-wordmark {
+    height: 1.4rem;
+  }
+
+  .surface-landing .installer code {
+    font-size: 0.72rem;
+  }
+
+  /* The bar gives back from the inside what the page took from the outside.
+     The command is set in one unbroken line and clipped rather than wrapped,
+     so on the narrowest screens it is the first thing the wider edge would
+     have cost — and a call to action missing its last word is not one. */
+  .surface-landing .installer {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .surface-landing .copy-button {
+    font-size: 0.61rem;
+  }
+
+  .surface-landing .story > section {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+/* ---- The wide composition ----------------------------------------------
+ * Above the laptop the garden keeps growing with the window and the promise
+ * beside it does not: every size in the copy has saturated by 1538px at the
+ * latest, several of them long before, and on a 2560 screen the headline is
+ * a fifth of the width standing against art that is four fifths of it. The
+ * copy resumes growing here.
+ *
+ * 1441px is the first pixel past a 1440 laptop, and every value below is a
+ * clamp whose floor is what the rule above it computes at exactly 1440. The
+ * tier therefore adds nothing at its own boundary and takes nothing from any
+ * screen under it: it only lets the sizes keep climbing where they had
+ * stopped. The rates differ per value because each one stopped at a
+ * different width, and the ceilings are all reached between 2000 and 2300px,
+ * past which the copy holds its size and the extra screen becomes air.
+ */
+
+@media (min-width: 1441px) {
+  /* 25vw passes 32rem at 2048px, so the column is unchanged until the
+     headline has finished growing and the measure is the thing holding it
+     back. The 43vw stays as the shorter-window bound it already was. */
+  .surface-landing .hero-copy {
+    width: min(clamp(32rem, 25vw, 40rem), 43vw);
+  }
+
+  /* 5.2vw is the rate the rule above already climbs at, resumed rather than
+     restarted: the old 5rem ceiling landed at 1538px and this one lands at
+     2000px. At 104px the longest line still sets to 458px, inside the
+     column's own measure, so the promise keeps its written breaks. */
+  .surface-landing h1 {
+    font-size: clamp(4.68rem, 5.2vw, 6.5rem);
+  }
+
+  .surface-landing .hero-subcopy {
+    margin-top: clamp(1.45rem, 1.5vw, 1.9rem);
+    font-size: clamp(0.96rem, 0.95vw, 1.2rem);
+  }
+
+  /* The bar follows the column it sits in, so the command keeps the full
+     measure of the copy instead of stopping at the old 34rem. */
+  .surface-landing .installer {
+    width: min(clamp(34rem, 26vw, 40rem), 100%);
+    min-height: clamp(4.35rem, 4vw, 5.25rem);
+    margin-top: clamp(1.55rem, 1.6vw, 2rem);
+    padding: clamp(1.05rem, 1.1vw, 1.35rem) clamp(1rem, 1.05vw, 1.3rem)
+      clamp(0.9rem, 0.95vw, 1.15rem);
+  }
+
+  /* The mono sizes stopped earliest of anything here — the command at
+     1219px — so their rates are the lowest: enough to keep pace with the bar
+     around them without turning a shell line into a heading. */
+  .surface-landing .installer code {
+    font-size: clamp(0.88rem, 0.68vw, 1.06rem);
+  }
+
+  .surface-landing .copy-button {
+    font-size: clamp(0.65rem, 0.5vw, 0.78rem);
+  }
+
+  /* The vine is drawn to the bar it hangs on, so it grows with it. */
+  .surface-landing .installer-vine {
+    width: min(clamp(27rem, 21vw, 32rem), 88vw);
+  }
+
+  .surface-landing .docs-link {
+    margin-top: clamp(1.15rem, 1.05vw, 1.45rem);
+    font-size: clamp(0.76rem, 0.6vw, 0.92rem);
+  }
+}
+
+/* ---- The covered composition -------------------------------------------
+ * The query is `LANDING_QUERY` in `src/scripts/landing/geometry.ts`, where
+ * the boundary is decided and where the reasoning behind both of its terms
+ * is written down. The scene changes composition on the same pixel the
+ * layout does, and a script cannot read a stylesheet for a query.
+ *
+ * Here the garden stops being a poster beside the copy and becomes the
+ * field behind it: a full-bleed crop centred on the pond, with an ink
+ * gradient over it so the promise stays readable without a card. A phone
+ * takes it for want of width; a tablet held upright takes it because the
+ * art is three by two and a portrait window has no shape to hold it beside
+ * the copy — the contained composition leaves the garden in a strip along
+ * the bottom with the promise stranded in the dark above it.
+ *
+ * It sits after the wide tier because a tall enough screen matches both,
+ * and the composition is the one that has to win.
+ */
+
+@media (max-width: 780px), (max-aspect-ratio: 1/1) {
   .surface-landing .hero {
     display: block;
     min-height: 100svh;
@@ -833,18 +3892,12 @@
     width: 100%;
     height: 100%;
     margin: 0;
-    aspect-ratio: auto;
     transform: none;
-    transform-origin: center;
   }
 
   .surface-landing .hero-art {
     object-fit: cover;
     object-position: 65% center;
-  }
-
-  .surface-landing .pond-ripples {
-    display: block;
   }
 
   .surface-landing .hero-inner {
@@ -861,7 +3914,6 @@
   }
 
   .surface-landing h1 {
-    font-size: clamp(2.9rem, 12.5vw, 3.45rem);
     text-shadow:
       0 2px 3px rgba(0, 0, 0, 0.96),
       0 12px 32px rgba(0, 0, 0, 0.88);
@@ -875,69 +3927,37 @@
   .surface-landing .installer {
     margin-top: 1.5rem;
   }
-
-  .surface-landing .installer-vine {
-    top: -1.35rem;
-    right: -1rem;
-    width: min(21rem, 92vw);
-    opacity: 0.82;
-  }
-
-  .surface-landing .installer-vine-highlight {
-    opacity: 0.48;
-  }
-
-  .surface-landing .why,
-  .surface-landing .config {
-    grid-template-columns: 1fr;
-    gap: 4rem;
-  }
-
-  .surface-landing .why h2,
-  .surface-landing .config h2 {
-    max-width: 10ch;
-  }
-
-  .surface-landing .router-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .surface-landing .router-card {
-    padding-right: 0;
-  }
-
-  .surface-landing .install {
-    min-height: 30rem;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-end;
-  }
 }
 
-@media (max-width: 440px) {
-  .surface-landing .site-header {
-    padding-top: max(0.9rem, env(safe-area-inset-top));
+/* ---- The upright screen ------------------------------------------------
+ * A tablet held upright: the covered composition above, on a screen with
+ * room the phone it was drawn for does not have. Two things follow from
+ * that room, and nothing else does.
+ */
+
+@media (min-width: 781px) and (max-aspect-ratio: 1/1) {
+  /* The scrim was measured against a phone, where the copy runs most of the
+     way down the screen and everything under it is a seam to hide. Here the
+     copy ends around two thirds of the way down and the last third is
+     water: the same ramp arrives far too early and drowns the koi. The
+     stops move later and stop short of ink, up to the final one, which
+     stays — that is the seam into the story and it has to close. */
+  .surface-landing .hero::after {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(3, 5, 4, 0.1) 0%,
+        rgba(3, 5, 4, 0.2) 40%,
+        rgba(3, 5, 4, 0.52) 82%,
+        #030504 100%
+      ),
+      linear-gradient(90deg, rgba(3, 5, 4, 0.72) 0%, rgba(3, 5, 4, 0.3) 72%, rgba(3, 5, 4, 0.08) 100%);
   }
 
-  .surface-landing .brand-seedling {
-    height: 1.9rem;
-  }
-
-  .surface-landing .brand-wordmark {
-    height: 1.4rem;
-  }
-
-  .surface-landing .installer code {
-    font-size: 0.66rem;
-  }
-
-  .surface-landing .copy-button {
-    font-size: 0.61rem;
-  }
-
-  .surface-landing .story > section {
-    padding-top: 6rem;
-    padding-bottom: 6rem;
+  /* The floor is the size the narrow rule reaches at its own ceiling, so
+     the promise grows out of a phone rather than jumping at 781px. */
+  .surface-landing h1 {
+    font-size: clamp(3.45rem, 7vw, 5rem);
   }
 }
 
@@ -947,9 +3967,14 @@
  */
 
 @media (prefers-reduced-motion: reduce) {
+  /* The delay goes with the duration: the entrances up in the hero hold
+     their element invisible through it (`both` fills backwards), so a kept
+     delay is a blank headline followed by the very stagger the reader
+     turned off. */
   .surface-landing *,
   .surface-landing *::before,
   .surface-landing *::after {
+    animation-delay: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
@@ -965,8 +3990,16 @@
 
 /* Without the scroll handoff there is nothing for the extra 30svh to hand
  * off, so the hero becomes one still composition: the art anchored to the
- * bottom right, the copy centred over it. */
-@media (prefers-reduced-motion: reduce) and (min-width: 781px) {
+ * bottom right, the copy centred over it.
+ *
+ * This is the contained composition standing still, so it is bounded the
+ * same way that composition is: wide enough and not upright. The covered
+ * one has no handoff to lose and needs nothing here. The aspect bound is
+ * inclusive on both sides, so a window exactly as tall as it is wide
+ * matches this and the covered composition both; the two rules at the end
+ * are what let it land on one of them whole rather than half of each.
+ */
+@media (prefers-reduced-motion: reduce) and (min-width: 781px) and (min-aspect-ratio: 1/1) {
   .surface-landing .hero {
     display: grid;
     min-height: max(44rem, 100svh);
@@ -988,6 +4021,15 @@
     display: block;
     min-height: 0;
     margin: 0;
+  }
+
+  .surface-landing .hero-art {
+    object-fit: contain;
+    object-position: right bottom;
+  }
+
+  .surface-landing .hero::after {
+    display: none;
   }
 }
 

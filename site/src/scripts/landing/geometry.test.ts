@@ -76,7 +76,7 @@ describe('the contained scene', () => {
   })
 
   test('reports the desktop scene', () => {
-    expect(scene.mobile).toBe(false)
+    expect(scene.covered).toBe(false)
   })
 })
 
@@ -86,7 +86,7 @@ describe('the covering scene', () => {
 
   test('gives the canvas the whole wrap', () => {
     expectRect(scene.canvas, { left: 0, top: 0, width: 390, height: 844 })
-    expect(scene.mobile).toBe(true)
+    expect(scene.covered).toBe(true)
   })
 
   test('overflows the canvas sideways, held at 65% across', () => {
@@ -119,18 +119,18 @@ describe('the covering scene', () => {
 })
 
 describe('the backing store density', () => {
-  const density = (mobile: boolean, dpr: number) =>
-    computeScene({ left: 0, top: 0, width: 390, height: 844 }, ART, mobile, dpr)
+  const density = (covered: boolean, dpr: number) =>
+    computeScene({ left: 0, top: 0, width: 390, height: 844 }, ART, covered, dpr)
       .density
 
-  test('caps a phone at 1.25', () => {
+  test('caps the covered composition at 1.25', () => {
     expect(density(true, 1)).toBe(1)
     expect(density(true, 1.75)).toBe(1.25)
     expect(density(true, 2)).toBe(1.25)
     expect(density(true, 3)).toBe(1.25)
   })
 
-  test('caps a desktop at 2', () => {
+  test('caps the contained composition at 2', () => {
     expect(density(false, 1)).toBe(1)
     expect(density(false, 1.75)).toBe(1.75)
     expect(density(false, 2)).toBe(2)
@@ -202,8 +202,19 @@ describe('normalized art coordinates', () => {
 
 describe('the landing breakpoint', () => {
   test('is the bare condition matchMedia takes', () => {
-    expect(LANDING_QUERY).toBe('(max-width: 780px)')
+    expect(LANDING_QUERY).toBe('(max-width: 780px), (max-aspect-ratio: 1/1)')
     expect(LANDING_QUERY.startsWith('@media')).toBe(false)
+  })
+
+  // Either term alone puts a screen in the covered composition, which is why
+  // they are joined by a comma and not by `and`. The width catches the phone
+  // and the aspect ratio the tablet held upright, and a phone held upright
+  // answers to both.
+  test('takes either the phone or the upright screen', () => {
+    const terms = LANDING_QUERY.split(', ')
+    expect(terms).toHaveLength(2)
+    expect(terms[0]).toBe('(max-width: 780px)')
+    expect(terms[1]).toBe('(max-aspect-ratio: 1/1)')
   })
 })
 

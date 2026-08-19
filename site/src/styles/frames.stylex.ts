@@ -32,8 +32,16 @@ export const EXHIBIT = stylex.create({
   // The air an exhibit keeps from the prose above and below it. A `figure`
   // and a `pre` both arrive carrying an inline margin, so it is stated away
   // here rather than at each of them.
+  //
+  // The block half is published rather than fixed. Prose is what it is for,
+  // and a page that lays exhibits out itself — the landing's config proof
+  // stands one directly under another with a drawn connector between them —
+  // wants the grid to own that spacing and nothing else to add to it. The
+  // default is the prose measure, so a consumer that says nothing is
+  // unchanged; one that says otherwise does not have to outrank an atomic
+  // class it cannot see.
   block: {
-    marginBlock: '1.5rem',
+    marginBlock: 'var(--exhibit-block-margin, 1.5rem)',
     marginInline: 0,
   },
   frame: {

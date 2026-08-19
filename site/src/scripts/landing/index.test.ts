@@ -12,6 +12,15 @@ const stubs = vi.hoisted(() => {
   const held = new Map<string, { canvas: { width: number; height: number } }>()
   /** Effects whose pixels cannot be read, the way a tainted canvas reads. */
   const failing = new Set<string>()
+  /** Every strike the pond took from something that is not the pointer. */
+  const drops: { nx: number; ny: number; strength: number }[] = []
+  /** How hard each pad is being worked, as the canopy would answer. */
+  const stirred = new Map<number, number>()
+  /** The ports the entry wired the needles up with, so a test can pull them. */
+  const wiring: {
+    stirring?: (index: number) => number
+    onWater?: (nx: number, ny: number, strength: number) => void
+  } = {}
 
   const make = (name: string) => ({
     init(_image: unknown, scene: { canvas: { width: number; height: number } }): void {
@@ -35,15 +44,32 @@ const stubs = vi.hoisted(() => {
     },
   })
 
-  return { drawn, life, pointers, animating, held, failing, make }
+  return { drawn, life, pointers, animating, held, failing, make, drops, stirred, wiring }
 })
 
 vi.mock('./effects', () => ({
-  createRipples: () => stubs.make('ripples'),
+  createRipples: () => ({
+    ...stubs.make('ripples'),
+    drop(nx: number, ny: number, strength: number): void {
+      stubs.drops.push({ nx, ny, strength })
+    },
+  }),
   createBasin: () => stubs.make('basin'),
   createLantern: () => stubs.make('lantern'),
+  createCanopy: () => ({
+    ...stubs.make('canopy'),
+    stirring: (index: number) => stubs.stirred.get(index) ?? 0,
+  }),
   createFireflies: () => stubs.make('fireflies'),
   createFlowers: () => stubs.make('flowers'),
+  createNeedles: (ports: {
+    stirring: (index: number) => number
+    onWater: (nx: number, ny: number, strength: number) => void
+  }) => {
+    stubs.wiring.stirring = ports.stirring
+    stubs.wiring.onWater = ports.onWater
+    return stubs.make('needles')
+  },
 }))
 
 /** The hero art's own pixel size. */
@@ -311,6 +337,8 @@ beforeEach(() => {
   stubs.animating.clear()
   stubs.held.clear()
   stubs.failing.clear()
+  stubs.drops.length = 0
+  stubs.stirred.clear()
 })
 
 afterEach(() => {
@@ -353,8 +381,10 @@ describe('the start', () => {
       'init:ripples',
       'init:basin',
       'init:lantern',
+      'init:canopy',
       'init:fireflies',
       'init:flowers',
+      'init:needles',
     ])
   })
 
@@ -456,7 +486,7 @@ describe('the start', () => {
       await Promise.resolve()
     }
     expect(Math.max(...depths)).toBe(1)
-    expect(stubs.life.length).toBe(5)
+    expect(stubs.life.length).toBe(7)
   })
 
   test('runs on a browser with no idle callback', async () => {
@@ -470,7 +500,7 @@ describe('the start', () => {
       vi.advanceTimersByTime(1)
       await Promise.resolve()
     }
-    expect(stubs.life.length).toBe(5)
+    expect(stubs.life.length).toBe(7)
   })
 
   test('starts on a page that has already loaded', async () => {
@@ -480,7 +510,7 @@ describe('the start', () => {
     vi.advanceTimersByTime(2000)
     await env.runIdle()
 
-    expect(stubs.life.length).toBe(5)
+    expect(stubs.life.length).toBe(7)
   })
 
   test('does nothing at all on a page without a hero', () => {
@@ -502,10 +532,12 @@ describe('an effect that cannot build', () => {
     'init:ripples',
     'init:basin',
     'init:lantern',
+    'init:canopy',
     'init:fireflies',
     'init:flowers',
+    'init:needles',
   ]
-  const DRAWN = ['ripples', 'basin', 'lantern', 'fireflies', 'flowers']
+  const DRAWN = ['ripples', 'basin', 'lantern', 'canopy', 'fireflies', 'flowers', 'needles']
 
   test('leaves the effects behind it their turn', async () => {
     const env = environment()
@@ -637,7 +669,7 @@ describe('the gate map', () => {
 
   test('draws the whole scene on a desktop the reader is looking at', async () => {
     const { drawn } = await pass({ seen: true })
-    expect(drawn).toEqual(['ripples', 'basin', 'lantern', 'fireflies', 'flowers'])
+    expect(drawn).toEqual(['ripples', 'basin', 'lantern', 'canopy', 'fireflies', 'flowers', 'needles'])
   })
 
   test('holds the ambient three back on a phone', async () => {
@@ -675,13 +707,17 @@ describe('the gate map', () => {
       'ripples',
       'basin',
       'lantern',
+      'canopy',
       'fireflies',
       'flowers',
+      'needles',
       'ripples',
       'basin',
       'lantern',
+      'canopy',
       'fireflies',
       'flowers',
+      'needles',
     ])
   })
 })
@@ -738,7 +774,7 @@ describe('the reschedule', () => {
     expect(env.frames.length).toBe(1)
     stubs.drawn.length = 0
     env.runFrames()
-    expect(stubs.drawn).toEqual(['ripples', 'basin', 'lantern', 'fireflies', 'flowers'])
+    expect(stubs.drawn).toEqual(['ripples', 'basin', 'lantern', 'canopy', 'fireflies', 'flowers', 'needles'])
   })
 
   test('parks the scene when motion is turned off', async () => {
@@ -785,8 +821,10 @@ describe('the resize', () => {
       'resize:ripples',
       'resize:basin',
       'resize:lantern',
+      'resize:canopy',
       'resize:fireflies',
       'resize:flowers',
+      'resize:needles',
     ])
   })
 
@@ -838,12 +876,12 @@ describe('the resize', () => {
 
     const wanted = env.scene().canvas.width
     expect(wanted).not.toBe(first)
-    for (const name of ['ripples', 'basin', 'lantern', 'fireflies', 'flowers']) {
+    for (const name of ['ripples', 'basin', 'lantern', 'canopy', 'fireflies', 'flowers', 'needles']) {
       expect(stubs.held.get(name)?.canvas.width).toBe(wanted)
     }
     // Every effect is caught up once, at the end, rather than each build
     // piece asking whether the ground moved under it.
-    expect(stubs.life.filter((one) => one.startsWith('resize:')).length).toBe(5)
+    expect(stubs.life.filter((one) => one.startsWith('resize:')).length).toBe(7)
   })
 
   test('re-measures when the breakpoint answers differently', async () => {
@@ -858,8 +896,10 @@ describe('the resize', () => {
       'resize:ripples',
       'resize:basin',
       'resize:lantern',
+      'resize:canopy',
       'resize:fireflies',
       'resize:flowers',
+      'resize:needles',
     ])
   })
 })
@@ -880,8 +920,10 @@ describe('the pointer', () => {
       'ripples',
       'basin',
       'lantern',
+      'canopy',
       'fireflies',
       'flowers',
+      'needles',
     ])
     expect(stubs.pointers[0]?.nx).toBeCloseTo(0.5, 9)
     expect(stubs.pointers[0]?.ny).toBeCloseTo(0.25, 9)
@@ -909,7 +951,7 @@ describe('the pointer', () => {
     env.pointer('pointermove', { clientX: scene.frame.width / 2, clientY: 0 })
 
     expect(stubs.pointers[0]?.ny).toBeCloseTo(0, 9)
-    expect(stubs.pointers[5]?.ny).toBeLessThan(0)
+    expect(stubs.pointers[7]?.ny).toBeLessThan(0)
   })
 
   test('ignores a touch', async () => {
@@ -932,8 +974,10 @@ describe('the pointer', () => {
       'ripples:down',
       'basin:down',
       'lantern:down',
+      'canopy:down',
       'fireflies:down',
       'flowers:down',
+      'needles:down',
     ])
   })
 
@@ -982,6 +1026,8 @@ describe('the pointer', () => {
       'leave',
       'leave',
       'leave',
+      'leave',
+      'leave',
     ])
   })
 
@@ -989,7 +1035,7 @@ describe('the pointer', () => {
     const env = environment({ reduced: true })
     await begin(env)
     env.pointer('pointerleave')
-    expect(stubs.pointers).toHaveLength(5)
+    expect(stubs.pointers).toHaveLength(7)
     expect(stubs.pointers[0]?.kind).toBe('leave')
   })
 
@@ -1004,8 +1050,10 @@ describe('the pointer', () => {
       'ripples:leave',
       'basin:leave',
       'lantern:leave',
+      'canopy:leave',
       'fireflies:leave',
       'flowers:leave',
+      'needles:leave',
     ])
     // The place it reports is off the art, which is where the pointer is.
     expect(stubs.pointers[0]?.nx).toBeLessThan(0)
@@ -1037,6 +1085,7 @@ describe('the pointer', () => {
 })
 
 describe('the teardown', () => {
+
   test('gives every effect its dispose and drops every listener', async () => {
     const env = environment()
     await begin(env)
@@ -1048,8 +1097,10 @@ describe('the teardown', () => {
       'dispose:ripples',
       'dispose:basin',
       'dispose:lantern',
+      'dispose:canopy',
       'dispose:fireflies',
       'dispose:flowers',
+      'dispose:needles',
     ])
     expect(env.disconnected()).toBe(2)
     expect(env.hero.listening('pointermove')).toBe(0)
@@ -1076,7 +1127,7 @@ describe('the teardown', () => {
     stubs.life.length = 0
     env.window.dispatch('pagehide', { persisted: false })
     env.window.dispatch('pagehide', { persisted: false })
-    expect(stubs.life.length).toBe(5)
+    expect(stubs.life.length).toBe(7)
   })
 
   test('leaves a page held for a return alone', async () => {
@@ -1089,6 +1140,48 @@ describe('the teardown', () => {
 
     expect(stubs.life).toEqual([])
     env.runFrames()
-    expect(stubs.drawn).toEqual(['ripples', 'basin', 'lantern', 'fireflies', 'flowers'])
+    expect(stubs.drawn).toEqual(['ripples', 'basin', 'lantern', 'canopy', 'fireflies', 'flowers', 'needles'])
+  })
+})
+
+
+describe('the pine over the pond', () => {
+  test('the needles read the canopy for which pads are moving', async () => {
+    const env = environment()
+    await begin(env)
+
+    // The entry wires the two together and neither module imports the other,
+    // so what is checked here is the wiring: the port the needles were handed
+    // has to be the canopy's own answer and not a copy that can go stale.
+    stubs.stirred.set(3, 0.75)
+    expect(stubs.wiring.stirring?.(3)).toBe(0.75)
+    expect(stubs.wiring.stirring?.(0)).toBe(0)
+
+    stubs.stirred.set(3, 0)
+    expect(stubs.wiring.stirring?.(3)).toBe(0)
+  })
+
+  test('a needle landing on the water strikes the pond', async () => {
+    const env = environment()
+    await begin(env)
+
+    stubs.wiring.onWater?.(0.5, 0.7, 0.42)
+
+    // The pond draws the ring, because the mask that keeps ripples on water
+    // is composited at the end of the ripples' own pass: anything drawn after
+    // it would sit on whatever it landed on, stone included.
+    expect(stubs.drops).toEqual([{ nx: 0.5, ny: 0.7, strength: 0.42 }])
+  })
+
+  test('a landing is not a pointer, and does not move the pointer chain', async () => {
+    const env = environment()
+    await begin(env)
+    stubs.pointers.length = 0
+
+    stubs.wiring.onWater?.(0.5, 0.7, 0.42)
+
+    // Nothing hears a landing except the water. A needle reported as a
+    // pointer would light the lantern and open a flower bed on its way past.
+    expect(stubs.pointers).toEqual([])
   })
 })

@@ -1,0 +1,179 @@
+---
+/* The landing's colophon.
+ *
+ * The last screen ends the page: the garden again, the command, and three
+ * doors. This is what stands under it — the shelf of facts a tool's site
+ * owes a reader who came the whole way down. What niwa is, which version
+ * this is, and where every part of it lives.
+ *
+ * It is a map and not a second pitch. The doors above are an argument, and
+ * they say what is behind three of these links; nothing here describes a
+ * destination, because a page that made its case twice would be a page that
+ * did not trust the first one.
+ *
+ * The shared facts come from `src/nav.ts`: the version at the foot of this
+ * page and the version beside the mark at the top are one value, so they
+ * cannot disagree, a repository that moves moves once, and the map's names
+ * are the sidebar's own.
+ */
+import { NAV, SITE } from '../../nav'
+
+/*
+ * The four section landing pages, and only those. The rail behind them holds
+ * six groups: Commands and the Luau API both live under Reference, and a
+ * footer that listed them would be a second rail rather than a map. The
+ * names are read from `src/nav.ts` the way the doors above read theirs, so a
+ * group that is renamed or removed stops the build instead of leaving a map
+ * that lies.
+ */
+const DOCS = ['/start', '/concepts', '/guides', '/reference'].map((path) => {
+  const group = NAV.find((candidate) => candidate.entries.some((page) => page.path === path))
+  if (group === undefined) {
+    throw new Error(
+      `Naming the footer's link to ${path}. No group in src/nav.ts carries that ` +
+        'page, so the link has no name to take. Point the link at a path NAV ' +
+        'carries, or add the page to NAV. The site did not build.',
+    )
+  }
+  return { href: path, label: group.label }
+})
+
+/* Where the work is done, and where it is answered. */
+const PROJECT = [
+  { href: SITE.repository, label: 'Repository' },
+  { href: `${SITE.repository}/releases`, label: 'Releases' },
+  { href: `${SITE.repository}/issues`, label: 'Issues' },
+  { href: `${SITE.repository}/discussions`, label: 'Discussions' },
+]
+
+/*
+ * How to take part, and the terms. The three documents are read where they
+ * are maintained rather than copied onto this site, so there is one of each.
+ * The license link is the README's own anchor: niwa is offered under two
+ * licenses, and either file alone tells half of that.
+ */
+const COMMUNITY = [
+  { href: `${SITE.repository}/blob/main/CONTRIBUTING.md`, label: 'Contributing' },
+  { href: `${SITE.repository}/blob/main/CODE_OF_CONDUCT.md`, label: 'Code of Conduct' },
+  { href: `${SITE.repository}/blob/main/SECURITY.md`, label: 'Security' },
+  { href: SITE.license, label: 'MIT or Apache-2.0' },
+]
+
+/* The three groups of the map, each with the id its list is named by. */
+const COLUMNS = [
+  { id: 'colophon-docs', head: 'Documentation', links: DOCS },
+  { id: 'colophon-project', head: 'Project', links: PROJECT },
+  { id: 'colophon-community', head: 'Community', links: COMMUNITY },
+]
+
+/* Both are routes this site builds, and both are written for a reader that
+ * is not a person. */
+const MACHINES = [
+  { href: SITE.index, label: 'llms.txt' },
+  { href: '/sitemap.xml', label: 'sitemap.xml' },
+]
+---
+
+<footer class="colophon">
+  <div class="colophon-inner">
+    {
+      /* One root, hanging from the line that closes the page. The plant that
+        runs through this page grows in the header and along the sections;
+        here it is under the ground, which is why it hangs downward, why it is
+        dimmer than every other piece of it, and why it ends in a seed rather
+        than a flower. It is decoration and carries nothing: it is placed out
+        of the flow, and the band reads and lays out the same without it. */
+    }
+    <span class="colophon-root" aria-hidden="true">
+      <svg viewBox="0 0 26 48" focusable="false">
+        <circle class="colophon-root-seed" cx="13" cy="1.9" r="1.7"></circle>
+        {
+          /* One stroke per element, for the reason the trail's sprout gives:
+            dashing restarts at every sub-path, so a root drawn as one `d`
+            would make all of its pieces at once instead of in order. */
+        }
+        <path
+          class="colophon-root-tap"
+          pathLength="1"
+          d="M13 0c.5 5.4-1.4 8.9-2 13.6-.9 6.9 1.9 11.4 1.1 18.2-.5 4.4-2 8.2-4.4 11.7"
+        ></path>
+        <path class="colophon-root-hair" pathLength="1" d="M10.9 17.4c3.4 1.5 5.6 4.2 6.7 8"
+        ></path>
+        <path
+          class="colophon-root-hair colophon-root-hair-low"
+          pathLength="1"
+          d="M12.2 29.5c-3.2 1.2-5.5 3.5-6.9 6.9"
+        ></path>
+        <path class="colophon-root-fibre" pathLength="1" d="M15.8 21.4c1.7.5 3 1.5 4 2.9"
+        ></path>
+      </svg>
+    </span>
+
+    <div class="colophon-body">
+      <div class="colophon-identity">
+        {
+          /* The name is set in type here and the drawing stays in the
+            header: the mark at the top is the page saying who it is, and
+            this is a colophon entry, which names things in words. */
+        }
+        <p class="colophon-name">
+          niwa <span class="colophon-version">{SITE.version}</span>
+        </p>
+        <p class="colophon-say">
+          niwa is Japanese for garden. A Mac is one: it grows and it drifts. You write down
+          what should grow there. niwa keeps it true.
+        </p>
+      </div>
+
+      {
+        /* One landmark for the whole map, named for where it goes. The page
+          already carries three navigations, each named for its own
+          destination, and a fourth called "Footer" would name the place the
+          reader is standing rather than a place they can reach. The three
+          groups inside it are lists: a list is not a landmark, and the map
+          is one thing. */
+      }
+      <nav class="colophon-map" aria-label="Site">
+        {
+          /* Each label is a paragraph the list beside it points at, which is
+            how the doors above name their own list. The footer is chrome,
+            and a heading here would write four lines of chrome into the
+            outline the page's sections carry. */
+        }
+        {
+          COLUMNS.map((column) => (
+            <div>
+              <p class="colophon-head" id={column.id}>
+                {column.head}
+              </p>
+              {/* The label is what tells Repository from Contributing, so
+                  the group it names has to survive. Safari drops list
+                  semantics from a list with no markers, and with them the
+                  name this list carries, so the role is written down. */}
+              <ul class="colophon-links" role="list" aria-labelledby={column.id}>
+                {column.links.map((link) => (
+                  <li>
+                    <a href={link.href}>{link.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </div>
+
+    <div class="colophon-machines">
+      <p class="colophon-head" id="colophon-machines">For machines</p>
+      <ul class="colophon-links" role="list" aria-labelledby="colophon-machines">
+        {
+          MACHINES.map((route) => (
+            <li>
+              <a href={route.href}>{route.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</footer>

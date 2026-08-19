@@ -2,9 +2,14 @@
 /* Three doors into the documentation.
  *
  * The names are the sidebar's own, read from `src/nav.ts` rather than typed
- * again here: a reader who follows a card meets the same word at the top of
+ * again here: a reader who follows a door meets the same word at the top of
  * the rail, and a group that is renamed or removed stops the build instead
- * of leaving a card that lies.
+ * of leaving a door that lies.
+ *
+ * This emits the list and not a section. The doors stand at the foot of the
+ * last screen, under the command, because they are what a reader takes
+ * instead of installing — and a section of their own, a screen earlier,
+ * interrupted the argument on its way to the point.
  */
 import { NAV } from '../../nav'
 
@@ -25,8 +30,8 @@ function labelFor(path: string): string {
   const group = NAV.find((candidate) => candidate.entries.some((page) => page.path === path))
   if (group === undefined) {
     throw new Error(
-      `Naming the landing's card for ${path}. No group in src/nav.ts carries that ` +
-        'page, so the card has no name to take. Point the card at a path NAV ' +
+      `Naming the landing's door for ${path}. No group in src/nav.ts carries that ` +
+        'page, so the door has no name to take. Point the door at a path NAV ' +
         'carries, or add the page to NAV. The site did not build.',
     )
   }
@@ -36,18 +41,18 @@ function labelFor(path: string): string {
 const cards = DOORS.map((door) => ({ ...door, label: labelFor(door.path) }))
 ---
 
-<section class="router" aria-labelledby="router-title">
-  <h2 id="router-title">Read the documentation</h2>
-  <ul class="router-cards">
+<nav class="doors" aria-label="Documentation">
+  <p class="doors-say" id="doors-say">Not yet. Read first:</p>
+  <ul class="doors-list" aria-labelledby="doors-say">
     {
       cards.map((card) => (
         <li>
-          <a class="router-card" href={card.path}>
-            <h3>{card.label}</h3>
-            <p>{card.line}</p>
+          <a class="door" href={card.path}>
+            <span class="door-name">{card.label}</span>
+            <span class="door-line">{card.line}</span>
           </a>
         </li>
       ))
     }
   </ul>
-</section>
+</nav>

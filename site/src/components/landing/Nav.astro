@@ -1,11 +1,32 @@
 ---
 /* The landing's header.
  *
- * Fixed glass over the garden, and the only navigation this page draws: the
- * mark, the places further down the page, the way into the documentation,
- * and the repository. Below the landing's breakpoint the words go and the
- * mark and the repository stay, which is what fits across a phone without
- * crowding.
+ * The documentation's bar keeps its middle empty on purpose: over there the
+ * section links are the rail and the page's name is the heading below, so
+ * anything set between identity and tools would have been put there to fill
+ * the space. This page is the opposite case. It is one scroll with a handful
+ * of stops in it, and where the reader has got to is a real fact the chrome
+ * can hold. So this bar has a middle, and the middle is the trail.
+ *
+ * Three registers:
+ *
+ * - The mark and the version: the drawings, and one fact in mono.
+ * - The trail: places on this page. A sprout stands under the stop the
+ *   reader is at, and that shape is what says these are not controls.
+ * - The ways out: places that are not this page. Each is a mark and a word,
+ *   and which one the page would rather you took is said in ink alone.
+ *
+ * Every word on the bar is set in one face at one size, and the three
+ * registers are told apart by ink alone. The face is mono: the display face
+ * goes soft at this size on a screen with one pixel per pixel, and chrome
+ * has to hold up on every screen. Scale was carrying nothing here that ink
+ * was not already carrying better — a version at one size, a trail at a
+ * second and the ways out at a third read as three bars sharing a line.
+ *
+ * That division is the whole rule, and it is what the old header had no
+ * answer for: it set an anchor to `#config` beside a route to `/start` in
+ * one group and left `#install` in the other, so neither group meant
+ * anything, and it gave the repository the only emphasis on the bar.
  *
  * The seedling is a raster and the wordmark is drawn, and they are composed
  * here rather than baked into one file: the leaf veins do not survive
@@ -14,52 +35,206 @@
 import seedling from '../../assets/art/seedling.png'
 import wordmark from '../../assets/art/wordmark.svg'
 import githubMark from '../../icons/github.svg?raw'
+import { BOOK } from '../../icons/chrome'
 import { navSeedling } from '../../lib/hero-art'
 import { SITE } from '../../nav'
+
+/*
+ * The page's own stops, in the order it tells them.
+ *
+ * Every id here is a section on this page and every section the trail can
+ * light is in here. The list renders the links and the script watches the
+ * sections it names, so the two cannot drift: a stop with no section lights
+ * for nothing, and a section with no stop is simply not on the trail.
+ */
+const TRAIL = [
+  { id: 'why', label: 'Why niwa' },
+  { id: 'config', label: 'Config' },
+  { id: 'capture', label: 'Capture' },
+  { id: 'install', label: 'Install' },
+] as const
+
+/*
+ * The sprout, as the stem and the things that grow off it.
+ *
+ * The plant arrives by growing: the stem draws itself, a bud rides its tip,
+ * and nothing appears ahead of that bud. Holding to that rule is the whole
+ * reason this is data rather than one hand-written drawing — dashing an SVG
+ * path restarts at every sub-path, so a stem and its five branches written
+ * as one `d` draw all six at once, each a third of the way along itself,
+ * which is a plant flickering rather than a plant growing. One stroke per
+ * element is what makes the order real.
+ *
+ * `at` is where along the stem's reach the tip passes the point that piece
+ * grows from, as a fraction. They are not guesses: each is the arc-length
+ * position of that attachment on the stem path, run back through the easing
+ * the stem is drawn with. The veins lag their own leaf rather than the stem,
+ * because a vein belongs to a leaf that has to be open first.
+ */
+const STEM = 'M4.2 4.8c6.1-1.4 11.3.8 17.2.6 7-.2 11.8-2.1 18.4-.1 5 1.5 9 2.2 15.7.8'
+
+const BRANCHES = [
+  { at: 0.089, d: 'M14.5 4.9c-1.1 1.6-2.3 2.9-3.9 4' },
+  { at: 0.151, d: 'M20.8 5.4c-.1 1.3-.1 2.5 0 3.7' },
+  { at: 0.2, d: 'M25.4 5.2c1.7 1.2 3 2.7 4 4.5' },
+  { at: 0.468, d: 'M43.7 5.2c-1.2 1.6-2.4 2.9-4 4.1' },
+  { at: 0.536, d: 'M46.8 6.3c1.1 1.4 2 2.7 2.8 4.3' },
+] as const
+
+const LEAVES = [
+  { at: 0.054, tone: 'low', d: 'M10.6 8.9c-2.8-.6-4.8.5-5.9 2.9 2.8.9 4.9 0 5.9-2.9Z' },
+  { at: 0.247, tone: 'left', d: 'M29.4 9.7c2.8-.4 4.8.8 5.5 3.3-2.9.6-4.9-.5-5.5-3.3Z' },
+  { at: 0.394, tone: 'right', d: 'M39.7 9.3c-2.7-.2-4.5 1-5.3 3.4 2.8.5 4.7-.6 5.3-3.4Z' },
+  { at: 0.61, tone: 'end', d: 'M49.6 10.6c2.2-.1 3.7.9 4.3 2.8-2.3.4-3.8-.6-4.3-2.8Z' },
+] as const
+
+const VEINS = [
+  { at: 0.144, d: 'M5.9 11.4 9.9 9.3' },
+  { at: 0.337, d: 'M33.6 12.4 29.9 10.2' },
+  { at: 0.484, d: 'M35.2 12.4 38.9 9.8' },
+  { at: 0.74, d: 'M52.9 12.8 49.8 10.3' },
+] as const
 ---
 
 <header class="site-header">
   <div class="site-header-inner">
-    <div class="header-left">
-      <a class="mini-mark" href="#top" aria-label="niwa home">
-        <picture>
-          <source type="image/avif" srcset={navSeedling.src} />
-          <img
-            class="brand-seedling"
-            src={seedling.src}
-            alt=""
-            width={seedling.width}
-            height={seedling.height}
-            fetchpriority="low"
-            draggable="false"
-          />
-        </picture>
-        {
-          /* The drawing carries the name, and the link above already says
-            it in words. The span is where that is stated, because the
-            drawing is a shared asset and says nothing about where it hangs. */
-        }
+    <a class="mini-mark" href="#top" aria-label="niwa home">
+      <picture>
+        <source type="image/avif" srcset={navSeedling.src} />
         <img
-          class="brand-wordmark"
-          src={wordmark.src}
+          class="brand-seedling"
+          src={seedling.src}
           alt=""
-          width="849"
-          height="286"
+          width={seedling.width}
+          height={seedling.height}
+          fetchpriority="low"
           draggable="false"
         />
+      </picture>
+      {
+        /* The drawing carries the name, and the link above already says
+          it in words. The span is where that is stated, because the
+          drawing is a shared asset and says nothing about where it hangs. */
+      }
+      <img
+        class="brand-wordmark"
+        src={wordmark.src}
+        alt=""
+        width="849"
+        height="286"
+        draggable="false"
+      />
+      {
+        /* One fact stands beside the wordmark, in mono like every fact a
+          machine supplied: at rest the build's version, the same fact the
+          documentation's bar prints beside the same mark. While the mark is
+          asked — a pointer over it, or focus on it — the slot answers with
+          the name's other fact instead: what the word means. The meaning is
+          hidden from assistive readers because the link names itself and
+          the colophon states the meaning in a full sentence. */
+      }
+      <span class="mark-fact">
+        <span class="mark-version">{SITE.version}</span>
+        <span class="mark-meaning" aria-hidden="true">
+          <span class="mark-glyph">庭</span>
+          <span class="mark-meaning-word">garden</span>
+        </span>
+      </span>
+    </a>
+
+    {
+      /* One sprout marks the section being read. The script places the whole
+        drawing under that stop and the stylesheet owns how it travels and
+        opens. It remains decoration: `aria-current` says the same state to a
+        reader who cannot see it. */
+    }
+    <nav class="trail" aria-label="Sections of this page" data-trail>
+      <ul class="trail-stops">
+        {
+          TRAIL.map((stop) => (
+            <li>
+              <a href={`#${stop.id}`} data-trail-stop={stop.id}>
+                {stop.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <span class="trail-sprout" data-trail-sprout aria-hidden="true">
+        <svg viewBox="0 0 60 18" width="60" height="18" focusable="false">
+          <g class="trail-sprout-body" data-trail-sprout-body>
+            <path class="trail-sprout-stem" pathLength="1" d={STEM} />
+            {
+              BRANCHES.map((branch) => (
+                <path
+                  class="trail-sprout-branch"
+                  pathLength="1"
+                  style={`--at:${branch.at}`}
+                  d={branch.d}
+                />
+              ))
+            }
+            {
+              LEAVES.map((leaf) => (
+                <path
+                  class={`trail-sprout-leaf trail-sprout-leaf-${leaf.tone}`}
+                  style={`--at:${leaf.at}`}
+                  d={leaf.d}
+                />
+              ))
+            }
+            {
+              VEINS.map((vein) => (
+                <path
+                  class="trail-sprout-vein"
+                  pathLength="1"
+                  style={`--at:${vein.at}`}
+                  d={vein.d}
+                />
+              ))
+            }
+            <circle class="trail-sprout-bud" style="--at:0.151" cx="20.8" cy="9.2" r="1.02" />
+            <g transform="translate(55.2 6.2)">
+              <g class="trail-sprout-flower">
+                <ellipse cx="0" cy="-1.45" rx="1.15" ry="1.45" />
+                <ellipse cx="1.45" cy="-.2" rx="1.45" ry="1.15" />
+                <ellipse cx=".9" cy="1.45" rx="1.15" ry="1.45" />
+                <ellipse cx="-.9" cy="1.45" rx="1.15" ry="1.45" />
+                <ellipse cx="-1.45" cy="-.2" rx="1.45" ry="1.15" />
+                <circle class="trail-sprout-flower-heart" r=".76" />
+              </g>
+            </g>
+            {
+              /* The growing point, and the last child because it passes over
+                everything it has already grown. It is drawn only where a path
+                can carry it; the growth is whole without it. */
+            }
+            <circle class="trail-sprout-tip" cx="0" cy="0" r="1.15" />
+          </g>
+        </svg>
+      </span>
+    </nav>
+
+    <nav class="site-ways" aria-label="Documentation and source">
+      {
+        /* The two ways are one shape: a mark and a word. Which of them the
+          page would rather you took is said in ink and nothing else — no
+          frame, no fill, no arrow. A bordered control here was the only
+          closed box in the composition, and it read as imported. */
+      }
+      <a class="way way-docs" href="/start">
+        <Fragment set:html={BOOK} />
+        <span>Docs</span>
       </a>
-      <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#why">Why niwa</a>
-        <a href="#config">Config</a>
-        <a href="/start">Docs</a>
-      </nav>
-    </div>
-    <nav class="site-nav site-nav-actions" aria-label="Project navigation">
-      <a class="repo-link" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
+      {
+        /* The icon is `aria-hidden` and the slug beside it goes at the width
+          the bar drops its words, so neither can name this link at every
+          width. The label does, and it says the same thing at both. */
+      }
+      <a class="way way-repo" href={SITE.repository} aria-label={`${SITE.slug} on GitHub`}>
         <Fragment set:html={githubMark} />
-        <span>{SITE.slug}</span>
+        <span class="way-slug">{SITE.slug}</span>
       </a>
-      <a href="#install">Install</a>
     </nav>
   </div>
 </header>

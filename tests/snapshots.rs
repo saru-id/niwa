@@ -73,43 +73,31 @@ fn pending_home() -> tempfile::TempDir {
     home
 }
 
-/// The config the design's overview opens with: a formula batch, a
-/// dock setting, a file, a link, and a run behind `changed` results.
+/// The config the design's overview opens with: familiar command-line
+/// tools and apps, a couple of macOS preferences, and a dotfile.
 /// The text is the documentation site's own excerpt, byte for byte.
-/// The sandbox brew prefix holds no Cellar, so every formula reads as
-/// absent; a plan reads receipts and never invokes brew.
+/// The sandbox brew prefix holds no Cellar or Caskroom, so every package
+/// reads as absent; a plan reads receipts and never invokes brew.
 fn mixed_pending_home() -> tempfile::TempDir {
     let home = tempfile::tempdir().unwrap();
-    write(home.path(), "files/zshrc", "export EDITOR=nvim\n");
-    write(
-        home.path(),
-        "files/nvim/init.lua",
-        "vim.g.mapleader = \" \"\n",
-    );
+    write(home.path(), "files/zshrc", "export EDITOR=code\n");
     write(
         home.path(),
         "init.luau",
         r#"--!strict
 local niwa = require("@niwa")
 
-niwa.brew.formula { "fd", "ripgrep", "jq" }
+niwa.brew.formula { "git", "jq", "ripgrep" }
+niwa.brew.cask { "firefox", "visual-studio-code" }
 
-niwa.dock {
-  autohide = true,
-  tilesize = 48,
-}
+niwa.dock { autohide = true, tilesize = 48 }
+niwa.finder { show_hidden = true, default_view = "list" }
 
 niwa.file("~/.zshrc", { source = "@self/files/zshrc" })
-
-local nvim = niwa.brew.formula "neovim"
-local cfg  = niwa.link("~/.config/nvim", { to = "@self/files/nvim" })
-if nvim.changed or cfg.changed then
-  niwa.run("nvim --headless '+Lazy! sync' +qa", { timeout = "5m" })
-end
 "#,
     );
     // The dock plist disagrees on autohide and already agrees on
-    // tilesize, so the plan shows one change and one create.
+    // tilesize, so only autohide appears while both values are checked.
     let preferences = home.path().join("Library/Preferences");
     std::fs::create_dir_all(&preferences).unwrap();
     std::fs::write(
