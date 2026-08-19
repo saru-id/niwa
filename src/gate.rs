@@ -268,8 +268,7 @@ mod tests {
     // inside one is still a long high-entropy run of its own.
     #[test]
     fn a_secret_inside_a_path_is_still_caught() {
-        let hits =
-            scan_bytes(b"source = \"/etc/niwa/q7Rv2mXz9Kp4Lw8Nt3Jd6Fh1Bg5Yc0SaUeIoP\"\n");
+        let hits = scan_bytes(b"source = \"/etc/niwa/q7Rv2mXz9Kp4Lw8Nt3Jd6Fh1Bg5Yc0SaUeIoP\"\n");
         assert_eq!(hits.len(), 1, "{hits:?}");
     }
 
