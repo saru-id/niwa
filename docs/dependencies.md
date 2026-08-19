@@ -585,7 +585,7 @@ repository. None of this links into the binary or ships on the site.
 - Why not our own: it is the package manager the site's lockfile is
   written for, and the lockfile pins every package by content hash.
 - Maintenance: the pnpm team, current, frequent releases.
-- Pin: 11.21.0, exact, with its sha512 integrity hash in the
+- Pin: 11.22.0, exact, with its sha512 integrity hash in the
   `packageManager` field. CI asserts the resolved version before the site
   gate runs.
 - License: MIT.
