@@ -44,7 +44,7 @@ jobs:
         with:
           shared-key: check
       - name: Install cargo-deny
-        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        uses: taiki-e/install-action@5b4d68e2e660441203ab128a23676f1e4faf1532 # v2.86.3
         with:
           tool: cargo-deny@0.20.2
           # The action's default fallback resolves an install at run time from
@@ -124,7 +124,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install zizmor and shellcheck
-        uses: taiki-e/install-action@288e746965032cfcc232e09af2daf5f23c14d780 # v2.86.1
+        uses: taiki-e/install-action@5b4d68e2e660441203ab128a23676f1e4faf1532 # v2.86.3
         with:
           tool: zizmor@1.29.0,shellcheck@0.11.0
           fallback: none
