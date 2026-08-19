@@ -1,0 +1,64 @@
+# Dependency updates, proposed as pull requests.
+#
+# Every version in this repository is pinned exactly, which is what makes a
+# supply chain auditable and also what makes it go stale silently. This is the
+# other half of that decision: the pins hold until something proposes moving
+# them, and this is the thing that proposes.
+#
+# Three ecosystems, because the repository has three. The tool's crates, the
+# site's packages, and the workflows' actions all carry versions nobody would
+# otherwise revisit.
+#
+# Weekly rather than daily, and grouped rather than one pull request per
+# package. A queue of thirty single-package updates is a queue nobody reads,
+# and unread updates are worse than none: they train you to merge without
+# looking. Security updates are exempt from the grouping and arrive on their
+# own, which is the one case worth interrupting for.
+
+version: 2
+
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+    open-pull-requests-limit: 5
+    groups:
+      # Patch and minor moves together. A major is its own decision and
+      # arrives alone, because it is the only kind that can change behaviour.
+      cargo-minor:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore"
+      include: scope
+    labels: [dependencies]
+
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+    open-pull-requests-limit: 5
+    groups:
+      site-minor:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(site)"
+    labels: [dependencies, "area: site"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+    labels: [dependencies]
