@@ -3,13 +3,13 @@ source: tests/snapshots.rs
 expression: run.stdout
 ---
 [init]
-brew.formula:fd
-brew.formula:ripgrep
+brew.formula:git
 brew.formula:jq
+brew.formula:ripgrep
+brew.cask:firefox
+brew.cask:visual-studio-code
 com.apple.dock autohide                 false → true
+com.apple.finder AppleShowAllFiles
+com.apple.finder FXPreferredViewStyle
 ~/.zshrc
-brew.formula:neovim
-~/.config/nvim
-run:nvim --headless '+Lazy! sync' +qa
-9 checked · 8 would change
-results read past the first change are predictions until apply
+10 checked · 9 would change
