@@ -479,7 +479,7 @@ repository. None of this links into the binary or ships on the site.
   fewer eyes on it.
 - Maintenance: one author, releases most days, picks up new tool versions
   within days of their release.
-- Pin: v2.86.1, pinned by commit. Every use also sets `fallback: none`,
+- Pin: v2.86.3, pinned by commit. Every use also sets `fallback: none`,
   so an install the manifest does not cover fails instead of resolving at
   run time.
 - License: Apache-2.0 OR MIT.
