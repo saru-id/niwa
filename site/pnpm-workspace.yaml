@@ -9,6 +9,20 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
+  - '@astrojs/internal-helpers@0.10.4'
+  - '@astrojs/react@6.0.4'
+  - '@astrojs/markdown-satteri@0.3.7'
+  - '@bruits/satteri-darwin-arm64@0.10.3'
+  - '@bruits/satteri-darwin-x64@0.10.3'
+  - '@bruits/satteri-linux-arm64-gnu@0.10.3'
+  - '@bruits/satteri-linux-arm64-musl@0.10.3'
+  - '@bruits/satteri-linux-x64-gnu@0.10.3'
+  - '@bruits/satteri-linux-x64-musl@0.10.3'
+  - '@bruits/satteri-wasm32-wasi@0.10.3'
+  - '@bruits/satteri-win32-arm64-msvc@0.10.3'
+  - '@bruits/satteri-win32-x64-msvc@0.10.3'
+  - astro@7.2.4
+  - satteri@0.10.3
 
 # Astro's built chunks import the image encoder with a bare specifier, which
 # the isolated layout does not serve for a transitive package. The hoist
